@@ -1,22 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  emptyMessagesMock,
-  messagesMock,
-} from "@/messages/mock/messagesMock";
+import { messagesService } from "@/messages/services/messagesService";
 import type { ChatMessage } from "@/messages/types/message";
-import { mockDelay } from "@/shared/api/mockDelay";
 
-export function useProjectChat() {
+export function useProjectChat(projectId?: string) {
   return useQuery<ChatMessage[]>({
-    queryKey: ["messages", "project-chat"],
-    queryFn: async () => {
-      await mockDelay(350);
-
-      return import.meta.env.VITE_MESSAGES_EMPTY === "1"
-        ? emptyMessagesMock
-        : messagesMock;
-    },
-    staleTime: Infinity,
+    queryKey: ["messages", "project", projectId],
+    queryFn: () => messagesService.listProjectMessages(projectId!),
+    enabled: Boolean(projectId),
+    staleTime: 10_000,
   });
 }

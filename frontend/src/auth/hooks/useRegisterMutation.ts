@@ -1,22 +1,26 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
-import * as authApi from "@/auth/api/authApi";
-import { useAuthStore } from "@/auth/store/authStore";
+import { authService } from "@/auth/services/authService";
+import type { RegisterPayload } from "@/auth/types/auth";
+import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
+import { useToastStore } from "@/shared/lib/toast-store";
 
 export function useRegisterMutation() {
-  const queryClient = useQueryClient();
-  const setSession = useAuthStore((s) => s.setSession);
-
   return useMutation({
-    mutationFn: async (input: authApi.RegisterInput) => {
-      const { accessToken, user } = await authApi.register(input);
-      const currentUser = user ?? (await authApi.me(accessToken));
-      return { accessToken, currentUser };
+    mutationFn: (input: RegisterPayload) => authService.register(input),
+    onSuccess: () => {
+      useToastStore.getState().push({
+        title: "Account created",
+        description: "You can now sign in with your new account.",
+        variant: "success",
+      });
     },
-    onSuccess: ({ accessToken, currentUser }) => {
-      setSession({ accessToken, currentUser });
-      queryClient.setQueryData(["auth", "me"], currentUser);
+    onError: (error) => {
+      useToastStore.getState().push({
+        title: "Registration failed",
+        description: getApiErrorMessage(error),
+        variant: "error",
+      });
     },
   });
 }
-

@@ -54,6 +54,37 @@ export class ProjectController {
     return this.projectService.createProject(currentUser, dto);
   }
 
+  @Get()
+  @ApiOperation({ summary: 'Lấy danh sách dự án của người dùng hiện tại' })
+  @ApiOkResponse({
+    description: 'Danh sách dự án đang tham gia',
+  })
+  @ApiUnauthorizedResponse({ description: 'Thiếu token xác thực' })
+  @ApiForbiddenResponse({ description: 'Không có quyền xem dự án' })
+  listProjects(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.projectService.listProjects(currentUser);
+  }
+
+  @Get(':projectId')
+  @ApiOperation({ summary: 'Lấy chi tiết một dự án' })
+  @ApiParam({
+    name: 'projectId',
+    description: 'ID của dự án',
+    example: 3,
+  })
+  @ApiOkResponse({
+    description: 'Chi tiết dự án',
+  })
+  @ApiUnauthorizedResponse({ description: 'Thiếu token xác thực' })
+  @ApiForbiddenResponse({ description: 'Không có quyền xem dự án này' })
+  @ApiNotFoundResponse({ description: 'Dự án không tồn tại' })
+  getProjectDetail(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ) {
+    return this.projectService.getProjectDetail(projectId, currentUser);
+  }
+
   @Post(':projectId/members')
   @ApiOperation({ summary: 'Thêm thành viên vào dự án' })
   @ApiParam({

@@ -20,6 +20,23 @@ export class TaskService {
     private readonly notificationService: NotificationService,
   ) {}
 
+  async listTasks(currentUser: AuthenticatedUser): Promise<TaskView[]> {
+    return this.prisma.task.findMany({
+      where: {
+        project: {
+          members: {
+            some: {
+              userId: currentUser.id,
+              leftAt: null,
+            },
+          },
+        },
+      },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      select: taskSelect,
+    });
+  }
+
   async createTask(
     projectId: number,
     currentUser: AuthenticatedUser,

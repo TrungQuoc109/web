@@ -3,7 +3,9 @@ import { MessageSquare, Send } from "lucide-react";
 
 import { MessageBubble } from "@/messages/components/MessageBubble";
 import { useProjectChat } from "@/messages/hooks/useProjectChat";
-import type { ChatMessage } from "@/messages/types/message";
+import { useSendProjectMessageMutation } from "@/messages/hooks/useSendProjectMessageMutation";
+import { useAuthStore } from "@/auth/store/authStore";
+import { useProjects } from "@/projects/hooks/useProjects";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
@@ -11,40 +13,41 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
 
 export function MessagesPage() {
-  const chatQuery = useProjectChat();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const projectsQuery = useProjects();
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [input, setInput] = useState("");
+  const chatQuery = useProjectChat(selectedProjectId || undefined);
+  const sendProjectMessage = useSendProjectMessageMutation();
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (chatQuery.data) {
-      setMessages(chatQuery.data);
+    if (!selectedProjectId && projectsQuery.data?.length) {
+      setSelectedProjectId(projectsQuery.data[0].id);
     }
-  }, [chatQuery.data]);
+  }, [projectsQuery.data, selectedProjectId]);
+
+  const selectedProject =
+    projectsQuery.data?.find((project) => project.id === selectedProjectId) ?? null;
+  const messages = (chatQuery.data ?? []).map((message) => ({
+    ...message,
+    isCurrentUser:
+      Boolean(currentUser?.id) && message.senderId === String(currentUser?.id),
+  }));
 
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  function sendMessage() {
+  async function sendMessage() {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || !selectedProjectId) return;
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: `message-${Date.now()}`,
-        author: {
-          name: "Quoc Duong",
-          email: "duongtrungquoc@gmail.com",
-        },
-        content: trimmed,
-        createdAt: "Just now",
-        type: "normal",
-        isCurrentUser: true,
-      },
-    ]);
+    await sendProjectMessage.mutateAsync({
+      projectId: selectedProjectId,
+      content: trimmed,
+    });
     setInput("");
   }
 
@@ -55,7 +58,7 @@ export function MessagesPage() {
     unread: messages.filter((message) => !message.isCurrentUser).length,
   };
 
-  if (chatQuery.isPending) {
+  if (projectsQuery.isPending || (selectedProjectId && chatQuery.isPending)) {
     return (
       <LoadingState
         title="Messages"
@@ -65,11 +68,31 @@ export function MessagesPage() {
     );
   }
 
+  if (projectsQuery.isError) {
+    return (
+      <ErrorState
+        title="Messages unavailable"
+        description="The project list could not be loaded from the backend. Retry to restore the page."
+        onRetry={() => void projectsQuery.refetch()}
+      />
+    );
+  }
+
+  if (!projectsQuery.data?.length) {
+    return (
+      <EmptyState
+        icon={<MessageSquare />}
+        title="No projects yet"
+        description="Join or create a project before opening project chat. The backend currently exposes messages by project."
+      />
+    );
+  }
+
   if (chatQuery.isError) {
     return (
       <ErrorState
         title="Messages unavailable"
-        description="The mock project chat did not load correctly. Retry to restore the page."
+        description="The project chat could not be loaded from the backend. Retry to restore the page."
         onRetry={() => void chatQuery.refetch()}
       />
     );
@@ -88,7 +111,18 @@ export function MessagesPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+            value={selectedProjectId}
+            onChange={(event) => setSelectedProjectId(event.target.value)}
+          >
+            {projectsQuery.data.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
           <Badge variant="secondary" className="px-3 py-1">
             {summary.total} messages
           </Badge>
@@ -113,7 +147,9 @@ export function MessagesPage() {
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
               Active room
             </p>
-            <h3 className="mt-3 text-xl font-semibold">Project Phoenix</h3>
+            <h3 className="mt-3 text-xl font-semibold">
+              {selectedProject?.name ?? "Project chat"}
+            </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Shared chat for delivery updates, quick decisions, and project-wide announcements.
             </p>
@@ -122,7 +158,7 @@ export function MessagesPage() {
               <div className="rounded-2xl border border-border bg-secondary/35 p-4">
                 <p className="text-sm font-medium">Participants</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  8 members online across product, design, and engineering.
+                  {selectedProject?.memberCount ?? 0} current members in this project room.
                 </p>
               </div>
               <div className="rounded-2xl border border-border bg-secondary/35 p-4">
@@ -143,7 +179,7 @@ export function MessagesPage() {
                     Scrollable workspace thread with chat bubbles and system updates.
                   </p>
                 </div>
-                <Badge variant="secondary">Live mock</Badge>
+                <Badge variant="secondary">Live API</Badge>
               </div>
             </div>
 
@@ -173,11 +209,11 @@ export function MessagesPage() {
                 <Button
                   type="button"
                   className="gap-2"
-                  onClick={sendMessage}
-                  disabled={!input.trim()}
+                  onClick={() => void sendMessage()}
+                  disabled={!input.trim() || sendProjectMessage.isPending}
                 >
                   <Send />
-                  Send
+                  {sendProjectMessage.isPending ? "Sending..." : "Send"}
                 </Button>
               </div>
             </div>

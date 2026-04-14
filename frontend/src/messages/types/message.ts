@@ -9,6 +9,6 @@ export type ChatMessage = {
   content: string;
   createdAt: string;
   type: ChatMessageType;
+  senderId?: string | null;
   isCurrentUser?: boolean;
 };
-

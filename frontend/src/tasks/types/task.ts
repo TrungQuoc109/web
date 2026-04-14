@@ -19,6 +19,7 @@ export type TaskComment = {
 
 export type TaskItem = {
   id: string;
+  projectId: string;
   title: string;
   description: string;
   priority: TaskPriority;

@@ -1,4 +1,10 @@
-import { AtSign, BellRing, CheckCheck, ClipboardCheck } from "lucide-react";
+import {
+  AtSign,
+  BellRing,
+  CheckCheck,
+  ClipboardCheck,
+  Megaphone,
+} from "lucide-react";
 
 import type {
   Notification,
@@ -18,6 +24,7 @@ const iconMap: Record<NotificationType, typeof AtSign> = {
   MENTION: AtSign,
   ASSIGNED: ClipboardCheck,
   STATUS_CHANGED: BellRing,
+  ANNOUNCEMENT: Megaphone,
 };
 
 export function NotificationItem({

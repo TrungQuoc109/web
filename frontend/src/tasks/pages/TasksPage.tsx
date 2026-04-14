@@ -1,47 +1,67 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { LayoutGrid, Search } from "lucide-react";
 
 import { Board, boardColumns } from "@/tasks/components/Board";
 import { TaskDetailDrawer } from "@/tasks/components/TaskDetailDrawer";
+import { useAssignableUsers } from "@/tasks/hooks/useAssignableUsers";
+import { useAssignTaskUsersMutation } from "@/tasks/hooks/useAssignTaskUsersMutation";
+import { useTaskComments } from "@/tasks/hooks/useTaskComments";
 import { useTaskBoard } from "@/tasks/hooks/useTaskBoard";
-import { taskUsers } from "@/tasks/mock/tasksMock";
+import { useUpdateTaskStatusMutation } from "@/tasks/hooks/useUpdateTaskStatusMutation";
 import type { TaskItem, TaskPriorityFilter, TaskStatus } from "@/tasks/types/task";
 import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
+import { useToastStore } from "@/shared/lib/toast-store";
 
 const statusOrder: TaskStatus[] = boardColumns.map((column) => column.key);
 
 export function TasksPage() {
   const taskBoardQuery = useTaskBoard();
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<TaskPriorityFilter>("ALL");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (taskBoardQuery.data) {
-      setTasks(taskBoardQuery.data);
+  const updateTaskStatus = useUpdateTaskStatusMutation();
+  const assignTaskUsers = useAssignTaskUsersMutation();
+  const tasks = taskBoardQuery.data ?? [];
+  const selectedTaskBase =
+    selectedTaskId === null
+      ? null
+      : tasks.find((task) => task.id === selectedTaskId) ?? null;
+  const taskCommentsQuery = useTaskComments(selectedTaskBase?.id);
+  const assignableUsersQuery = useAssignableUsers(selectedTaskBase?.projectId);
+  const selectedTask = useMemo<TaskItem | null>(() => {
+    if (!selectedTaskBase) {
+      return null;
     }
-  }, [taskBoardQuery.data]);
+
+    return {
+      ...selectedTaskBase,
+      comments: taskCommentsQuery.data ?? [],
+    };
+  }, [selectedTaskBase, taskCommentsQuery.data]);
+  const availableUsers = useMemo(() => {
+    if (!selectedTaskBase) {
+      return [];
+    }
+
+    const assignedIds = new Set(selectedTaskBase.assignees.map((user) => user.id));
+    return (assignableUsersQuery.data ?? []).filter((user) => !assignedIds.has(user.id));
+  }, [assignableUsersQuery.data, selectedTaskBase]);
 
   function moveTask(taskId: string, direction: -1 | 1) {
-    setTasks((current) =>
-      current.map((task) => {
-        if (task.id !== taskId) return task;
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    if (!task) return;
 
-        const currentIndex = statusOrder.indexOf(task.status);
-        const nextIndex = currentIndex + direction;
-        if (nextIndex < 0 || nextIndex >= statusOrder.length) return task;
+    const currentIndex = statusOrder.indexOf(task.status);
+    const nextIndex = currentIndex + direction;
+    if (nextIndex < 0 || nextIndex >= statusOrder.length) return;
 
-        return {
-          ...task,
-          status: statusOrder[nextIndex],
-        };
-      })
-    );
+    updateTaskStatus.mutate({
+      taskId,
+      status: statusOrder[nextIndex],
+    });
   }
 
   const filteredTasks = tasks.filter((task) => {
@@ -68,10 +88,6 @@ export function TasksPage() {
     ).length,
     blocked: tasks.filter((task) => task.status === "BLOCKED").length,
   };
-  const selectedTask =
-    selectedTaskId === null
-      ? null
-      : tasks.find((task) => task.id === selectedTaskId) ?? null;
 
   if (taskBoardQuery.isPending) {
     return (
@@ -87,7 +103,7 @@ export function TasksPage() {
     return (
       <ErrorState
         title="Task board unavailable"
-        description="The mock board did not load correctly. Retry to restore the kanban view."
+        description="The task board could not be loaded from the backend. Retry to restore the kanban view."
         onRetry={() => void taskBoardQuery.refetch()}
       />
     );
@@ -201,7 +217,7 @@ export function TasksPage() {
         <EmptyState
           icon={null}
           title="No tasks yet"
-          description="Once work is created, the board will organize tasks by delivery stage here."
+          description="Once work is created in your projects, the board will organize tasks by delivery stage here."
         />
       ) : (
         <Board
@@ -214,38 +230,27 @@ export function TasksPage() {
 
       <TaskDetailDrawer
         task={selectedTask}
-        availableUsers={taskUsers}
+        availableUsers={availableUsers}
+        isCommentsLoading={taskCommentsQuery.isPending}
+        isUsersLoading={assignableUsersQuery.isPending}
+        isStatusUpdating={updateTaskStatus.isPending}
+        isAssigningUser={assignTaskUsers.isPending}
+        canEditPriority={false}
         open={selectedTask !== null}
         onClose={() => setSelectedTaskId(null)}
         onStatusChange={(taskId, status) => {
-          setTasks((current) =>
-            current.map((task) => (task.id === taskId ? { ...task, status } : task))
-          );
+          updateTaskStatus.mutate({ taskId, status });
         }}
-        onPriorityChange={(taskId, priority) => {
-          setTasks((current) =>
-            current.map((task) =>
-              task.id === taskId ? { ...task, priority } : task
-            )
-          );
+        onPriorityChange={() => {
+          useToastStore.getState().push({
+            title: "Priority update unavailable",
+            description:
+              "The backend does not support updating task priority yet.",
+            variant: "info",
+          });
         }}
         onAssignUser={(taskId, userId) => {
-          const user = taskUsers.find((candidate) => candidate.id === userId);
-          if (!user) return;
-
-          setTasks((current) =>
-            current.map((task) => {
-              if (task.id !== taskId) return task;
-              if (task.assignees.some((assignee) => assignee.id === user.id)) {
-                return task;
-              }
-
-              return {
-                ...task,
-                assignees: [...task.assignees, user],
-              };
-            })
-          );
+          assignTaskUsers.mutate({ taskId, userId });
         }}
       />
     </section>

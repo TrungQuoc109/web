@@ -1,31 +1,30 @@
 import { useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 
-import type { Project } from "@/projects/types/project";
 import { Button } from "@/shared/ui/button";
 
 type CreateProjectModalProps = {
   open: boolean;
   onClose: () => void;
-  onCreate: (project: Project) => void;
+  onCreate: (input: { name: string; description?: string }) => Promise<void>;
+  isPending?: boolean;
 };
 
 type FormState = {
   name: string;
   description: string;
-  memberCount: string;
 };
 
 const initialState: FormState = {
   name: "",
   description: "",
-  memberCount: "3",
 };
 
 export function CreateProjectModal({
   open,
   onClose,
   onCreate,
+  isPending = false,
 }: CreateProjectModalProps) {
   const [form, setForm] = useState<FormState>(initialState);
 
@@ -36,21 +35,16 @@ export function CreateProjectModal({
     onClose();
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const name = form.name.trim();
     const description = form.description.trim();
-    if (!name || !description) return;
+    if (!name) return;
 
-    onCreate({
-      id: `project-${Date.now()}`,
+    await onCreate({
       name,
-      description,
-      memberCount: Number(form.memberCount) || 1,
-      progress: 0,
-      status: "PLANNING",
-      updatedAt: "Just now",
+      description: description || undefined,
     });
 
     resetAndClose();
@@ -68,7 +62,7 @@ export function CreateProjectModal({
               Create project
             </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Add a project shell now and connect it to backend actions later.
+              Create a real project in the backend workspace.
             </p>
           </div>
 
@@ -111,28 +105,13 @@ export function CreateProjectModal({
             />
           </label>
 
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Initial member count</span>
-            <input
-              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-              type="number"
-              min="1"
-              max="99"
-              value={form.memberCount}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  memberCount: event.target.value,
-                }))
-              }
-            />
-          </label>
-
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={resetAndClose}>
+            <Button type="button" variant="outline" onClick={resetAndClose} disabled={isPending}>
               Cancel
             </Button>
-            <Button type="submit">Create project</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Creating..." : "Create project"}
+            </Button>
           </div>
         </form>
       </div>

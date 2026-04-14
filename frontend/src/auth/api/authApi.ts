@@ -1,63 +1,111 @@
-import { http } from "@/shared/api/http";
+import { httpClient } from "@/shared/api/http-client";
+import type {
+  AuthenticatedUser,
+  LoginPayload,
+  LoginResponse,
+  RegisterPayload,
+  RegisterResponse,
+} from "@/auth/types/auth";
+import type { Role } from "@/shared/types/workspace";
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  name?: string;
-};
-
-export type LoginInput = {
-  email: string;
-  password: string;
-};
-
-export type RegisterInput = {
-  email: string;
-  password: string;
-  name?: string;
-};
-
-type TokenResponse = {
+type AuthResponseShape = {
   accessToken?: string;
   access_token?: string;
   token?: string;
-  user?: AuthUser;
+  user?: unknown;
   data?: unknown;
 };
 
-function normalizeAccessToken(data: TokenResponse): string | null {
+type AuthUserShape = {
+  id?: unknown;
+  email?: unknown;
+  name?: unknown;
+  role?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  user?: unknown;
+};
+
+const roles: Role[] = ["ADMIN", "MANAGER", "MEMBER"];
+
+function normalizeAccessToken(data: AuthResponseShape): string | null {
   return data.accessToken ?? data.access_token ?? data.token ?? null;
 }
 
-export async function login(input: LoginInput) {
-  const res = await http.post<TokenResponse>("/auth/login", input);
+function normalizeUser(data: unknown): AuthenticatedUser | null {
+  if (!data || typeof data !== "object") return null;
+
+  const directUser = data as AuthUserShape;
+  if (directUser.user) {
+    return normalizeUser(directUser.user);
+  }
+
+  const id =
+    typeof directUser.id === "number"
+      ? directUser.id
+      : typeof directUser.id === "string" && directUser.id.trim()
+        ? Number(directUser.id)
+        : NaN;
+
+  const role = roles.find((candidate) => candidate === directUser.role);
+
+  if (
+    Number.isFinite(id) &&
+    typeof directUser.email === "string" &&
+    typeof role === "string"
+  ) {
+    return {
+      id,
+      email: directUser.email,
+      name: typeof directUser.name === "string" ? directUser.name : null,
+      role,
+      createdAt:
+        typeof directUser.createdAt === "string" ? directUser.createdAt : undefined,
+      updatedAt:
+        typeof directUser.updatedAt === "string" ? directUser.updatedAt : undefined,
+    };
+  }
+
+  return null;
+}
+
+export async function login(input: LoginPayload): Promise<LoginResponse> {
+  const res = await httpClient.post<AuthResponseShape>("/auth/login", input);
   const accessToken =
     normalizeAccessToken(res.data) ||
     (res.data.data && typeof res.data.data === "object"
-      ? normalizeAccessToken(res.data.data as TokenResponse)
+      ? normalizeAccessToken(res.data.data as AuthResponseShape)
       : null);
-  if (!accessToken) throw new Error("Missing access token from /auth/login response");
-  return { accessToken, user: res.data.user ?? null };
+  if (!accessToken) {
+    throw new Error("Missing access token from /auth/login response");
+  }
+
+  return {
+    accessToken,
+    user: normalizeUser(res.data.user) ?? normalizeUser(res.data.data),
+  };
 }
 
-export async function register(input: RegisterInput) {
-  const res = await http.post<TokenResponse>("/auth/register", input);
-  const accessToken =
-    normalizeAccessToken(res.data) ||
-    (res.data.data && typeof res.data.data === "object"
-      ? normalizeAccessToken(res.data.data as TokenResponse)
-      : null);
-  if (!accessToken) throw new Error("Missing access token from /auth/register response");
-  return { accessToken, user: res.data.user ?? null };
+export async function register(input: RegisterPayload): Promise<RegisterResponse> {
+  const res = await httpClient.post<AuthResponseShape>("/auth/register", input);
+  const user = normalizeUser(res.data) ?? normalizeUser(res.data.data);
+  if (!user) {
+    throw new Error("Invalid /auth/register response");
+  }
+
+  return user;
 }
 
-export async function me(accessToken?: string) {
-  const res = await http.get<unknown>("/auth/me", {
+export async function getMe(accessToken?: string): Promise<AuthenticatedUser> {
+  const res = await httpClient.get<unknown>("/auth/me", {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
   });
-  if (res.data && typeof res.data === "object") {
-    const maybeUser = (res.data as { user?: unknown }).user;
-    if (maybeUser && typeof maybeUser === "object") return maybeUser as AuthUser;
+  const user = normalizeUser(res.data);
+  if (!user) {
+    throw new Error("Invalid /auth/me response");
   }
-  return res.data as AuthUser;
+
+  return user;
 }
+
+export const me = getMe;

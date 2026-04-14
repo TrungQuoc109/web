@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseIntPipe,
   Patch,
@@ -36,6 +37,21 @@ import { TaskService } from './task.service';
 @Controller()
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
+
+  @Get('tasks')
+  @ApiOperation({ summary: 'Lấy danh sách công việc của người dùng hiện tại' })
+  @ApiOkResponse({
+    description: 'Danh sách công việc trong các dự án người dùng đang tham gia',
+    type: TaskResponseDto,
+    isArray: true,
+  })
+  @ApiUnauthorizedResponse({ description: 'Thiếu token hợp lệ' })
+  @ApiForbiddenResponse({ description: 'Không có quyền xem danh sách công việc' })
+  listTasks(
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<TaskView[]> {
+    return this.taskService.listTasks(currentUser);
+  }
 
   @Post('projects/:projectId/tasks')
   @ApiOperation({ summary: 'Tạo công việc mới trong dự án' })

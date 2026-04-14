@@ -2,32 +2,39 @@ import { useEffect, useState } from "react";
 import { Users } from "lucide-react";
 
 import { useMembers } from "@/members/hooks/useMembers";
+import { useRemoveMemberMutation } from "@/members/hooks/useRemoveMemberMutation";
 import { RoleBadge } from "@/members/components/RoleBadge";
-import type { Member, MemberRole } from "@/members/types/member";
+import type { MemberRole } from "@/members/types/member";
+import { useProjects } from "@/projects/hooks/useProjects";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
-import { Button } from "@/shared/ui/button";
 
 const roleOptions: MemberRole[] = [
   "OWNER",
   "ADMIN",
-  "MANAGER",
   "MEMBER",
   "VIEWER",
 ];
 
 export function MembersPage() {
-  const membersQuery = useMembers();
-  const [members, setMembers] = useState<Member[]>([]);
+  const projectsQuery = useProjects();
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const membersQuery = useMembers(selectedProjectId || undefined);
+  const removeMember = useRemoveMemberMutation();
 
   useEffect(() => {
-    if (membersQuery.data) {
-      setMembers(membersQuery.data);
+    if (!selectedProjectId && projectsQuery.data?.length) {
+      setSelectedProjectId(projectsQuery.data[0].id);
     }
-  }, [membersQuery.data]);
+  }, [projectsQuery.data, selectedProjectId]);
+
+  const selectedProject =
+    projectsQuery.data?.find((project) => project.id === selectedProjectId) ?? null;
+  const members = membersQuery.data ?? [];
 
   const summary = {
     total: members.length,
@@ -37,11 +44,31 @@ export function MembersPage() {
     viewers: members.filter((member) => member.role === "VIEWER").length,
   };
 
-  if (membersQuery.isPending) {
+  if (projectsQuery.isPending || (selectedProjectId && membersQuery.isPending)) {
     return (
       <LoadingState
         title="Members"
-        description="Loading the workspace roster and access levels."
+        description="Loading the project roster and access levels."
+      />
+    );
+  }
+
+  if (projectsQuery.isError) {
+    return (
+      <ErrorState
+        title="Members unavailable"
+        description="The project list could not be loaded from the backend. Retry to restore the page."
+        onRetry={() => void projectsQuery.refetch()}
+      />
+    );
+  }
+
+  if (!projectsQuery.data?.length) {
+    return (
+      <EmptyState
+        icon={<Users />}
+        title="No projects yet"
+        description="Join or create a project before managing members. The backend currently exposes members by project."
       />
     );
   }
@@ -50,7 +77,7 @@ export function MembersPage() {
     return (
       <ErrorState
         title="Members unavailable"
-        description="The mock member roster did not load correctly. Retry to restore the page."
+        description="The project member roster could not be loaded from the backend. Retry to restore the page."
         onRetry={() => void membersQuery.refetch()}
       />
     );
@@ -65,13 +92,27 @@ export function MembersPage() {
           </p>
           <h2 className="text-3xl font-semibold tracking-tight">Members</h2>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Manage who is in the workspace, what role they hold, and when they joined.
+            Manage who is in the selected project, what role they hold, and when they joined.
           </p>
         </div>
 
-        <Badge variant="secondary" className="px-3 py-1">
-          {summary.total} members
-        </Badge>
+        <div className="flex items-center gap-3">
+          <select
+            className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+            value={selectedProjectId}
+            onChange={(event) => setSelectedProjectId(event.target.value)}
+          >
+            {projectsQuery.data.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+
+          <Badge variant="secondary" className="px-3 py-1">
+            {summary.total} members
+          </Badge>
+        </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -79,21 +120,21 @@ export function MembersPage() {
           <p className="text-sm text-muted-foreground">Total members</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.total}</p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Everyone currently included in the workspace.
+            Everyone currently included in {selectedProject?.name ?? "this project"}.
           </p>
         </article>
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
           <p className="text-sm text-muted-foreground">Elevated roles</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.admins}</p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Owners, admins, and managers with broader access.
+            Owners and admins with broader access in this project.
           </p>
         </article>
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
           <p className="text-sm text-muted-foreground">Viewers</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.viewers}</p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Read-focused collaborators with limited permissions.
+            Read-focused collaborators with limited project permissions.
           </p>
         </article>
       </section>
@@ -102,7 +143,7 @@ export function MembersPage() {
         <EmptyState
           icon={<Users />}
           title="No members yet"
-          description="Once your workspace starts inviting people, they will appear here with roles and joined dates."
+          description="Once teammates are added to this project, they will appear here with roles and joined dates."
         />
       ) : (
         <section className="overflow-hidden rounded-3xl border border-border bg-background/95 shadow-sm">
@@ -135,15 +176,7 @@ export function MembersPage() {
                         <select
                           className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                           value={member.role}
-                          onChange={(event) =>
-                            setMembers((current) =>
-                              current.map((item) =>
-                                item.id === member.id
-                                  ? { ...item, role: event.target.value as MemberRole }
-                                  : item
-                              )
-                            )
-                          }
+                          disabled
                         >
                           {roleOptions.map((role) => (
                             <option key={role} value={role}>
@@ -151,6 +184,9 @@ export function MembersPage() {
                             </option>
                           ))}
                         </select>
+                        <p className="text-xs text-muted-foreground">
+                          Role updates stay disabled until the backend exposes a dedicated update endpoint.
+                        </p>
                       </div>
                     </td>
                     <td className="px-6 py-5 text-muted-foreground">{member.joinedAt}</td>
@@ -158,10 +194,12 @@ export function MembersPage() {
                       <Button
                         type="button"
                         variant="outline"
+                        disabled={removeMember.isPending}
                         onClick={() =>
-                          setMembers((current) =>
-                            current.filter((item) => item.id !== member.id)
-                          )
+                          removeMember.mutate({
+                            projectId: selectedProjectId,
+                            memberId: member.id,
+                          })
                         }
                       >
                         Remove

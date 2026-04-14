@@ -11,6 +11,11 @@ import type { TaskPriority } from "@/shared/types/workspace";
 type TaskDetailDrawerProps = {
   task: TaskItem | null;
   availableUsers: TaskUser[];
+  isCommentsLoading?: boolean;
+  isUsersLoading?: boolean;
+  isStatusUpdating?: boolean;
+  isAssigningUser?: boolean;
+  canEditPriority?: boolean;
   open: boolean;
   onClose: () => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
@@ -36,6 +41,11 @@ const priorityOptions: TaskPriority[] = [
 export function TaskDetailDrawer({
   task,
   availableUsers,
+  isCommentsLoading = false,
+  isUsersLoading = false,
+  isStatusUpdating = false,
+  isAssigningUser = false,
+  canEditPriority = true,
   open,
   onClose,
   onStatusChange,
@@ -85,6 +95,7 @@ export function TaskDetailDrawer({
                 <select
                   className="mt-4 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                   value={task.status}
+                  disabled={isStatusUpdating}
                   onChange={(event) =>
                     onStatusChange(task.id, event.target.value as TaskStatus)
                   }
@@ -108,6 +119,7 @@ export function TaskDetailDrawer({
                 <select
                   className="mt-4 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                   value={task.priority}
+                  disabled={!canEditPriority}
                   onChange={(event) =>
                     onPriorityChange(task.id, event.target.value as TaskPriority)
                   }
@@ -118,6 +130,12 @@ export function TaskDetailDrawer({
                     </option>
                   ))}
                 </select>
+                {!canEditPriority ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Priority updates are not available yet because the backend
+                    does not expose an update endpoint for this field.
+                  </p>
+                ) : null}
               </div>
             </section>
 
@@ -125,7 +143,7 @@ export function TaskDetailDrawer({
               <div className="flex flex-col gap-1">
                 <h3 className="text-lg font-semibold">Assignees</h3>
                 <p className="text-sm text-muted-foreground">
-                  Assign more teammates to the task from the mock workspace roster.
+                  Assign more teammates to the task from the current project member list.
                 </p>
               </div>
 
@@ -156,6 +174,7 @@ export function TaskDetailDrawer({
                   <select
                     className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     defaultValue=""
+                    disabled={isUsersLoading || isAssigningUser}
                     onChange={(event) => {
                       const value = event.target.value;
                       if (!value) return;
@@ -170,6 +189,11 @@ export function TaskDetailDrawer({
                       </option>
                     ))}
                   </select>
+                  {isUsersLoading ? (
+                    <p className="text-xs text-muted-foreground">
+                      Loading project members...
+                    </p>
+                  ) : null}
                 </label>
               </div>
             </section>
@@ -178,12 +202,16 @@ export function TaskDetailDrawer({
               <div className="flex flex-col gap-1">
                 <h3 className="text-lg font-semibold">Comments</h3>
                 <p className="text-sm text-muted-foreground">
-                  Mock conversation and context for this task.
+                  Recent task discussion and system updates from the backend.
                 </p>
               </div>
 
               <div className="mt-5 flex flex-col gap-4">
-                {task.comments.length === 0 ? (
+                {isCommentsLoading ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-secondary/35 px-4 py-8 text-center text-sm text-muted-foreground">
+                    Loading comments...
+                  </div>
+                ) : task.comments.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border bg-secondary/35 px-4 py-8 text-center text-sm text-muted-foreground">
                     No comments yet
                   </div>

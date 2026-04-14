@@ -26,6 +26,7 @@ const statusStyles: Record<StatusBadgeValue, string> = {
   MENTION: "bg-secondary text-secondary-foreground",
   ASSIGNED: "bg-primary text-primary-foreground",
   STATUS_CHANGED: "border-border bg-background text-foreground",
+  ANNOUNCEMENT: "bg-violet-100 text-violet-900",
 };
 
 function formatStatusLabel(value: StatusBadgeValue) {
@@ -39,4 +40,3 @@ export function StatusBadge({ value, className }: StatusBadgeProps) {
     </Badge>
   );
 }
-

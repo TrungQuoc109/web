@@ -2,6 +2,7 @@ import { Bell, LogOut, Menu } from "lucide-react";
 
 import { useLogout } from "@/auth/hooks/useLogout";
 import { useAuthStore } from "@/auth/store/authStore";
+import { useNotificationsUnreadCount } from "@/notifications/hooks/useNotificationsUnreadCount";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -13,6 +14,7 @@ type TopbarProps = {
 export function Topbar({ onOpenSidebar }: TopbarProps) {
   const currentUser = useAuthStore((state) => state.currentUser);
   const logout = useLogout();
+  const unreadCountQuery = useNotificationsUnreadCount();
 
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur">
@@ -45,7 +47,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
               <Bell />
             </Button>
             <Badge className="absolute -right-1 -top-1 min-w-5 justify-center px-1.5 py-0">
-              3
+              {unreadCountQuery.data ?? 0}
             </Badge>
           </div>
 
@@ -65,7 +67,13 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
             </div>
           </div>
 
-          <Button type="button" variant="ghost" size="icon" onClick={logout} aria-label="Logout">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => logout()}
+            aria-label="Logout"
+          >
             <LogOut />
           </Button>
         </div>
@@ -73,4 +81,3 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
     </header>
   );
 }
-

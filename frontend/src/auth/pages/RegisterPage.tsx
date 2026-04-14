@@ -13,7 +13,7 @@ const schema = z.object({
     .trim()
     .refine((v) => v === "" || v.length >= 2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -29,11 +29,21 @@ export function RegisterPage() {
   });
 
   async function onSubmit(values: FormValues) {
-    await registerMutation.mutateAsync({
-      ...values,
-      name: values.name?.trim() ? values.name.trim() : undefined,
-    });
-    navigate("/", { replace: true });
+    try {
+      await registerMutation.mutateAsync({
+        ...values,
+        name: values.name?.trim() ? values.name.trim() : undefined,
+      });
+      navigate("/login", {
+        replace: true,
+        state: {
+          email: values.email,
+          success: "Account created successfully. Please sign in to continue.",
+        },
+      });
+    } catch {
+      // Error UI is handled via React Query state + toast.
+    }
   }
 
   const rootError = registerMutation.isError

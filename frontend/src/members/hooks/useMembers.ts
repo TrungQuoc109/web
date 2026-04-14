@@ -1,19 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { emptyMembersMock, membersMock } from "@/members/mock/membersMock";
+import { membersService } from "@/members/services/membersService";
 import type { Member } from "@/members/types/member";
-import { mockDelay } from "@/shared/api/mockDelay";
 
-export function useMembers() {
+export function useMembers(projectId?: string) {
   return useQuery<Member[]>({
-    queryKey: ["members", "list"],
-    queryFn: async () => {
-      await mockDelay(350);
-
-      return import.meta.env.VITE_MEMBERS_EMPTY === "1"
-        ? emptyMembersMock
-        : membersMock;
-    },
-    staleTime: Infinity,
+    queryKey: ["members", "project", projectId],
+    queryFn: () => membersService.list(projectId!),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
   });
 }

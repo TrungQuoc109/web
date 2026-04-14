@@ -1,11 +1,10 @@
 import { AppShell } from "@/app/components/AppShell";
-import { RequireAuth } from "@/auth/components/RequireAuth";
+import { ProtectedRoute } from "@/auth/components/ProtectedRoute";
 
 export function ProtectedLayout() {
   return (
-    <RequireAuth>
+    <ProtectedRoute>
       <AppShell />
-    </RequireAuth>
+    </ProtectedRoute>
   );
 }
-

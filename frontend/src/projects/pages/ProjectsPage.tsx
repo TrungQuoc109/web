@@ -9,6 +9,7 @@ import {
 
 import { CreateProjectModal } from "@/projects/components/CreateProjectModal";
 import { ProjectList } from "@/projects/components/ProjectList";
+import { useCreateProjectMutation } from "@/projects/hooks/useCreateProjectMutation";
 import { useProjects } from "@/projects/hooks/useProjects";
 import type { Project, ProjectStatusFilter } from "@/projects/types/project";
 import { Badge } from "@/shared/ui/badge";
@@ -24,6 +25,7 @@ export function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>("ALL");
   const [view, setView] = useState<"cards" | "table">("cards");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const createProject = useCreateProjectMutation();
 
   useEffect(() => {
     if (projectsQuery.data) {
@@ -61,7 +63,7 @@ export function ProjectsPage() {
     return (
       <ErrorState
         title="Projects unavailable"
-        description="The mock project list did not load correctly. Retry to restore the workspace."
+        description="The project list could not be loaded from the backend. Retry to restore the workspace."
         onRetry={() => void projectsQuery.refetch()}
       />
     );
@@ -77,8 +79,8 @@ export function ProjectsPage() {
             </p>
             <h2 className="text-3xl font-semibold tracking-tight">Projects</h2>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Browse active delivery work, search quickly, and spin up new
-              projects without waiting on backend integration.
+              Browse active delivery work, search quickly, and create new
+              projects directly from the connected backend.
             </p>
           </div>
 
@@ -207,8 +209,9 @@ export function ProjectsPage() {
       <CreateProjectModal
         open={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onCreate={(project) => {
-          setProjects((current) => [project, ...current]);
+        isPending={createProject.isPending}
+        onCreate={async (input) => {
+          await createProject.mutateAsync(input);
           setView("cards");
         }}
       />

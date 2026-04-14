@@ -46,7 +46,7 @@ export function ProjectDetailPage() {
     return (
       <ErrorState
         title="Project detail unavailable"
-        description="The mock project detail could not be loaded. Retry to restore the page."
+        description="The project detail could not be loaded from the backend. Retry to restore the page."
         onRetry={() => void detailQuery.refetch()}
       />
     );

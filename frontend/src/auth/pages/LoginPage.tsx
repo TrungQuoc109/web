@@ -3,14 +3,13 @@ import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
-import { defaultCredentials } from "@/auth/config/devAuth";
 import { useLoginMutation } from "@/auth/hooks/useLoginMutation";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
 import { Button } from "@/shared/ui/button";
 
 const schema = z.object({
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -18,6 +17,8 @@ type FormValues = z.infer<typeof schema>;
 type LocationState = {
   from?: { pathname?: string };
   error?: string;
+  email?: string;
+  success?: string;
 };
 
 export function LoginPage() {
@@ -30,15 +31,19 @@ export function LoginPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      email: defaultCredentials.email,
-      password: defaultCredentials.password,
+      email: state.email ?? "",
+      password: "",
     },
     mode: "onSubmit",
   });
 
   async function onSubmit(values: FormValues) {
-    await login.mutateAsync(values);
-    navigate(state.from?.pathname || "/", { replace: true });
+    try {
+      await login.mutateAsync(values);
+      navigate(state.from?.pathname || "/", { replace: true });
+    } catch {
+      // Error UI is handled via React Query state + toast.
+    }
   }
 
   const rootError =
@@ -57,6 +62,12 @@ export function LoginPage() {
         {rootError ? (
           <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {rootError}
+          </div>
+        ) : null}
+
+        {state.success ? (
+          <div className="mt-4 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            {state.success}
           </div>
         ) : null}
 

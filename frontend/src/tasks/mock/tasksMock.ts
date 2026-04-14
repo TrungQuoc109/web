@@ -36,6 +36,7 @@ export const taskUsers: TaskUser[] = [
 export const tasksMock: TaskItem[] = [
   {
     id: "task-1",
+    projectId: "project-phoenix",
     title: "Map onboarding edge cases",
     description:
       "Capture empty states, form failures, and permission scenarios for the first-time user path.",
@@ -53,6 +54,7 @@ export const tasksMock: TaskItem[] = [
   },
   {
     id: "task-2",
+    projectId: "project-phoenix",
     title: "Implement workspace sidebar states",
     description:
       "Ship hover, collapsed, and active states so the navigation feels complete on desktop and tablet.",
@@ -76,6 +78,7 @@ export const tasksMock: TaskItem[] = [
   },
   {
     id: "task-3",
+    projectId: "project-phoenix",
     title: "Review billing form validation",
     description:
       "Check error messaging, retry paths, and form persistence for edge-case billing submissions.",
@@ -93,6 +96,7 @@ export const tasksMock: TaskItem[] = [
   },
   {
     id: "task-4",
+    projectId: "project-phoenix",
     title: "Finalize launch checklist",
     description:
       "Close the release readiness checklist for docs, QA, and the final product walkthrough.",
@@ -110,6 +114,7 @@ export const tasksMock: TaskItem[] = [
   },
   {
     id: "task-5",
+    projectId: "project-phoenix",
     title: "Unblock notification permission bug",
     description:
       "Investigate inconsistent permission prompts on Chromium and document a safe fallback flow.",
@@ -127,6 +132,7 @@ export const tasksMock: TaskItem[] = [
   },
   {
     id: "task-6",
+    projectId: "project-phoenix",
     title: "Polish project detail overview cards",
     description:
       "Refine spacing, metrics emphasis, and visual alignment for the overview section in project detail.",
@@ -144,6 +150,7 @@ export const tasksMock: TaskItem[] = [
   },
   {
     id: "task-7",
+    projectId: "project-phoenix",
     title: "Connect projects list filtering",
     description:
       "Hook search and status controls into the mock list so the project page behaves like a real workspace.",
