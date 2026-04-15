@@ -45,25 +45,37 @@ export const projectDetailMock: Record<string, ProjectDetail> = {
       {
         id: "phoenix-task-1",
         title: "Refine onboarding information architecture",
-        assignee: "Linh Tran",
+        assignee: {
+          name: "Linh Tran",
+          email: "linh.tran@example.com",
+        },
         status: "IN_PROGRESS",
       },
       {
         id: "phoenix-task-2",
         title: "QA billing edge cases",
-        assignee: "An Nguyen",
+        assignee: {
+          name: "An Nguyen",
+          email: "an.nguyen@example.com",
+        },
         status: "IN_REVIEW",
       },
       {
         id: "phoenix-task-3",
         title: "Ship workspace sidebar improvements",
-        assignee: "Quoc Duong",
+        assignee: {
+          name: "Quoc Duong",
+          email: "duongtrungquoc@gmail.com",
+        },
         status: "TODO",
       },
       {
         id: "phoenix-task-4",
         title: "Update account permissions copy",
-        assignee: "Mai Le",
+        assignee: {
+          name: "Mai Le",
+          email: "mai.le@example.com",
+        },
         status: "DONE",
       },
     ],
@@ -96,15 +108,21 @@ export const projectDetailMock: Record<string, ProjectDetail> = {
     messages: [
       {
         id: "message-1",
-        author: "Linh Tran",
+        author: {
+          name: "Linh Tran",
+          email: "linh.tran@example.com",
+        },
         content: "The updated checkout states are ready for review this afternoon.",
-        timestamp: "22 minutes ago",
+        createdAt: "22 minutes ago",
       },
       {
         id: "message-2",
-        author: "Quoc Duong",
+        author: {
+          name: "Quoc Duong",
+          email: "duongtrungquoc@gmail.com",
+        },
         content: "Please keep the sidebar polish in this sprint so we can demo it Friday.",
-        timestamp: "2 hours ago",
+        createdAt: "2 hours ago",
       },
     ],
   },

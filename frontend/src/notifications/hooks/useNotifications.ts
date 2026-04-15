@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { notificationsService } from "@/notifications/services/notificationsService";
 import type { Notification } from "@/notifications/types/notification";
+import { notificationsKeys } from "@/shared/lib/query-keys";
 
 export function useNotifications() {
   return useQuery<Notification[]>({
-    queryKey: ["notifications", "list"],
+    queryKey: notificationsKeys.list(),
     queryFn: () => notificationsService.list(),
-    staleTime: Infinity,
+    staleTime: 30_000,
   });
 }

@@ -9,7 +9,7 @@ export type ProjectStatusFilter = "ALL" | ProjectStatus;
 export type Project = {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   memberCount: number;
   progress: number;
   status: ProjectStatus;
@@ -18,16 +18,19 @@ export type Project = {
 
 export type ProjectMember = {
   id: string;
-  name: string;
+  name: string | null;
   role: MemberRole | string;
   email: string;
 };
 
 export type ProjectMessage = {
   id: string;
-  author: string;
+  author: {
+    name: string | null;
+    email: string;
+  } | null;
   content: string;
-  timestamp: string;
+  createdAt: string;
 };
 
 export type ProjectActivity = {
@@ -40,7 +43,10 @@ export type ProjectActivity = {
 export type ProjectTask = {
   id: string;
   title: string;
-  assignee: string;
+  assignee: {
+    name: string | null;
+    email: string;
+  } | null;
   status: TaskStatus;
 };
 

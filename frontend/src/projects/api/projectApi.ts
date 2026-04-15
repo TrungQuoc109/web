@@ -92,34 +92,6 @@ type BackendCreateProjectResponse = {
   updatedAt: string;
 };
 
-const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
-  numeric: "auto",
-});
-
-function formatRelativeTime(value: string) {
-  const date = new Date(value);
-  const diffMs = date.getTime() - Date.now();
-  const diffMinutes = Math.round(diffMs / 60_000);
-  const absMinutes = Math.abs(diffMinutes);
-
-  if (absMinutes < 60) {
-    return relativeTimeFormatter.format(diffMinutes, "minute");
-  }
-
-  const diffHours = Math.round(diffMinutes / 60);
-  const absHours = Math.abs(diffHours);
-  if (absHours < 24) {
-    return relativeTimeFormatter.format(diffHours, "hour");
-  }
-
-  const diffDays = Math.round(diffHours / 24);
-  if (Math.abs(diffDays) < 7) {
-    return relativeTimeFormatter.format(diffDays, "day");
-  }
-
-  return date.toLocaleDateString();
-}
-
 function deriveProjectStatus(input: {
   totalTasks: number;
   completedTaskCount: number;
@@ -140,18 +112,18 @@ function mapProjectSummary(project: BackendProjectSummary): Project {
   return {
     id: String(project.id),
     name: project.name,
-    description: project.description ?? "No description yet.",
+    description: project.description,
     memberCount: project.memberCount,
     progress: deriveProgress(project.totalTasks, project.completedTaskCount),
     status: deriveProjectStatus(project),
-    updatedAt: `Updated ${formatRelativeTime(project.updatedAt)}`,
+    updatedAt: project.updatedAt,
   };
 }
 
 function mapProjectMember(member: BackendProjectMember): ProjectMember {
   return {
     id: String(member.id),
-    name: member.user.name ?? member.user.email,
+    name: member.user.name,
     email: member.user.email,
     role: member.role,
   };
@@ -161,7 +133,7 @@ function mapProjectTask(task: BackendProjectTask): ProjectTask {
   return {
     id: String(task.id),
     title: task.title,
-    assignee: task.assignee?.name ?? task.assignee?.email ?? "Unassigned",
+    assignee: task.assignee,
     status: task.status,
   };
 }
@@ -169,9 +141,9 @@ function mapProjectTask(task: BackendProjectTask): ProjectTask {
 function mapProjectMessage(message: BackendProjectMessage): ProjectMessage {
   return {
     id: String(message.id),
-    author: message.sender?.name ?? message.sender?.email ?? "System",
+    author: message.sender,
     content: message.content,
-    timestamp: formatRelativeTime(message.createdAt),
+    createdAt: message.createdAt,
   };
 }
 
@@ -180,7 +152,7 @@ function mapProjectActivity(activity: BackendProjectActivity): ProjectActivity {
     id: activity.id,
     title: activity.title,
     description: activity.description,
-    timestamp: formatRelativeTime(activity.timestamp),
+    timestamp: activity.timestamp,
   };
 }
 
@@ -195,7 +167,7 @@ function mapProjectDetail(project: BackendProjectDetail): ProjectDetail {
   return {
     id: String(project.id),
     name: project.name,
-    description: project.description ?? "No description yet.",
+    description: project.description,
     memberCount: project.memberCount,
     progress: deriveProgress(totalTasks, completedTaskCount),
     status: deriveProjectStatus({
@@ -203,7 +175,7 @@ function mapProjectDetail(project: BackendProjectDetail): ProjectDetail {
       completedTaskCount,
       blockedTaskCount,
     }),
-    updatedAt: `Updated ${formatRelativeTime(project.updatedAt)}`,
+    updatedAt: project.updatedAt,
     totalTasks,
     tasksByStatus: project.tasksByStatus,
     recentActivity: project.recentActivity.map(mapProjectActivity),

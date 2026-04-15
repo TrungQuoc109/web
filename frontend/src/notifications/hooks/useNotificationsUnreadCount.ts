@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { notificationsApiService } from "@/notifications/services/notificationsApiService";
+import { notificationsService } from "@/notifications/services/notificationsService";
+import { notificationsKeys } from "@/shared/lib/query-keys";
 
 export function useNotificationsUnreadCount() {
   return useQuery<number>({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: () => notificationsApiService.getUnreadCount(),
+    queryKey: notificationsKeys.unreadCount(),
+    queryFn: () => notificationsService.getUnreadCount(),
     staleTime: 30_000,
   });
 }

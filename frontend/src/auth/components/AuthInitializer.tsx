@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuthBootstrap } from "@/auth/hooks/useAuthBootstrap";
 import { useAuthStore } from "@/auth/store/authStore";
+import { isAuthQueryKey } from "@/shared/lib/query-keys";
 
 function AuthLoadingScreen() {
   return (
@@ -34,7 +35,7 @@ export function AuthInitializer({ children }: PropsWithChildren) {
 
     if (tokenChanged || sessionCleared) {
       queryClient.removeQueries({
-        predicate: (query) => query.queryKey[0] !== "auth",
+        predicate: (query) => !isAuthQueryKey(query.queryKey),
       });
     }
 

@@ -6,22 +6,22 @@ export type TaskPriorityFilter = "ALL" | TaskPriority;
 
 export type TaskUser = {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
 };
 
 export type TaskComment = {
   id: string;
-  author: string;
+  author: TaskUser | null;
   content: string;
-  timestamp: string;
+  createdAt: string;
 };
 
 export type TaskItem = {
   id: string;
   projectId: string;
   title: string;
-  description: string;
+  description: string | null;
   priority: TaskPriority;
   status: TaskStatus;
   assignees: TaskUser[];

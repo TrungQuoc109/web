@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import type { Project } from "@/projects/types/project";
 
 import { ProjectCard } from "@/projects/components/ProjectCard";
+import { getDisplayText } from "@/shared/lib/display";
+import { formatProjectUpdatedAt } from "@/shared/lib/format-date";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { StatusBadge } from "@/shared/ui/status-badge";
 
@@ -48,7 +50,7 @@ export function ProjectList({ projects, view }: ProjectListProps) {
                         {project.name}
                       </Link>
                       <p className="max-w-md text-muted-foreground">
-                        {project.description}
+                        {getDisplayText(project.description, "No description yet.")}
                       </p>
                     </div>
                   </td>
@@ -72,7 +74,7 @@ export function ProjectList({ projects, view }: ProjectListProps) {
                     <StatusBadge value={project.status} />
                   </td>
                   <td className="px-6 py-5 text-muted-foreground">
-                    {project.updatedAt}
+                    {formatProjectUpdatedAt(project.updatedAt)}
                   </td>
                 </tr>
               ))}

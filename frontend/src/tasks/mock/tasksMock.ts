@@ -46,9 +46,9 @@ export const tasksMock: TaskItem[] = [
     comments: [
       {
         id: "comment-1",
-        author: "Quoc Duong",
+        author: taskUsers[0],
         content: "Let’s keep this crisp so the next sprint planning stays grounded in real edge cases.",
-        timestamp: "20 minutes ago",
+        createdAt: "20 minutes ago",
       },
     ],
   },
@@ -64,15 +64,15 @@ export const tasksMock: TaskItem[] = [
     comments: [
       {
         id: "comment-2",
-        author: "Linh Tran",
+        author: taskUsers[3],
         content: "The compact state is ready in design, now we just need motion polish in code.",
-        timestamp: "1 hour ago",
+        createdAt: "1 hour ago",
       },
       {
         id: "comment-3",
-        author: "An Nguyen",
+        author: taskUsers[1],
         content: "I’ve finished the hover states and I’m wiring responsive behavior now.",
-        timestamp: "34 minutes ago",
+        createdAt: "34 minutes ago",
       },
     ],
   },
@@ -88,9 +88,9 @@ export const tasksMock: TaskItem[] = [
     comments: [
       {
         id: "comment-4",
-        author: "Mai Le",
+        author: taskUsers[2],
         content: "I found two validation mismatch cases. Sharing notes in the review thread.",
-        timestamp: "12 minutes ago",
+        createdAt: "12 minutes ago",
       },
     ],
   },
@@ -106,9 +106,9 @@ export const tasksMock: TaskItem[] = [
     comments: [
       {
         id: "comment-5",
-        author: "Linh Tran",
+        author: taskUsers[3],
         content: "Everything is checked off. This one can stay as reference for the next launch.",
-        timestamp: "Yesterday",
+        createdAt: "Yesterday",
       },
     ],
   },
@@ -124,9 +124,9 @@ export const tasksMock: TaskItem[] = [
     comments: [
       {
         id: "comment-6",
-        author: "Bao Ho",
+        author: taskUsers[4],
         content: "Blocked on browser-specific behavior. Waiting on a reproducible case from QA.",
-        timestamp: "2 hours ago",
+        createdAt: "2 hours ago",
       },
     ],
   },
@@ -142,9 +142,9 @@ export const tasksMock: TaskItem[] = [
     comments: [
       {
         id: "comment-7",
-        author: "Nhi Pham",
+        author: taskUsers[5],
         content: "I’ll start after the tasks board review is merged.",
-        timestamp: "3 hours ago",
+        createdAt: "3 hours ago",
       },
     ],
   },
@@ -160,9 +160,9 @@ export const tasksMock: TaskItem[] = [
     comments: [
       {
         id: "comment-8",
-        author: "Quoc Duong",
+        author: taskUsers[0],
         content: "Looks good so far. Let’s keep the filter labels simple for MVP.",
-        timestamp: "55 minutes ago",
+        createdAt: "55 minutes ago",
       },
     ],
   },

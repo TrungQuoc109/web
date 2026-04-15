@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { projectsService } from "@/projects/services/projectsService";
+import { projectApi } from "@/projects/api/projectApi";
 import type { Project } from "@/projects/types/project";
+import { projectsKeys } from "@/shared/lib/query-keys";
 
 export function useProjects() {
   return useQuery<Project[]>({
-    queryKey: ["projects", "list"],
-    queryFn: () => projectsService.list(),
+    queryKey: projectsKeys.list(),
+    queryFn: () => projectApi.list(),
     staleTime: 30_000,
   });
 }

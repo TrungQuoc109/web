@@ -13,6 +13,8 @@ import { StatCard } from "@/dashboard/components/StatCard";
 import { ProjectHeader } from "@/projects/components/ProjectHeader";
 import { ProjectTabs } from "@/projects/components/ProjectTabs";
 import { useProjectDetail } from "@/projects/hooks/useProjectDetail";
+import { getDisplayName } from "@/shared/lib/display";
+import { formatRelativeDate } from "@/shared/lib/format-date";
 import { Badge } from "@/shared/ui/badge";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
@@ -165,7 +167,7 @@ export function ProjectDetailPage() {
                   <div>
                     <p className="font-medium">{task.title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Assignee: {task.assignee}
+                      Assignee: {getDisplayName(task.assignee, "Unassigned")}
                     </p>
                   </div>
                   <StatusBadge value={task.status} />
@@ -200,7 +202,9 @@ export function ProjectDetailPage() {
                   className="flex flex-col gap-2 px-6 py-5 md:flex-row md:items-center md:justify-between"
                 >
                   <div>
-                    <p className="font-medium">{member.name}</p>
+                    <p className="font-medium">
+                      {getDisplayName(member, member.email)}
+                    </p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {member.email}
                     </p>
@@ -218,7 +222,7 @@ export function ProjectDetailPage() {
           <div className="border-b border-border px-6 py-5">
             <h3 className="text-lg font-semibold">Messages</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Recent mock conversation snippets for this project.
+              Recent conversation updates for this project.
             </p>
           </div>
           {project.messages.length === 0 ? (
@@ -234,9 +238,11 @@ export function ProjectDetailPage() {
               {project.messages.map((message) => (
                 <article key={message.id} className="px-6 py-5">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="font-medium">{message.author}</p>
+                    <p className="font-medium">
+                      {getDisplayName(message.author, "System")}
+                    </p>
                     <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                      {message.timestamp}
+                      {formatRelativeDate(message.createdAt)}
                     </p>
                   </div>
                   <div className="mt-3 flex items-start gap-3">

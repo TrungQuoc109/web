@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { tasksService } from "@/tasks/services/tasksService";
+import { tasksApi } from "@/tasks/api/tasksApi";
 import type { TaskItem, TaskStatus } from "@/tasks/types/task";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
+import { dashboardKeys, projectsKeys, tasksKeys } from "@/shared/lib/query-keys";
 import { showErrorToast } from "@/shared/lib/toast-store";
 
 type UpdateTaskStatusInput = {
@@ -14,13 +15,13 @@ export function useUpdateTaskStatusMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: UpdateTaskStatusInput) => tasksService.updateStatus(payload),
+    mutationFn: (payload: UpdateTaskStatusInput) => tasksApi.updateStatus(payload),
     onMutate: async ({ taskId, status }) => {
-      await queryClient.cancelQueries({ queryKey: ["tasks", "board"] });
+      await queryClient.cancelQueries({ queryKey: tasksKeys.board() });
 
-      const previousTasks = queryClient.getQueryData<TaskItem[]>(["tasks", "board"]);
+      const previousTasks = queryClient.getQueryData<TaskItem[]>(tasksKeys.board());
 
-      queryClient.setQueryData<TaskItem[]>(["tasks", "board"], (current = []) =>
+      queryClient.setQueryData<TaskItem[]>(tasksKeys.board(), (current = []) =>
         current.map((task) =>
           task.id === taskId
             ? {
@@ -35,20 +36,20 @@ export function useUpdateTaskStatusMutation() {
     },
     onError: (error, _variables, context) => {
       if (context?.previousTasks) {
-        queryClient.setQueryData(["tasks", "board"], context.previousTasks);
+        queryClient.setQueryData(tasksKeys.board(), context.previousTasks);
       }
       showErrorToast(getApiErrorMessage(error), "Update task status failed");
     },
     onSuccess: (task) => {
-      queryClient.setQueryData<TaskItem[]>(["tasks", "board"], (current = []) =>
+      queryClient.setQueryData<TaskItem[]>(tasksKeys.board(), (current = []) =>
         current.map((item) => (item.id === task.id ? { ...item, ...task } : item))
       );
     },
     onSettled: (_data, _error, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["tasks", "board"] });
-      void queryClient.invalidateQueries({
-        queryKey: ["tasks", "detail", variables.taskId, "comments"],
-      });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.comments(variables.taskId) });
+      void queryClient.invalidateQueries({ queryKey: projectsKeys.details() });
+      void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
     },
   });
 }

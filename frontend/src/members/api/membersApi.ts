@@ -4,7 +4,7 @@ import type { MemberRole } from "@/shared/types/workspace";
 
 type BackendProjectMember = {
   id: number;
-  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+  role: "OWNER" | "ADMIN" | "MANAGER" | "MEMBER" | "VIEWER";
   joinedAt: string;
   user: {
     id: number;
@@ -14,18 +14,20 @@ type BackendProjectMember = {
   };
 };
 
-function formatJoinedAt(value: string) {
-  return new Date(value).toLocaleDateString();
-}
+export type AddMemberPayload = {
+  projectId: string;
+  email: string;
+  role: MemberRole;
+};
 
 function mapMember(member: BackendProjectMember): Member {
   return {
     id: String(member.id),
     userId: String(member.user.id),
-    name: member.user.name ?? member.user.email,
+    name: member.user.name,
     email: member.user.email,
     role: member.role as MemberRole,
-    joinedAt: formatJoinedAt(member.joinedAt),
+    joinedAt: member.joinedAt,
   };
 }
 
@@ -35,6 +37,18 @@ export const membersApi = {
       `/projects/${projectId}/members`
     );
     return response.data.map(mapMember);
+  },
+
+  async add(payload: AddMemberPayload): Promise<Member> {
+    const response = await httpClient.post<BackendProjectMember>(
+      `/projects/${payload.projectId}/members`,
+      {
+        email: payload.email,
+        role: payload.role,
+      }
+    );
+
+    return mapMember(response.data);
   },
 
   async remove(projectId: string, memberId: string): Promise<void> {

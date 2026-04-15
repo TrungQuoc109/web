@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 
+import { RealtimeBootstrap } from "@/realtime/components/RealtimeBootstrap";
 import { Sidebar } from "@/app/components/Sidebar";
 import { Topbar } from "@/app/components/Topbar";
 import { cn } from "@/shared/lib/cn";
@@ -24,6 +25,7 @@ export function AppShell() {
           collapsed && "md:pl-24"
         )}
       >
+        <RealtimeBootstrap />
         <Topbar onOpenSidebar={() => setMobileOpen(true)} />
         <main className="p-4 md:p-8">
           <div className="mx-auto max-w-7xl">
@@ -34,4 +36,3 @@ export function AppShell() {
     </div>
   );
 }
-

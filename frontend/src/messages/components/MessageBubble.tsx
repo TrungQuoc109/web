@@ -3,6 +3,8 @@ import { Megaphone, Sparkles } from "lucide-react";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/cn";
+import { getDisplayName } from "@/shared/lib/display";
+import { formatRelativeDate } from "@/shared/lib/format-date";
 import type { ChatMessage } from "@/messages/types/message";
 
 type MessageBubbleProps = {
@@ -58,7 +60,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   : "text-foreground"
               )}
             >
-              {message.author.name}
+              {getDisplayName(message.author, "Unknown sender")}
             </p>
           ) : null}
 
@@ -91,7 +93,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 : "text-muted-foreground"
             )}
           >
-            {message.createdAt}
+            {formatRelativeDate(message.createdAt)}
           </span>
         </div>
 
@@ -117,4 +119,3 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     </article>
   );
 }
-

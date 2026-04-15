@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { membersService } from "@/members/services/membersService";
+import { membersApi } from "@/members/api/membersApi";
 import type { Member } from "@/members/types/member";
+import { membersKeys } from "@/shared/lib/query-keys";
 
 export function useMembers(projectId?: string) {
   return useQuery<Member[]>({
-    queryKey: ["members", "project", projectId],
-    queryFn: () => membersService.list(projectId!),
+    queryKey: membersKeys.project(projectId),
+    queryFn: () => membersApi.list(projectId!),
     enabled: Boolean(projectId),
     staleTime: 30_000,
   });

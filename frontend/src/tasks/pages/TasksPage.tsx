@@ -1,15 +1,19 @@
 import { useMemo, useState } from "react";
-import { LayoutGrid, Search } from "lucide-react";
+import { LayoutGrid, Plus, Search } from "lucide-react";
 
 import { Board, boardColumns } from "@/tasks/components/Board";
+import { CreateTaskModal } from "@/tasks/components/CreateTaskModal";
 import { TaskDetailDrawer } from "@/tasks/components/TaskDetailDrawer";
 import { useAssignableUsers } from "@/tasks/hooks/useAssignableUsers";
 import { useAssignTaskUsersMutation } from "@/tasks/hooks/useAssignTaskUsersMutation";
+import { useCreateTaskMutation } from "@/tasks/hooks/useCreateTaskMutation";
 import { useTaskComments } from "@/tasks/hooks/useTaskComments";
 import { useTaskBoard } from "@/tasks/hooks/useTaskBoard";
 import { useUpdateTaskStatusMutation } from "@/tasks/hooks/useUpdateTaskStatusMutation";
 import type { TaskItem, TaskPriorityFilter, TaskStatus } from "@/tasks/types/task";
+import { useProjects } from "@/projects/hooks/useProjects";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
@@ -19,12 +23,16 @@ const statusOrder: TaskStatus[] = boardColumns.map((column) => column.key);
 
 export function TasksPage() {
   const taskBoardQuery = useTaskBoard();
+  const projectsQuery = useProjects();
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<TaskPriorityFilter>("ALL");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const updateTaskStatus = useUpdateTaskStatusMutation();
   const assignTaskUsers = useAssignTaskUsersMutation();
+  const createTask = useCreateTaskMutation();
   const tasks = taskBoardQuery.data ?? [];
+  const projects = projectsQuery.data ?? [];
   const selectedTaskBase =
     selectedTaskId === null
       ? null
@@ -72,7 +80,7 @@ export function TasksPage() {
         : task.title.toLowerCase().includes(normalizedSearch) ||
           task.assignees.some(
             (assignee) =>
-              assignee.name.toLowerCase().includes(normalizedSearch) ||
+              (assignee.name ?? "").toLowerCase().includes(normalizedSearch) ||
               assignee.email.toLowerCase().includes(normalizedSearch)
           );
     const matchesPriority =
@@ -124,6 +132,10 @@ export function TasksPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Button type="button" className="gap-2" onClick={() => setIsCreateOpen(true)}>
+            <Plus />
+            Create task
+          </Button>
           <Badge variant="secondary" className="px-3 py-1">
             {summary.total} tasks
           </Badge>
@@ -218,6 +230,23 @@ export function TasksPage() {
           icon={null}
           title="No tasks yet"
           description="Once work is created in your projects, the board will organize tasks by delivery stage here."
+          action={
+            <Button
+              type="button"
+              className="gap-2"
+              onClick={() => setIsCreateOpen(true)}
+              disabled={projectsQuery.isPending || projects.length === 0}
+            >
+              <Plus />
+              Create task
+            </Button>
+          }
+        />
+      ) : filteredTasks.length === 0 ? (
+        <EmptyState
+          icon={null}
+          title="No tasks match the current filters"
+          description="Adjust the search text or selected priority to bring matching tasks back into view."
         />
       ) : (
         <Board
@@ -252,6 +281,15 @@ export function TasksPage() {
         onAssignUser={(taskId, userId) => {
           assignTaskUsers.mutate({ taskId, userId });
         }}
+      />
+
+      <CreateTaskModal
+        open={isCreateOpen}
+        projects={projects}
+        defaultProjectId={selectedTaskBase?.projectId}
+        isPending={createTask.isPending}
+        onClose={() => setIsCreateOpen(false)}
+        onCreate={(input) => createTask.mutateAsync(input)}
       />
     </section>
   );

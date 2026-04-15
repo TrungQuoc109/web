@@ -2,6 +2,8 @@ import { FolderKanban, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import type { Project } from "@/projects/types/project";
+import { getDisplayText } from "@/shared/lib/display";
+import { formatProjectUpdatedAt } from "@/shared/lib/format-date";
 import { StatusBadge } from "@/shared/ui/status-badge";
 
 type ProjectCardProps = {
@@ -24,13 +26,13 @@ export function ProjectCard({ project }: ProjectCardProps) {
               <div className="min-w-0">
                 <h3 className="truncate text-lg font-semibold">{project.name}</h3>
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  {project.updatedAt}
+                  {formatProjectUpdatedAt(project.updatedAt)}
                 </p>
               </div>
             </div>
 
             <p className="text-sm leading-6 text-muted-foreground">
-              {project.description}
+              {getDisplayText(project.description, "No description yet.")}
             </p>
           </div>
 

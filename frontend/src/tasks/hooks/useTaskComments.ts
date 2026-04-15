@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { tasksService } from "@/tasks/services/tasksService";
+import { tasksApi } from "@/tasks/api/tasksApi";
 import type { TaskComment } from "@/tasks/types/task";
+import { tasksKeys } from "@/shared/lib/query-keys";
 
 export function useTaskComments(taskId?: string) {
   return useQuery<TaskComment[]>({
-    queryKey: ["tasks", "detail", taskId, "comments"],
-    queryFn: () => tasksService.getComments(taskId!),
+    queryKey: tasksKeys.comments(taskId),
+    queryFn: () => tasksApi.getComments(taskId!),
     enabled: Boolean(taskId),
     staleTime: 10_000,
   });

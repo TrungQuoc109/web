@@ -3,6 +3,8 @@ import { X } from "lucide-react";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { getDisplayName, getDisplayText } from "@/shared/lib/display";
+import { formatRelativeDate } from "@/shared/lib/format-date";
 import { PriorityBadge } from "@/shared/ui/priority-badge";
 import { StatusBadge } from "@/shared/ui/status-badge";
 import type { TaskItem, TaskStatus, TaskUser } from "@/tasks/types/task";
@@ -72,7 +74,7 @@ export function TaskDetailDrawer({
               {task.title}
             </h2>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              {task.description}
+              {getDisplayText(task.description, "No description yet.")}
             </p>
           </div>
 
@@ -158,7 +160,9 @@ export function TaskDetailDrawer({
                     >
                       <Avatar name={user.name} email={user.email} className="size-8" />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{user.name}</p>
+                        <p className="truncate text-sm font-medium">
+                          {getDisplayName(user, user.email)}
+                        </p>
                         <p className="truncate text-xs text-muted-foreground">
                           {user.email}
                         </p>
@@ -185,7 +189,7 @@ export function TaskDetailDrawer({
                     <option value="">Select teammate</option>
                     {availableUsers.map((user) => (
                       <option key={user.id} value={user.id}>
-                        {user.name}
+                        {getDisplayName(user, user.email)}
                       </option>
                     ))}
                   </select>
@@ -222,9 +226,11 @@ export function TaskDetailDrawer({
                       className="rounded-2xl border border-border bg-secondary/25 p-4"
                     >
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm font-medium">{comment.author}</p>
+                        <p className="text-sm font-medium">
+                          {getDisplayName(comment.author, "System")}
+                        </p>
                         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                          {comment.timestamp}
+                          {formatRelativeDate(comment.createdAt)}
                         </p>
                       </div>
                       <p className="mt-3 text-sm leading-6 text-muted-foreground">

@@ -1,0 +1,225 @@
+import { useMemo, useState, type FormEvent } from "react";
+import { X } from "lucide-react";
+
+import type { Project } from "@/projects/types/project";
+import type { TaskPriority } from "@/tasks/types/task";
+import { Button } from "@/shared/ui/button";
+
+type CreateTaskModalProps = {
+  open: boolean;
+  projects: Project[];
+  defaultProjectId?: string;
+  isPending?: boolean;
+  onClose: () => void;
+  onCreate: (input: {
+    projectId: string;
+    title: string;
+    description?: string;
+    priority: TaskPriority;
+  }) => Promise<unknown>;
+};
+
+type FormState = {
+  projectId: string;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+};
+
+const initialState: FormState = {
+  projectId: "",
+  title: "",
+  description: "",
+  priority: "MEDIUM",
+};
+
+const priorityOptions: TaskPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+
+export function CreateTaskModal({
+  open,
+  projects,
+  defaultProjectId,
+  isPending = false,
+  onClose,
+  onCreate,
+}: CreateTaskModalProps) {
+  const [form, setForm] = useState<FormState>(initialState);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const effectiveProjectId = useMemo(
+    () => form.projectId || defaultProjectId || projects[0]?.id || "",
+    [defaultProjectId, form.projectId, projects]
+  );
+
+  if (!open) return null;
+
+  function resetAndClose() {
+    if (isPending) return;
+    setForm(initialState);
+    setSubmitError(null);
+    onClose();
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const title = form.title.trim();
+    const description = form.description.trim();
+    if (!title || !effectiveProjectId) {
+      setSubmitError("Choose a project and enter a task title before creating.");
+      return;
+    }
+
+    setSubmitError(null);
+
+    try {
+      await onCreate({
+        projectId: effectiveProjectId,
+        title,
+        description: description || undefined,
+        priority: form.priority,
+      });
+      setForm(initialState);
+      onClose();
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "The task could not be created. Please try again."
+      );
+    }
+  }
+
+  const hasProjects = projects.length > 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/20 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-task-title"
+    >
+      <div className="w-full max-w-xl rounded-[2rem] border border-border bg-background p-6 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.3)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+              New task
+            </p>
+            <h3 id="create-task-title" className="mt-2 text-2xl font-semibold tracking-tight">
+              Create task
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Add a real task to a project in the connected backend workspace.
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={resetAndClose}
+            aria-label="Close modal"
+            disabled={isPending}
+          >
+            <X />
+          </Button>
+        </div>
+
+        <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Project</span>
+            <select
+              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              value={effectiveProjectId}
+              onChange={(event) => {
+                setSubmitError(null);
+                setForm((current) => ({ ...current, projectId: event.target.value }));
+              }}
+              disabled={!hasProjects || isPending}
+            >
+              {hasProjects ? null : <option value="">No projects available</option>}
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Task title</span>
+            <input
+              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              value={form.title}
+              onChange={(event) => {
+                setSubmitError(null);
+                setForm((current) => ({ ...current, title: event.target.value }));
+              }}
+              placeholder="Prepare sprint demo checklist"
+              disabled={isPending}
+            />
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Priority</span>
+            <select
+              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              value={form.priority}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  priority: event.target.value as TaskPriority,
+                }))
+              }
+              disabled={isPending}
+            >
+              {priorityOptions.map((priority) => (
+                <option key={priority} value={priority}>
+                  {priority}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Description</span>
+            <textarea
+              className="min-h-28 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+              value={form.description}
+              onChange={(event) => {
+                setSubmitError(null);
+                setForm((current) => ({
+                  ...current,
+                  description: event.target.value,
+                }));
+              }}
+              placeholder="Outline the delivery goal, acceptance notes, or constraints."
+              disabled={isPending}
+            />
+          </label>
+
+          {!hasProjects ? (
+            <div className="rounded-2xl border border-dashed border-border bg-secondary/35 px-4 py-3 text-sm text-muted-foreground">
+              Create a project first before adding tasks.
+            </div>
+          ) : null}
+
+          {submitError ? (
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {submitError}
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={resetAndClose} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!hasProjects || isPending}>
+              {isPending ? "Creating..." : "Create task"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

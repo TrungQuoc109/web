@@ -33,7 +33,7 @@ export function DashboardPage() {
     return (
       <ErrorState
         title="Dashboard unavailable"
-        description="The mock overview did not load as expected. Retry to restore the dashboard cards and activity feed."
+        description="The workspace overview could not be loaded from the backend. Retry to restore the dashboard cards and activity feed."
         onRetry={() => void overviewQuery.refetch()}
       />
     );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { useAuthMeQuery } from "@/auth/hooks/useAuthMeQuery";
 import { useAuthStore } from "@/auth/store/authStore";
@@ -39,10 +39,7 @@ export function useAuthBootstrap() {
 
   const authError = meQuery.isError ? meQuery.error : null;
 
-  const isAuthenticated = useMemo(
-    () => Boolean(accessToken && currentUser),
-    [accessToken, currentUser]
-  );
+  const isAuthenticated = Boolean(accessToken && currentUser);
 
   return {
     accessToken,

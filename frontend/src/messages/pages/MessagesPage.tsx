@@ -135,91 +135,91 @@ export function MessagesPage() {
         </div>
       </header>
 
-      {messages.length === 0 ? (
-        <EmptyState
-          icon={<MessageSquare />}
-          title="No messages yet"
-          description="Once your team starts chatting or posting announcements, messages will appear here."
-        />
-      ) : (
-        <section className="grid gap-4 xl:grid-cols-[0.34fr_1fr]">
-          <aside className="rounded-[2rem] border border-border bg-background/95 p-5 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-              Active room
-            </p>
-            <h3 className="mt-3 text-xl font-semibold">
-              {selectedProject?.name ?? "Project chat"}
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Shared chat for delivery updates, quick decisions, and project-wide announcements.
-            </p>
+      <section className="grid gap-4 xl:grid-cols-[0.34fr_1fr]">
+        <aside className="rounded-[2rem] border border-border bg-background/95 p-5 shadow-sm">
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+            Active room
+          </p>
+          <h3 className="mt-3 text-xl font-semibold">
+            {selectedProject?.name ?? "Project chat"}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Shared chat for delivery updates, quick decisions, and project-wide announcements.
+          </p>
 
-            <div className="mt-6 flex flex-col gap-3">
-              <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-                <p className="text-sm font-medium">Participants</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {selectedProject?.memberCount ?? 0} current members in this project room.
+          <div className="mt-6 flex flex-col gap-3">
+            <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+              <p className="text-sm font-medium">Participants</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {selectedProject?.memberCount ?? 0} current members in this project room.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+              <p className="text-sm font-medium">Message types</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Normal updates, system events, and announcements all live in the same thread.
+              </p>
+            </div>
+          </div>
+        </aside>
+
+        <div className="rounded-[2rem] border border-border bg-background/95 shadow-sm">
+          <div className="border-b border-border px-5 py-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-lg font-semibold">Project chat</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Scrollable workspace thread with chat bubbles and system updates.
                 </p>
               </div>
-              <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-                <p className="text-sm font-medium">Message types</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Normal updates, system events, and announcements all live in the same thread.
-                </p>
-              </div>
+              <Badge variant="secondary">Live API</Badge>
             </div>
-          </aside>
+          </div>
 
-          <div className="rounded-[2rem] border border-border bg-background/95 shadow-sm">
-            <div className="border-b border-border px-5 py-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-lg font-semibold">Project chat</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Scrollable workspace thread with chat bubbles and system updates.
-                  </p>
-                </div>
-                <Badge variant="secondary">Live API</Badge>
-              </div>
-            </div>
-
-            <div
-              ref={scrollRef}
-              className="h-[32rem] overflow-y-auto px-5 py-5"
-            >
+          <div
+            ref={scrollRef}
+            className="h-[32rem] overflow-y-auto px-5 py-5"
+          >
+            {messages.length === 0 ? (
+              <EmptyState
+                icon={<MessageSquare />}
+                title="No messages yet"
+                description="Send the first message to open the conversation in this project room."
+              />
+            ) : (
               <div className="flex flex-col gap-4">
                 {messages.map((message) => (
                   <MessageBubble key={message.id} message={message} />
                 ))}
               </div>
-            </div>
+            )}
+          </div>
 
-            <div className="border-t border-border px-5 py-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <label className="flex-1">
-                  <span className="sr-only">Message</span>
-                  <textarea
-                    className="min-h-24 w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-                    value={input}
-                    onChange={(event) => setInput(event.target.value)}
-                    placeholder="Write a message to the project room..."
-                  />
-                </label>
+          <div className="border-t border-border px-5 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="flex-1">
+                <span className="sr-only">Message</span>
+                <textarea
+                  className="min-h-24 w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  placeholder="Write a message to the project room..."
+                />
+              </label>
 
-                <Button
-                  type="button"
-                  className="gap-2"
-                  onClick={() => void sendMessage()}
-                  disabled={!input.trim() || sendProjectMessage.isPending}
-                >
-                  <Send />
-                  {sendProjectMessage.isPending ? "Sending..." : "Send"}
-                </Button>
-              </div>
+              <Button
+                type="button"
+                className="gap-2"
+                onClick={() => void sendMessage()}
+                disabled={!input.trim() || sendProjectMessage.isPending}
+              >
+                <Send />
+                {sendProjectMessage.isPending ? "Sending..." : "Send"}
+              </Button>
             </div>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
     </section>
   );
 }

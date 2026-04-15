@@ -3,7 +3,7 @@ export type ChatMessageType = "normal" | "system" | "announcement";
 export type ChatMessage = {
   id: string;
   author: {
-    name: string;
+    name: string | null;
     email: string;
   } | null;
   content: string;

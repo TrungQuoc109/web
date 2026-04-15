@@ -1,5 +1,10 @@
 import { httpClient } from "@/shared/api/http-client";
-import type { TaskComment, TaskItem, TaskStatus, TaskUser } from "@/tasks/types/task";
+import type {
+  TaskComment,
+  TaskItem,
+  TaskStatus,
+  TaskUser,
+} from "@/tasks/types/task";
 import type { TaskPriority } from "@/shared/types/workspace";
 
 type BackendTaskAssignment = {
@@ -68,37 +73,17 @@ type AssignTaskUsersPayload = {
   userIds: string[];
 };
 
-const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
-  numeric: "auto",
-});
-
-function formatRelativeTime(value: string) {
-  const date = new Date(value);
-  const diffMs = date.getTime() - Date.now();
-  const diffMinutes = Math.round(diffMs / 60_000);
-  const absMinutes = Math.abs(diffMinutes);
-
-  if (absMinutes < 60) {
-    return relativeTimeFormatter.format(diffMinutes, "minute");
-  }
-
-  const diffHours = Math.round(diffMinutes / 60);
-  if (Math.abs(diffHours) < 24) {
-    return relativeTimeFormatter.format(diffHours, "hour");
-  }
-
-  const diffDays = Math.round(diffHours / 24);
-  if (Math.abs(diffDays) < 7) {
-    return relativeTimeFormatter.format(diffDays, "day");
-  }
-
-  return date.toLocaleDateString();
-}
+export type CreateTaskPayload = {
+  projectId: string;
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+};
 
 function mapTaskUser(assignment: BackendTaskAssignment): TaskUser {
   return {
     id: String(assignment.user.id),
-    name: assignment.user.name ?? assignment.user.email,
+    name: assignment.user.name,
     email: assignment.user.email,
   };
 }
@@ -108,7 +93,7 @@ function mapTask(task: BackendTask): TaskItem {
     id: String(task.id),
     projectId: String(task.projectId),
     title: task.title,
-    description: task.description ?? "No description yet.",
+    description: task.description,
     priority: task.priority,
     status: task.status,
     assignees: task.assignments.map(mapTaskUser),
@@ -119,16 +104,22 @@ function mapTask(task: BackendTask): TaskItem {
 function mapTaskComment(message: BackendMessage): TaskComment {
   return {
     id: String(message.id),
-    author: message.sender?.name ?? message.sender?.email ?? "System",
+    author: message.sender
+      ? {
+          id: String(message.sender.id),
+          name: message.sender.name,
+          email: message.sender.email,
+        }
+      : null,
     content: message.content,
-    timestamp: formatRelativeTime(message.createdAt),
+    createdAt: message.createdAt,
   };
 }
 
 function mapProjectMember(member: BackendProjectMember): TaskUser {
   return {
     id: String(member.user.id),
-    name: member.user.name ?? member.user.email,
+    name: member.user.name,
     email: member.user.email,
   };
 }
@@ -137,6 +128,19 @@ export const tasksApi = {
   async getBoard(): Promise<TaskItem[]> {
     const response = await httpClient.get<BackendTask[]>("/tasks");
     return response.data.map(mapTask);
+  },
+
+  async create(payload: CreateTaskPayload): Promise<TaskItem> {
+    const response = await httpClient.post<BackendTask>(
+      `/projects/${payload.projectId}/tasks`,
+      {
+        title: payload.title,
+        description: payload.description,
+        priority: payload.priority,
+      }
+    );
+
+    return mapTask(response.data);
   },
 
   async updateStatus(payload: UpdateTaskStatusPayload): Promise<TaskItem> {

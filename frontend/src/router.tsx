@@ -1,17 +1,23 @@
+import type { ComponentType } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { ProtectedLayout } from "@/app/layouts/ProtectedLayout";
 import { PublicLayout } from "@/app/layouts/PublicLayout";
-import { LoginPage } from "@/auth/pages/LoginPage";
-import { RegisterPage } from "@/auth/pages/RegisterPage";
-import { DashboardPage } from "@/dashboard/pages/DashboardPage";
-import { MessagesPage } from "@/messages/pages/MessagesPage";
-import { MembersPage } from "@/members/pages/MembersPage";
-import { NotificationsPage } from "@/notifications/pages/NotificationsPage";
-import { ProjectDetailPage } from "@/projects/pages/ProjectDetailPage";
-import { ProjectsPage } from "@/projects/pages/ProjectsPage";
-import { SettingsPage } from "@/settings/pages/SettingsPage";
-import { TasksPage } from "@/tasks/pages/TasksPage";
+
+type LazyPageModule = Record<string, ComponentType>;
+
+function loadRoute<TModule extends LazyPageModule>(
+  importer: () => Promise<TModule>,
+  exportName: keyof TModule
+) {
+  return async () => {
+    const module = await importer();
+
+    return {
+      Component: module[exportName] as ComponentType,
+    };
+  };
+}
 
 export const router = createBrowserRouter([
   {
@@ -19,11 +25,14 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "/login",
-        element: <LoginPage />,
+        lazy: loadRoute(() => import("@/auth/pages/LoginPage"), "LoginPage"),
       },
       {
         path: "/register",
-        element: <RegisterPage />,
+        lazy: loadRoute(
+          () => import("@/auth/pages/RegisterPage"),
+          "RegisterPage"
+        ),
       },
     ],
   },
@@ -31,14 +40,59 @@ export const router = createBrowserRouter([
     path: "/",
     element: <ProtectedLayout />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "projects", element: <ProjectsPage /> },
-      { path: "projects/:projectId", element: <ProjectDetailPage /> },
-      { path: "tasks", element: <TasksPage /> },
-      { path: "members", element: <MembersPage /> },
-      { path: "messages", element: <MessagesPage /> },
-      { path: "notifications", element: <NotificationsPage /> },
-      { path: "settings", element: <SettingsPage /> },
+      {
+        index: true,
+        lazy: loadRoute(
+          () => import("@/dashboard/pages/DashboardPage"),
+          "DashboardPage"
+        ),
+      },
+      {
+        path: "projects",
+        lazy: loadRoute(
+          () => import("@/projects/pages/ProjectsPage"),
+          "ProjectsPage"
+        ),
+      },
+      {
+        path: "projects/:projectId",
+        lazy: loadRoute(
+          () => import("@/projects/pages/ProjectDetailPage"),
+          "ProjectDetailPage"
+        ),
+      },
+      {
+        path: "tasks",
+        lazy: loadRoute(() => import("@/tasks/pages/TasksPage"), "TasksPage"),
+      },
+      {
+        path: "members",
+        lazy: loadRoute(
+          () => import("@/members/pages/MembersPage"),
+          "MembersPage"
+        ),
+      },
+      {
+        path: "messages",
+        lazy: loadRoute(
+          () => import("@/messages/pages/MessagesPage"),
+          "MessagesPage"
+        ),
+      },
+      {
+        path: "notifications",
+        lazy: loadRoute(
+          () => import("@/notifications/pages/NotificationsPage"),
+          "NotificationsPage"
+        ),
+      },
+      {
+        path: "settings",
+        lazy: loadRoute(
+          () => import("@/settings/pages/SettingsPage"),
+          "SettingsPage"
+        ),
+      },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },

@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 
+import { AddMemberModal } from "@/members/components/AddMemberModal";
+import { useAddMemberMutation } from "@/members/hooks/useAddMemberMutation";
 import { useMembers } from "@/members/hooks/useMembers";
 import { useRemoveMemberMutation } from "@/members/hooks/useRemoveMemberMutation";
 import { RoleBadge } from "@/members/components/RoleBadge";
 import type { MemberRole } from "@/members/types/member";
 import { useProjects } from "@/projects/hooks/useProjects";
+import { getDisplayName } from "@/shared/lib/display";
+import { formatCalendarDate } from "@/shared/lib/format-date";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -23,7 +27,9 @@ const roleOptions: MemberRole[] = [
 export function MembersPage() {
   const projectsQuery = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const membersQuery = useMembers(selectedProjectId || undefined);
+  const addMember = useAddMemberMutation();
   const removeMember = useRemoveMemberMutation();
 
   useEffect(() => {
@@ -97,6 +103,10 @@ export function MembersPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button type="button" className="gap-2" onClick={() => setIsAddOpen(true)}>
+            <Plus />
+            Add member
+          </Button>
           <select
             className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
             value={selectedProjectId}
@@ -144,6 +154,12 @@ export function MembersPage() {
           icon={<Users />}
           title="No members yet"
           description="Once teammates are added to this project, they will appear here with roles and joined dates."
+          action={
+            <Button type="button" className="gap-2" onClick={() => setIsAddOpen(true)}>
+              <Plus />
+              Add member
+            </Button>
+          }
         />
       ) : (
         <section className="overflow-hidden rounded-3xl border border-border bg-background/95 shadow-sm">
@@ -165,7 +181,9 @@ export function MembersPage() {
                       <div className="flex items-center gap-3">
                         <Avatar name={member.name} email={member.email} className="size-10" />
                         <div>
-                          <p className="font-medium text-foreground">{member.name}</p>
+                          <p className="font-medium text-foreground">
+                            {getDisplayName(member, member.email)}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -189,7 +207,9 @@ export function MembersPage() {
                         </p>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-muted-foreground">{member.joinedAt}</td>
+                    <td className="px-6 py-5 text-muted-foreground">
+                      {formatCalendarDate(member.joinedAt)}
+                    </td>
                     <td className="px-6 py-5">
                       <Button
                         type="button"
@@ -212,6 +232,20 @@ export function MembersPage() {
           </div>
         </section>
       )}
+
+      <AddMemberModal
+        open={isAddOpen}
+        projectName={selectedProject?.name}
+        isPending={addMember.isPending}
+        onClose={() => setIsAddOpen(false)}
+        onAdd={(input) =>
+          addMember.mutateAsync({
+            projectId: selectedProjectId,
+            email: input.email,
+            role: input.role,
+          })
+        }
+      />
     </section>
   );
 }

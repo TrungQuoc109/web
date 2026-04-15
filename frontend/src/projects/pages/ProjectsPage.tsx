@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   FolderKanban,
   LayoutGrid,
@@ -11,7 +11,7 @@ import { CreateProjectModal } from "@/projects/components/CreateProjectModal";
 import { ProjectList } from "@/projects/components/ProjectList";
 import { useCreateProjectMutation } from "@/projects/hooks/useCreateProjectMutation";
 import { useProjects } from "@/projects/hooks/useProjects";
-import type { Project, ProjectStatusFilter } from "@/projects/types/project";
+import type { ProjectStatusFilter } from "@/projects/types/project";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
@@ -20,23 +20,17 @@ import { LoadingState } from "@/shared/ui/loading-state";
 
 export function ProjectsPage() {
   const projectsQuery = useProjects();
-  const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>("ALL");
   const [view, setView] = useState<"cards" | "table">("cards");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const createProject = useCreateProjectMutation();
-
-  useEffect(() => {
-    if (projectsQuery.data) {
-      setProjects(projectsQuery.data);
-    }
-  }, [projectsQuery.data]);
+  const projects = projectsQuery.data ?? [];
 
   const filteredProjects = projects.filter((project) => {
     const matchesSearch =
       project.name.toLowerCase().includes(search.toLowerCase()) ||
-      project.description.toLowerCase().includes(search.toLowerCase());
+      (project.description ?? "").toLowerCase().includes(search.toLowerCase());
     const matchesStatus =
       statusFilter === "ALL" ? true : project.status === statusFilter;
 

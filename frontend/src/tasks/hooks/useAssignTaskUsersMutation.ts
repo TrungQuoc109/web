@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { tasksService } from "@/tasks/services/tasksService";
+import { tasksApi } from "@/tasks/api/tasksApi";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
+import { projectsKeys, tasksKeys } from "@/shared/lib/query-keys";
 import { showErrorToast } from "@/shared/lib/toast-store";
 
 type AssignTaskUsersInput = {
@@ -14,7 +15,7 @@ export function useAssignTaskUsersMutation() {
 
   return useMutation({
     mutationFn: ({ taskId, userId }: AssignTaskUsersInput) =>
-      tasksService.assignUsers({
+      tasksApi.assignUsers({
         taskId,
         userIds: [userId],
       }),
@@ -22,10 +23,9 @@ export function useAssignTaskUsersMutation() {
       showErrorToast(getApiErrorMessage(error), "Assign task user failed");
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["tasks", "board"] });
-      void queryClient.invalidateQueries({
-        queryKey: ["tasks", "detail", variables.taskId, "comments"],
-      });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.comments(variables.taskId) });
+      void queryClient.invalidateQueries({ queryKey: projectsKeys.details() });
     },
   });
 }

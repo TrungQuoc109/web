@@ -1,6 +1,7 @@
 import { FolderKanban, Users } from "lucide-react";
 
 import type { ProjectDetail } from "@/projects/types/project";
+import { getDisplayText } from "@/shared/lib/display";
 import { Badge } from "@/shared/ui/badge";
 import { StatusBadge } from "@/shared/ui/status-badge";
 
@@ -28,7 +29,7 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
           </div>
 
           <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-            {project.description}
+            {getDisplayText(project.description, "No description yet.")}
           </p>
         </div>
 

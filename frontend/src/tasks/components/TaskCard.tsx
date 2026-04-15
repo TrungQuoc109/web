@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Avatar } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/cn";
+import { getDisplayName } from "@/shared/lib/display";
 import { PriorityBadge } from "@/shared/ui/priority-badge";
 import type { TaskItem, TaskStatus } from "@/tasks/types/task";
 
@@ -57,7 +58,7 @@ export function TaskCard({
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">
-                  {primaryAssignee?.name || "Unassigned"}
+                  {getDisplayName(primaryAssignee, "Unassigned")}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {task.assignees.length > 1

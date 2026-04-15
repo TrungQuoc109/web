@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { membersService } from "@/members/services/membersService";
+import { membersApi } from "@/members/api/membersApi";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
+import { membersKeys, projectsKeys, tasksKeys } from "@/shared/lib/query-keys";
 import { showErrorToast } from "@/shared/lib/toast-store";
 
 type RemoveMemberInput = {
@@ -14,21 +15,15 @@ export function useRemoveMemberMutation() {
 
   return useMutation({
     mutationFn: ({ projectId, memberId }: RemoveMemberInput) =>
-      membersService.remove(projectId, memberId),
+      membersApi.remove(projectId, memberId),
     onError: (error) => {
       showErrorToast(getApiErrorMessage(error), "Remove member failed");
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["members", "project", variables.projectId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["projects", "list"] });
-      void queryClient.invalidateQueries({
-        queryKey: ["projects", "detail", variables.projectId],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["tasks", "project-members", variables.projectId],
-      });
+      void queryClient.invalidateQueries({ queryKey: membersKeys.project(variables.projectId) });
+      void queryClient.invalidateQueries({ queryKey: projectsKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: projectsKeys.detail(variables.projectId) });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.projectMembers(variables.projectId) });
     },
   });
 }

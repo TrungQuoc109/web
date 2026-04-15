@@ -27,11 +27,14 @@ export function CreateProjectModal({
   isPending = false,
 }: CreateProjectModalProps) {
   const [form, setForm] = useState<FormState>(initialState);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!open) return null;
 
   function resetAndClose() {
+    if (isPending) return;
     setForm(initialState);
+    setSubmitError(null);
     onClose();
   }
 
@@ -40,25 +43,43 @@ export function CreateProjectModal({
 
     const name = form.name.trim();
     const description = form.description.trim();
-    if (!name) return;
+    if (!name) {
+      setSubmitError("Enter a project name before creating the project.");
+      return;
+    }
 
-    await onCreate({
-      name,
-      description: description || undefined,
-    });
+    setSubmitError(null);
 
-    resetAndClose();
+    try {
+      await onCreate({
+        name,
+        description: description || undefined,
+      });
+
+      resetAndClose();
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "The project could not be created. Please try again."
+      );
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/20 px-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/20 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-project-title"
+    >
       <div className="w-full max-w-xl rounded-[2rem] border border-border bg-background p-6 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.3)]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
               New project
             </p>
-            <h3 className="mt-2 text-2xl font-semibold tracking-tight">
+            <h3 id="create-project-title" className="mt-2 text-2xl font-semibold tracking-tight">
               Create project
             </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -72,6 +93,7 @@ export function CreateProjectModal({
             variant="ghost"
             onClick={resetAndClose}
             aria-label="Close modal"
+            disabled={isPending}
           >
             <X />
           </Button>
@@ -83,9 +105,10 @@ export function CreateProjectModal({
             <input
               className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               value={form.name}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, name: event.target.value }))
-              }
+              onChange={(event) => {
+                setSubmitError(null);
+                setForm((current) => ({ ...current, name: event.target.value }));
+              }}
               placeholder="Website redesign"
             />
           </label>
@@ -95,15 +118,22 @@ export function CreateProjectModal({
             <textarea
               className="min-h-28 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               value={form.description}
-              onChange={(event) =>
+              onChange={(event) => {
+                setSubmitError(null);
                 setForm((current) => ({
                   ...current,
                   description: event.target.value,
-                }))
-              }
+                }));
+              }}
               placeholder="Briefly describe the scope, team, or delivery goal."
             />
           </label>
+
+          {submitError ? (
+            <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {submitError}
+            </div>
+          ) : null}
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={resetAndClose} disabled={isPending}>

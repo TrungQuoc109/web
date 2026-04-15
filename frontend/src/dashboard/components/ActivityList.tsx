@@ -1,6 +1,7 @@
 import { Clock3 } from "lucide-react";
 
 import type { DashboardActivity } from "@/dashboard/types/dashboard";
+import { formatRelativeDate } from "@/shared/lib/format-date";
 import { EmptyState } from "@/shared/ui/empty-state";
 
 type ActivityListProps = {
@@ -41,7 +42,7 @@ export function ActivityList({ items }: ActivityListProps) {
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <p className="text-sm font-medium text-foreground">{item.title}</p>
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                  {item.timestamp}
+                  {formatRelativeDate(item.timestamp)}
                 </p>
               </div>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">

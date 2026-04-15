@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { messagesService } from "@/messages/services/messagesService";
+import { messagesApi } from "@/messages/api/messagesApi";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
+import { dashboardKeys, messagesKeys, projectsKeys } from "@/shared/lib/query-keys";
 import { showErrorToast } from "@/shared/lib/toast-store";
 
 type SendProjectMessageInput = {
@@ -14,17 +15,14 @@ export function useSendProjectMessageMutation() {
 
   return useMutation({
     mutationFn: (payload: SendProjectMessageInput) =>
-      messagesService.sendProjectMessage(payload),
+      messagesApi.sendProjectMessage(payload),
     onError: (error) => {
       showErrorToast(getApiErrorMessage(error), "Send message failed");
     },
     onSuccess: (_message, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["messages", "project", variables.projectId],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["projects", "detail", variables.projectId],
-      });
+      void queryClient.invalidateQueries({ queryKey: messagesKeys.project(variables.projectId) });
+      void queryClient.invalidateQueries({ queryKey: projectsKeys.detail(variables.projectId) });
+      void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
     },
   });
 }
