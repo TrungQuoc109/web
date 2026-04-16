@@ -25,9 +25,13 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
 
 type NotificationFilter = "ALL" | "UNREAD";
+type NotificationTypeFilter =
+  | "ALL"
+  | Notification["type"];
 
 export function NotificationsPage() {
   const [filter, setFilter] = useState<NotificationFilter>("ALL");
+  const [typeFilter, setTypeFilter] = useState<NotificationTypeFilter>("ALL");
   const [pendingIds, setPendingIds] = useState<string[]>([]);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const notificationsQuery = useNotifications();
@@ -43,6 +47,9 @@ export function NotificationsPage() {
     filter === "UNREAD"
       ? notifications.filter((notification) => !notification.isRead)
       : notifications;
+  const visibleNotifications = filteredNotifications.filter((notification) =>
+    typeFilter === "ALL" ? true : notification.type === typeFilter
+  );
 
   const summary = useMemo(
     () => ({
@@ -126,11 +133,7 @@ export function NotificationsPage() {
     updateCaches(nextNotifications);
 
     try {
-      await Promise.all(
-        unreadIds.map((notificationId) =>
-          notificationsService.markAsRead(notificationId)
-        )
-      );
+      await notificationsService.markAllAsRead();
     } catch (error) {
       updateCaches(currentNotifications);
       showErrorToast(getApiErrorMessage(error), "Bulk notification update failed");
@@ -291,9 +294,25 @@ export function NotificationsPage() {
               </div>
 
               <Badge variant="outline" className="px-3 py-1">
-                Showing {filteredNotifications.length}
+                Showing {visibleNotifications.length}
               </Badge>
             </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {(["ALL", "ASSIGNED", "MENTION", "STATUS_CHANGED", "ANNOUNCEMENT"] as const).map(
+              (type) => (
+                <Button
+                  key={type}
+                  type="button"
+                  variant={typeFilter === type ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setTypeFilter(type)}
+                >
+                  {type === "ALL" ? "All types" : type.replace("_", " ")}
+                </Button>
+              )
+            )}
           </div>
         </div>
 
@@ -307,25 +326,25 @@ export function NotificationsPage() {
                 />
               ))}
             </div>
-          ) : filteredNotifications.length === 0 ? (
+          ) : visibleNotifications.length === 0 ? (
             <div className="p-6">
               <EmptyState
                 icon={<Bell />}
                 title={
-                  filter === "UNREAD"
+                  filter === "UNREAD" || typeFilter !== "ALL"
                     ? "No unread notifications"
                     : "No notifications yet"
                 }
                 description={
-                  filter === "UNREAD"
-                    ? "Everything in your inbox has already been acknowledged."
+                  filter === "UNREAD" || typeFilter !== "ALL"
+                    ? "Try another unread or type filter to reveal matching activity."
                     : "Assignments, mentions, and announcements will appear here as your workspace becomes active."
                 }
               />
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {filteredNotifications.map((notification) => (
+              {visibleNotifications.map((notification) => (
                 <NotificationItem
                   key={notification.id}
                   notification={notification}

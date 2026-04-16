@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { NotificationType } from '@prisma/client';
 import { MessageService } from '../message/message.service';
 import { NotificationService } from '../notification/notification.service';
@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { AssignTaskUsersDto } from './dto/assign-task-users.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { taskAssignmentSelect, taskSelect } from './task.constants';
 import { TaskAssignmentView, TaskView } from './task.types';
@@ -189,5 +190,47 @@ export class TaskService {
 
       return task;
     });
+  }
+
+  async updateTask(
+    taskId: number,
+    currentUser: AuthenticatedUser,
+    dto: UpdateTaskDto,
+  ): Promise<TaskView> {
+    await this.taskPermissionService.ensureCanManageTask(taskId, currentUser.id);
+
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description.trim() || null }
+          : {}),
+        ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
+      },
+      select: taskSelect,
+    });
+  }
+
+  async deleteTask(
+    taskId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<TaskView> {
+    await this.taskPermissionService.ensureCanManageTask(taskId, currentUser.id);
+
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      select: taskSelect,
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found.');
+    }
+
+    await this.prisma.task.delete({
+      where: { id: taskId },
+    });
+
+    return task;
   }
 }

@@ -19,7 +19,7 @@ export const membersMock: Member[] = [
     id: "member-3",
     name: "An Nguyen",
     email: "an.nguyen@example.com",
-    role: "MANAGER",
+    role: "ADMIN",
     joinedAt: "2026-03-22",
   },
   {
@@ -39,4 +39,3 @@ export const membersMock: Member[] = [
 ];
 
 export const emptyMembersMock: Member[] = [];
-

@@ -40,6 +40,16 @@ export class ProjectPermissionService {
     return membership;
   }
 
+  async ensureProjectOwner(projectId: number, userId: number) {
+    const membership = await this.ensureActiveMember(projectId, userId);
+
+    if (membership.role !== ProjectRole.OWNER) {
+      throw new ForbiddenException('Only project owners can perform this action.');
+    }
+
+    return membership;
+  }
+
   async ensureProjectHasMember(projectId: number, memberId: number) {
     const membership = await this.prisma.projectMember.findUnique({
       where: { id: memberId },

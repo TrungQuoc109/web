@@ -1,6 +1,9 @@
 import { Bell, LogOut, ShieldCheck, User2, Workflow } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { useChangePasswordMutation } from "@/auth/hooks/useChangePasswordMutation";
+import { useUpdateProfileMutation } from "@/auth/hooks/useUpdateProfileMutation";
 import { useLogout } from "@/auth/hooks/useLogout";
 import { useAuthStore } from "@/auth/store/authStore";
 import { formatCalendarDate } from "@/shared/lib/format-date";
@@ -10,6 +13,73 @@ import { Button } from "@/shared/ui/button";
 export function SettingsPage() {
   const currentUser = useAuthStore((state) => state.currentUser);
   const logout = useLogout();
+  const updateProfile = useUpdateProfileMutation();
+  const changePassword = useChangePasswordMutation();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setName(currentUser?.name ?? "");
+    setEmail(currentUser?.email ?? "");
+    setProfileError(null);
+  }, [currentUser?.email, currentUser?.name]);
+
+  async function handleSaveProfile() {
+    const trimmedEmail = email.trim();
+    const trimmedName = name.trim();
+
+    if (!trimmedEmail) {
+      setProfileError("Email is required.");
+      return;
+    }
+
+    if (trimmedName.length > 0 && trimmedName.length < 2) {
+      setProfileError("Name must be at least 2 characters when provided.");
+      return;
+    }
+
+    setProfileError(null);
+    await updateProfile.mutateAsync({
+      email: trimmedEmail,
+      name: trimmedName || undefined,
+    });
+  }
+
+  async function handleChangePassword() {
+    if (!currentPassword.trim()) {
+      setPasswordError("Current password is required.");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Password confirmation does not match.");
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setPasswordError("New password must be different from the current password.");
+      return;
+    }
+
+    setPasswordError(null);
+    await changePassword.mutateAsync({
+      currentPassword,
+      newPassword,
+    });
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  }
 
   return (
     <section className="flex flex-col gap-8">
@@ -77,21 +147,36 @@ export function SettingsPage() {
           </div>
 
           <div className="mt-6 grid gap-3">
-            <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Name
-              </p>
-              <p className="mt-2 font-medium">
-                {currentUser?.name || "Not set yet"}
-              </p>
-            </div>
+              <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  Name
+                </p>
+                <input
+                  className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                  value={name}
+                  onChange={(event) => {
+                    setProfileError(null);
+                    setName(event.target.value);
+                  }}
+                  placeholder="Your display name"
+                  disabled={updateProfile.isPending}
+                />
+              </div>
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
               <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                 Email
               </p>
-              <p className="mt-2 font-medium">
-                {currentUser?.email || "No email available"}
-              </p>
+              <input
+                className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setProfileError(null);
+                  setEmail(event.target.value);
+                }}
+                placeholder="you@example.com"
+                disabled={updateProfile.isPending}
+              />
             </div>
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
               <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
@@ -101,6 +186,22 @@ export function SettingsPage() {
                 {currentUser?.createdAt ? formatCalendarDate(currentUser.createdAt) : "Unavailable"}
               </p>
             </div>
+          </div>
+
+          {profileError ? (
+            <div className="mt-4 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {profileError}
+            </div>
+          ) : null}
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              type="button"
+              onClick={() => void handleSaveProfile()}
+              disabled={updateProfile.isPending}
+            >
+              {updateProfile.isPending ? "Saving..." : "Save profile"}
+            </Button>
           </div>
         </article>
 
@@ -140,7 +241,7 @@ export function SettingsPage() {
                 <ShieldCheck />
                 <span className="text-sm font-medium">Full notification inbox</span>
               </div>
-              <Badge variant="outline">Blocked</Badge>
+              <Badge variant="secondary">Live</Badge>
             </div>
           </div>
 
@@ -195,9 +296,9 @@ export function SettingsPage() {
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
               Password management
             </p>
-            <p className="mt-2 font-medium">Backend blocker</p>
+            <p className="mt-2 font-medium">Available now</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              A change-password endpoint is not exposed yet, so password rotation cannot be completed from the UI today.
+              Rotate your password without leaving the app by confirming your current credentials first.
             </p>
           </article>
 
@@ -212,13 +313,111 @@ export function SettingsPage() {
           </article>
         </div>
 
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <article className="rounded-[1.75rem] border border-border bg-secondary/20 p-5">
+            <div>
+              <p className="text-sm font-semibold">Change password</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Use a strong password with at least 8 characters. Your current
+                session stays active after the update.
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  Current password
+                </p>
+                <input
+                  className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) => {
+                    setPasswordError(null);
+                    setCurrentPassword(event.target.value);
+                  }}
+                  autoComplete="current-password"
+                  disabled={changePassword.isPending}
+                />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                    New password
+                  </p>
+                  <input
+                    className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => {
+                      setPasswordError(null);
+                      setNewPassword(event.target.value);
+                    }}
+                    autoComplete="new-password"
+                    disabled={changePassword.isPending}
+                  />
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                    Confirm new password
+                  </p>
+                  <input
+                    className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => {
+                      setPasswordError(null);
+                      setConfirmPassword(event.target.value);
+                    }}
+                    autoComplete="new-password"
+                    disabled={changePassword.isPending}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {passwordError ? (
+              <div className="mt-4 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                {passwordError}
+              </div>
+            ) : null}
+
+            <div className="mt-5 flex justify-end">
+              <Button
+                type="button"
+                onClick={() => void handleChangePassword()}
+                disabled={changePassword.isPending}
+              >
+                {changePassword.isPending ? "Updating..." : "Update password"}
+              </Button>
+            </div>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-border bg-secondary/20 p-5">
+            <p className="text-sm font-semibold">Security guidance</p>
+            <div className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground">
+              <p>
+                Use a password you do not reuse in other environments or demo accounts.
+              </p>
+              <p>
+                After updating your password, future sign-ins will require the new value immediately.
+              </p>
+              <p>
+                If you are testing shared seed accounts, make sure teammates know the credential has changed.
+              </p>
+            </div>
+          </article>
+        </div>
+
         <div className="mt-6 flex flex-wrap gap-3">
           <Button type="button" variant="outline" className="gap-2" onClick={() => logout()}>
             <LogOut />
             Sign out
           </Button>
-          <Badge variant="outline" className="px-3 py-1">
-            Password update unavailable
+          <Badge variant="secondary" className="px-3 py-1">
+            Password update live
           </Badge>
         </div>
       </section>

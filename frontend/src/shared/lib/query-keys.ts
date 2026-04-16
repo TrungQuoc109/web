@@ -13,6 +13,15 @@ export const dashboardKeys = {
 export const projectsKeys = {
   all: ["projects"] as const,
   list: () => [...projectsKeys.all, "list"] as const,
+  catalog: (filters?: {
+    search?: string;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+  }) =>
+    filters
+      ? [...projectsKeys.list(), "catalog", filters] as const
+      : [...projectsKeys.list(), "catalog"] as const,
   details: () => [...projectsKeys.all, "detail"] as const,
   detail: (projectId?: string) =>
     [...projectsKeys.all, "detail", projectId] as const,
@@ -20,8 +29,10 @@ export const projectsKeys = {
 
 export const membersKeys = {
   all: ["members"] as const,
-  project: (projectId?: string) =>
-    [...membersKeys.all, "project", projectId] as const,
+  project: (
+    projectId?: string,
+    filters?: { search?: string; role?: string }
+  ) => [...membersKeys.all, "project", projectId, filters] as const,
 };
 
 export const invitationsKeys = {

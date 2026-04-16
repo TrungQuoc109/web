@@ -16,12 +16,13 @@ import {
 } from "@/realtime/lib/realtime-socket";
 import {
   mapRealtimeMessage,
+  mapRealtimeTaskComment,
   mapRealtimeTask,
   type RealtimeMessagePayload,
   type RealtimeTaskPayload,
 } from "@/realtime/lib/realtime-mappers";
 import type { ChatMessage } from "@/messages/types/message";
-import type { TaskItem } from "@/tasks/types/task";
+import type { TaskComment, TaskItem } from "@/tasks/types/task";
 
 type SocketAck<T> = {
   success: boolean;
@@ -36,6 +37,7 @@ export function RealtimeBootstrap() {
   const projectsQuery = useProjects();
   const queryClient = useQueryClient();
   const joinedProjectsRef = useRef<Set<string>>(new Set());
+  const disconnectHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!accessToken) {
@@ -47,22 +49,40 @@ export function RealtimeBootstrap() {
     const socket = getRealtimeSocket(accessToken);
 
     function handleMessageCreated(payload: RealtimeMessagePayload) {
-      const message = mapRealtimeMessage(payload);
       const projectId = String(payload.projectId);
+      const taskId = payload.taskId ? String(payload.taskId) : null;
 
-      queryClient.setQueryData<ChatMessage[]>(
-        messagesKeys.project(projectId),
-        (current = []) => {
-          if (current.some((item) => item.id === message.id)) {
-            return current;
+      if (taskId) {
+        const comment = mapRealtimeTaskComment(payload);
+
+        queryClient.setQueryData<TaskComment[]>(
+          tasksKeys.comments(taskId),
+          (current = []) => {
+            if (current.some((item) => item.id === comment.id)) {
+              return current;
+            }
+
+            return [...current, comment];
           }
+        );
+      } else {
+        const message = mapRealtimeMessage(payload);
 
-          return [...current, message];
-        }
-      );
+        queryClient.setQueryData<ChatMessage[]>(
+          messagesKeys.project(projectId),
+          (current = []) => {
+            if (current.some((item) => item.id === message.id)) {
+              return current;
+            }
+
+            return [...current, message];
+          }
+        );
+      }
 
       void queryClient.invalidateQueries({ queryKey: projectsKeys.detail(projectId) });
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
+      void queryClient.invalidateQueries({ queryKey: notificationsKeys.list() });
       void queryClient.invalidateQueries({ queryKey: notificationsKeys.unreadCount() });
     }
 
@@ -81,20 +101,25 @@ export function RealtimeBootstrap() {
 
       void queryClient.invalidateQueries({ queryKey: projectsKeys.detail(task.projectId) });
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
+      void queryClient.invalidateQueries({ queryKey: notificationsKeys.list() });
       void queryClient.invalidateQueries({ queryKey: notificationsKeys.unreadCount() });
       void queryClient.invalidateQueries({ queryKey: tasksKeys.comments(task.id) });
     }
 
     socket.on("message:created", handleMessageCreated);
     socket.on("task:updated", handleTaskUpdated);
-    socket.on("disconnect", () => {
+    const handleDisconnect = () => {
       joinedProjectsRef.current.clear();
-    });
+    };
+    disconnectHandlerRef.current = handleDisconnect;
+    socket.on("disconnect", handleDisconnect);
 
     return () => {
       socket.off("message:created", handleMessageCreated);
       socket.off("task:updated", handleTaskUpdated);
-      socket.off("disconnect");
+      if (disconnectHandlerRef.current) {
+        socket.off("disconnect", disconnectHandlerRef.current);
+      }
     };
   }, [accessToken, queryClient]);
 

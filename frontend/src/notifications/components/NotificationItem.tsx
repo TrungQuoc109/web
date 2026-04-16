@@ -1,25 +1,27 @@
 import {
+  ArrowUpRight,
   AtSign,
   BellRing,
   CheckCheck,
   ClipboardCheck,
   Megaphone,
-  ArrowUpRight,
 } from "lucide-react";
 
 import type {
   Notification,
   NotificationType,
 } from "@/notifications/types/notification";
-import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
-import { cn } from "@/shared/lib/cn";
-import { formatRelativeDate } from "@/shared/lib/format-date";
-import { StatusBadge } from "@/shared/ui/status-badge";
 import {
   getNotificationMeta,
+  getNotificationPreview,
+  getNotificationSourceLabel,
   getNotificationTitle,
 } from "@/notifications/lib/notification-presenters";
+import { cn } from "@/shared/lib/cn";
+import { formatRelativeDate } from "@/shared/lib/format-date";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { StatusBadge } from "@/shared/ui/status-badge";
 
 type NotificationItemProps = {
   notification: Notification;
@@ -42,69 +44,105 @@ export function NotificationItem({
   onOpen,
 }: NotificationItemProps) {
   const Icon = iconMap[notification.type];
+  const sourceLabel = getNotificationSourceLabel(notification);
+  const preview = getNotificationPreview(notification);
 
   return (
     <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(notification)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onOpen(notification);
-        }
-      }}
       className={cn(
-        "flex cursor-pointer flex-col gap-4 px-5 py-4 transition-colors outline-none hover:bg-secondary/20 focus-visible:bg-secondary/20 sm:flex-row sm:items-start sm:justify-between",
-        !notification.isRead && "bg-secondary/20"
+        "rounded-[1.35rem] border px-4 py-4 transition-colors sm:px-5",
+        notification.isRead
+          ? "border-border/70 bg-background/80"
+          : "border-border bg-secondary/25 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.45)]"
       )}
     >
-      <div className="flex min-w-0 gap-4">
-        <div className="rounded-2xl border border-border bg-secondary/60 p-3">
-          <Icon />
-        </div>
-
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-foreground">
-              {getNotificationTitle(notification)}
-            </p>
-            <StatusBadge value={notification.type} />
-            {!notification.isRead ? (
-              <Badge variant="outline" className="px-3 py-1">
-                Unread
-              </Badge>
-            ) : null}
-          </div>
-
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {notification.activity.content}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            <span>{formatRelativeDate(notification.createdAt)}</span>
-            <span>&bull;</span>
-            <span>{getNotificationMeta(notification)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <Button
           type="button"
-          variant={notification.isRead ? "ghost" : "outline"}
-          className="gap-2"
-          disabled={notification.isRead || isPending}
-          onClick={(event) => {
-            event.stopPropagation();
-            void onMarkAsRead(notification.id);
-          }}
+          variant="ghost"
+          className={cn(
+            "h-auto min-w-0 flex-1 justify-start rounded-[1.1rem] px-0 py-0 text-left hover:bg-transparent",
+            "focus-visible:ring-2 focus-visible:ring-ring"
+          )}
+          onClick={() => onOpen(notification)}
         >
-          <CheckCheck />
-          {notification.isRead ? "Read" : isPending ? "Saving..." : "Mark as read"}
+          <div className="flex min-w-0 gap-4">
+            <div
+              className={cn(
+                "relative mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-2xl border",
+                notification.isRead
+                  ? "border-border bg-secondary/40 text-muted-foreground"
+                  : "border-border bg-background text-foreground"
+              )}
+            >
+              {!notification.isRead ? (
+                <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-sky-500" />
+              ) : null}
+              <Icon className="size-4" aria-hidden="true" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="min-w-0 text-sm font-semibold text-foreground">
+                  {getNotificationTitle(notification)}
+                </p>
+                <StatusBadge
+                  value={notification.type}
+                  className="px-2.5 py-0.5 text-[11px]"
+                />
+                <Badge
+                  variant={notification.isRead ? "outline" : "secondary"}
+                  className={cn(
+                    "px-2.5 py-0.5 text-[11px]",
+                    !notification.isRead && "bg-sky-100 text-sky-900"
+                  )}
+                >
+                  {notification.isRead ? "Read" : "Unread"}
+                </Badge>
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                <span>{sourceLabel}</span>
+                <span className="text-border">•</span>
+                <span>{getNotificationMeta(notification)}</span>
+              </div>
+
+              <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                {preview}
+              </p>
+
+              <p className="mt-3 text-xs font-medium text-muted-foreground">
+                {formatRelativeDate(notification.createdAt)}
+              </p>
+            </div>
+          </div>
         </Button>
 
-        <div className="rounded-full border border-border bg-background p-2 text-muted-foreground">
-          <ArrowUpRight className="size-4" />
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:flex-col sm:items-end">
+          <Button
+            type="button"
+            variant={notification.isRead ? "ghost" : "outline"}
+            size="sm"
+            className="gap-2"
+            disabled={notification.isRead || isPending}
+            onClick={() => {
+              void onMarkAsRead(notification.id);
+            }}
+          >
+            <CheckCheck className="size-4" aria-hidden="true" />
+            {notification.isRead ? "Read" : isPending ? "Saving…" : "Mark Read"}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-muted-foreground hover:text-foreground"
+            onClick={() => onOpen(notification)}
+          >
+            Open
+            <ArrowUpRight className="size-4" aria-hidden="true" />
+          </Button>
         </div>
       </div>
     </article>

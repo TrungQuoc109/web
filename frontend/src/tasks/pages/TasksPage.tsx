@@ -8,11 +8,13 @@ import { useAssignableUsers } from "@/tasks/hooks/useAssignableUsers";
 import { useAssignTaskUsersMutation } from "@/tasks/hooks/useAssignTaskUsersMutation";
 import { useCreateTaskMutation } from "@/tasks/hooks/useCreateTaskMutation";
 import { useTaskComments } from "@/tasks/hooks/useTaskComments";
+import { useDeleteTaskMutation } from "@/tasks/hooks/useDeleteTaskMutation";
 import { useTaskBoard } from "@/tasks/hooks/useTaskBoard";
 import { useTaskReports } from "@/tasks/hooks/useTaskReports";
 import { useSubmitTaskReportMutation } from "@/tasks/hooks/useSubmitTaskReportMutation";
 import { useReviewTaskReportMutation } from "@/tasks/hooks/useReviewTaskReportMutation";
 import { useSendTaskMessageMutation } from "@/tasks/hooks/useSendTaskMessageMutation";
+import { useUpdateTaskMutation } from "@/tasks/hooks/useUpdateTaskMutation";
 import { useUpdateTaskStatusMutation } from "@/tasks/hooks/useUpdateTaskStatusMutation";
 import type { TaskItem, TaskPriorityFilter, TaskStatus } from "@/tasks/types/task";
 import { useProjects } from "@/projects/hooks/useProjects";
@@ -33,10 +35,15 @@ export function TasksPage() {
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<TaskPriorityFilter>("ALL");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [taskCommentDrafts, setTaskCommentDrafts] = useState<Record<string, string>>(
+    {}
+  );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const updateTaskStatus = useUpdateTaskStatusMutation();
   const assignTaskUsers = useAssignTaskUsersMutation();
   const createTask = useCreateTaskMutation();
+  const updateTask = useUpdateTaskMutation();
+  const deleteTask = useDeleteTaskMutation();
   const submitTaskReport = useSubmitTaskReportMutation();
   const reviewTaskReport = useReviewTaskReportMutation();
   const sendTaskMessage = useSendTaskMessageMutation();
@@ -106,6 +113,27 @@ export function TasksPage() {
     ).length,
     blocked: tasks.filter((task) => task.status === "BLOCKED").length,
   };
+  const selectedTaskCommentDraft =
+    selectedTaskBase?.id ? taskCommentDrafts[selectedTaskBase.id] ?? "" : "";
+
+  function updateTaskCommentDraft(taskId: string, draft: string) {
+    setTaskCommentDrafts((current) => {
+      if (!draft) {
+        if (!(taskId in current)) {
+          return current;
+        }
+
+        const next = { ...current };
+        delete next[taskId];
+        return next;
+      }
+
+      return {
+        ...current,
+        [taskId]: draft,
+      };
+    });
+  }
 
   if (taskBoardQuery.isPending) {
     return (
@@ -136,8 +164,8 @@ export function TasksPage() {
           </p>
           <h2 className="text-3xl font-semibold tracking-tight">Tasks</h2>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            A compact kanban board for moving work across delivery stages, with
-            lightweight controls inspired by Trello and Jira.
+            A kanban workspace for moving work across delivery stages with
+            lightweight filters and task-level collaboration controls.
           </p>
         </div>
 
@@ -214,8 +242,8 @@ export function TasksPage() {
             </select>
 
             <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-              <LayoutGrid />
-              Mini Jira board
+              <LayoutGrid className="size-4" />
+              Kanban view
             </div>
           </div>
         </div>
@@ -271,6 +299,7 @@ export function TasksPage() {
         task={selectedTask}
         availableUsers={availableUsers}
         reports={taskReportsQuery.data ?? []}
+        commentDraft={selectedTaskCommentDraft}
         currentUserId={currentUser?.id ? String(currentUser.id) : null}
         isCommentsLoading={taskCommentsQuery.isPending}
         isUsersLoading={assignableUsersQuery.isPending}
@@ -280,23 +309,52 @@ export function TasksPage() {
         isSendingComment={sendTaskMessage.isPending}
         isSubmittingReport={submitTaskReport.isPending}
         isReviewingReport={reviewTaskReport.isPending}
-        canEditPriority={false}
+        isSavingTask={updateTask.isPending}
+        isDeletingTask={deleteTask.isPending}
+        canEditPriority
         open={selectedTask !== null}
         onClose={() => setSelectedTaskId(null)}
         onStatusChange={(taskId, status) => {
           updateTaskStatus.mutate({ taskId, status });
         }}
-        onPriorityChange={() => {
-          useToastStore.getState().push({
-            title: "Priority update unavailable",
-            description:
-              "The backend does not support updating task priority yet.",
-            variant: "info",
+        onPriorityChange={(taskId, priority) => {
+          if (!selectedTaskBase) {
+            useToastStore.getState().push({
+              title: "Task context missing",
+              description: "The selected task could not be resolved for this update.",
+              variant: "error",
+            });
+            return;
+          }
+
+          updateTask.mutate({
+            taskId,
+            projectId: selectedTaskBase.projectId,
+            title: selectedTaskBase.title,
+            description: selectedTaskBase.description ?? undefined,
+            priority,
           });
+        }}
+        onSaveTask={(taskId, input) =>
+          updateTask.mutateAsync({
+            taskId,
+            projectId: selectedTaskBase?.projectId ?? "",
+            title: input.title,
+            description: input.description,
+            priority: input.priority,
+          })
+        }
+        onDeleteTask={async (taskId) => {
+          await deleteTask.mutateAsync({
+            taskId,
+            projectId: selectedTaskBase?.projectId ?? "",
+          });
+          setSelectedTaskId(null);
         }}
         onAssignUser={(taskId, userId, role) => {
           assignTaskUsers.mutate({ taskId, userId, role });
         }}
+        onCommentDraftChange={updateTaskCommentDraft}
         onSendComment={(taskId, content) =>
           sendTaskMessage.mutateAsync({
             taskId,

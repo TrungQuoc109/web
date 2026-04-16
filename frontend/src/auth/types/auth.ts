@@ -20,6 +20,16 @@ export type RegisterPayload = {
   name?: string;
 };
 
+export type UpdateProfilePayload = {
+  email?: string;
+  name?: string;
+};
+
+export type ChangePasswordPayload = {
+  currentPassword: string;
+  newPassword: string;
+};
+
 export type LoginResponse = {
   accessToken: string;
   user?: AuthenticatedUser | null;
@@ -29,3 +39,5 @@ export type RegisterResponse = AuthenticatedUser;
 
 export type LoginDto = LoginPayload;
 export type RegisterDto = RegisterPayload;
+export type UpdateProfileDto = UpdateProfilePayload;
+export type ChangePasswordDto = ChangePasswordPayload;

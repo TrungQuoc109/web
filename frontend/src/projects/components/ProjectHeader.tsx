@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { FolderKanban, Users } from "lucide-react";
 
 import type { ProjectDetail } from "@/projects/types/project";
@@ -7,9 +8,10 @@ import { StatusBadge } from "@/shared/ui/status-badge";
 
 type ProjectHeaderProps = {
   project: ProjectDetail;
+  actions?: ReactNode;
 };
 
-export function ProjectHeader({ project }: ProjectHeaderProps) {
+export function ProjectHeader({ project, actions }: ProjectHeaderProps) {
   return (
     <header className="rounded-[2rem] border border-border bg-background/95 p-6 shadow-sm">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -33,7 +35,8 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {actions}
           <StatusBadge value={project.status} />
           <Badge variant="outline" className="px-3 py-1">
             <Users />

@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { messagesApi } from "@/messages/api/messagesApi";
+import { useAuthStore } from "@/auth/store/authStore";
+import { sendRealtimeProjectMessage } from "@/realtime/lib/realtime-actions";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
 import { dashboardKeys, messagesKeys, projectsKeys } from "@/shared/lib/query-keys";
 import { showErrorToast } from "@/shared/lib/toast-store";
@@ -13,10 +15,20 @@ type SendProjectMessageInput = {
 
 export function useSendProjectMessageMutation() {
   const queryClient = useQueryClient();
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   return useMutation({
-    mutationFn: (payload: SendProjectMessageInput) =>
-      messagesApi.sendProjectMessage(payload),
+    mutationFn: async (payload: SendProjectMessageInput) => {
+      if (!accessToken) {
+        return messagesApi.sendProjectMessage(payload);
+      }
+
+      try {
+        return await sendRealtimeProjectMessage(accessToken, payload);
+      } catch {
+        return messagesApi.sendProjectMessage(payload);
+      }
+    },
     onError: (error) => {
       showErrorToast(getApiErrorMessage(error), "Send message failed");
     },

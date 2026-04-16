@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Megaphone, MessageSquare, Send } from "lucide-react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Megaphone, MessageSquare, Search, Send, Users } from "lucide-react";
 
 import { MessageBubble } from "@/messages/components/MessageBubble";
 import { useProjectChat } from "@/messages/hooks/useProjectChat";
 import { useSendProjectMessageMutation } from "@/messages/hooks/useSendProjectMessageMutation";
 import { useAuthStore } from "@/auth/store/authStore";
+import { RoleBadge } from "@/members/components/RoleBadge";
 import { useMembers } from "@/members/hooks/useMembers";
 import { useProjects } from "@/projects/hooks/useProjects";
+import { getDisplayName } from "@/shared/lib/display";
+import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
@@ -19,10 +22,12 @@ export function MessagesPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [input, setInput] = useState("");
   const [isAnnouncement, setIsAnnouncement] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
   const chatQuery = useProjectChat(selectedProjectId || undefined);
   const membersQuery = useMembers(selectedProjectId || undefined);
   const sendProjectMessage = useSendProjectMessageMutation();
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const deferredMemberSearch = useDeferredValue(memberSearch);
 
   useEffect(() => {
     if (!selectedProjectId && projectsQuery.data?.length) {
@@ -32,25 +37,52 @@ export function MessagesPage() {
 
   useEffect(() => {
     setIsAnnouncement(false);
+    setMemberSearch("");
   }, [selectedProjectId]);
 
+  const members = membersQuery.data ?? [];
   const selectedProject =
     projectsQuery.data?.find((project) => project.id === selectedProjectId) ?? null;
   const currentMember = useMemo(
     () =>
-      (membersQuery.data ?? []).find(
+      members.find(
         (member) => member.userId === String(currentUser?.id)
       ) ?? null,
-    [currentUser?.id, membersQuery.data]
+    [currentUser?.id, members]
   );
-  const canSendMessages = currentMember?.role !== "VIEWER";
+  const canSendMessages = membersQuery.isError ? false : currentMember?.role !== "VIEWER";
   const canSendAnnouncements =
-    currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
+    !membersQuery.isError &&
+    (currentMember?.role === "OWNER" || currentMember?.role === "ADMIN");
   const messages = (chatQuery.data ?? []).map((message) => ({
     ...message,
     isCurrentUser:
       Boolean(currentUser?.id) && message.senderId === String(currentUser?.id),
   }));
+  const filteredMembers = useMemo(() => {
+    const normalizedSearch = deferredMemberSearch.trim().toLowerCase();
+
+    return members.filter((member) => {
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return (
+        (member.name ?? "").toLowerCase().includes(normalizedSearch) ||
+        member.email.toLowerCase().includes(normalizedSearch)
+      );
+    });
+  }, [deferredMemberSearch, members]);
+  const memberSummary = useMemo(
+    () => ({
+      total: members.length,
+      elevated: members.filter((member) =>
+        member.role === "OWNER" || member.role === "ADMIN"
+      ).length,
+      viewers: members.filter((member) => member.role === "VIEWER").length,
+    }),
+    [members]
+  );
 
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -77,10 +109,7 @@ export function MessagesPage() {
     unread: messages.filter((message) => !message.isCurrentUser).length,
   };
 
-  if (
-    projectsQuery.isPending ||
-    (selectedProjectId && (chatQuery.isPending || membersQuery.isPending))
-  ) {
+  if (projectsQuery.isPending || (selectedProjectId && chatQuery.isPending)) {
     return (
       <LoadingState
         title="Messages"
@@ -110,14 +139,13 @@ export function MessagesPage() {
     );
   }
 
-  if (chatQuery.isError || membersQuery.isError) {
+  if (chatQuery.isError) {
     return (
       <ErrorState
         title="Messages unavailable"
-        description="The project chat or member permissions could not be loaded from the backend. Retry to restore the page."
+        description="The project chat could not be loaded from the backend. Retry to restore the page."
         onRetry={() => {
           void chatQuery.refetch();
-          void membersQuery.refetch();
         }}
       />
     );
@@ -176,7 +204,9 @@ export function MessagesPage() {
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
               <p className="text-sm font-medium">Participants</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                {selectedProject?.memberCount ?? 0} current members in this project room.
+                {membersQuery.isLoading
+                  ? "Loading the current project roster…"
+                  : `${memberSummary.total} current members in this project room.`}
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
@@ -186,8 +216,109 @@ export function MessagesPage() {
                   ? "You can send both normal updates and project announcements."
                   : canSendMessages
                     ? "You can send normal updates. Announcements are limited to owners and admins."
-                    : "Your current role is view-only in this project room."}
+                    : membersQuery.isError
+                      ? "Member permissions could not be verified right now, so posting is temporarily disabled."
+                      : "Your current role is view-only in this project room."}
               </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Group members</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    See who is currently part of this project chat.
+                  </p>
+                </div>
+                <Badge variant="secondary" className="px-3 py-1">
+                  {memberSummary.total}
+                </Badge>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="outline" className="px-3 py-1">
+                  {memberSummary.elevated} owners/admins
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1">
+                  {memberSummary.viewers} viewers
+                </Badge>
+              </div>
+
+              <div className="relative mt-4">
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  className="h-11 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                  value={memberSearch}
+                  onChange={(event) => setMemberSearch(event.target.value)}
+                  placeholder="Search members by name or email"
+                  disabled={membersQuery.isLoading || membersQuery.isError}
+                />
+              </div>
+
+              <div className="mt-4">
+                {membersQuery.isLoading ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+                    Loading project members…
+                  </div>
+                ) : membersQuery.isError ? (
+                  <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-6">
+                    <p className="text-sm font-medium text-foreground">
+                      Member list unavailable
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      We couldn&apos;t load the current project roster. Retry to restore the chat members list.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-4"
+                      onClick={() => void membersQuery.refetch()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : members.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+                    No members found in this project yet.
+                  </div>
+                ) : filteredMembers.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
+                    No members match the current search.
+                  </div>
+                ) : (
+                  <div className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border bg-background">
+                    <div className="divide-y divide-border">
+                      {filteredMembers.map((member) => (
+                        <article
+                          key={member.id}
+                          className="flex items-center gap-3 px-4 py-3"
+                        >
+                          <Avatar
+                            name={member.name}
+                            email={member.email}
+                            className="size-10 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-medium text-foreground">
+                                {getDisplayName(member, member.email)}
+                              </p>
+                              {member.userId === String(currentUser?.id) ? (
+                                <Badge variant="secondary" className="px-2 py-0.5 text-[11px]">
+                                  You
+                                </Badge>
+                              ) : null}
+                            </div>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {member.email}
+                            </p>
+                          </div>
+                          <RoleBadge role={member.role} />
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </aside>

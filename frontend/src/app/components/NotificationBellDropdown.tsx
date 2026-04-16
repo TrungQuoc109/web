@@ -146,7 +146,7 @@ export function NotificationBellDropdown() {
     updateCaches(nextNotifications);
 
     try {
-      await Promise.all(unreadIds.map((notificationId) => notificationsService.markAsRead(notificationId)));
+      await notificationsService.markAllAsRead();
     } catch (error) {
       updateCaches(currentNotifications);
       showErrorToast(getApiErrorMessage(error), "Bulk notification update failed");
@@ -195,57 +195,64 @@ export function NotificationBellDropdown() {
         aria-label="Recent notifications"
         aria-hidden={!open}
         tabIndex={-1}
-        className={`absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[min(26rem,calc(100vw-2rem))] origin-top-right rounded-[1.5rem] border border-border bg-background/95 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.35)] backdrop-blur transition-all duration-150 ${
+        className={`absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[min(27rem,calc(100vw-2rem))] origin-top-right overflow-hidden rounded-[1.65rem] border border-border bg-background/95 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.42)] backdrop-blur transition-all duration-150 ${
           open
             ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
             : "pointer-events-none -translate-y-2 scale-95 opacity-0"
         }`}
       >
-        <div className="border-b border-border px-5 py-4">
+        <div className="border-b border-border bg-[linear-gradient(180deg,_rgba(248,250,252,0.98),_rgba(248,250,252,0.72))] px-5 pb-4 pt-5">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold">Notifications</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Recent workspace activity, assignments, and mentions.
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-base font-semibold">Notifications</p>
+                <Badge variant="secondary" className="px-2.5 py-0.5 text-[11px]">
+                  {unreadCount} unread
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Assignments, mentions, announcements, and delivery updates.
               </p>
             </div>
-            <Badge variant="secondary" className="px-3 py-1">
-              {unreadCount} unread
-            </Badge>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              Latest activity
-            </p>
             <Button
               type="button"
-              variant="ghost"
+              variant={canMarkAll ? "outline" : "ghost"}
               size="sm"
-              className="gap-2"
+              className="gap-2 self-start"
               disabled={!canMarkAll}
               onClick={() => void handleMarkAllAsRead()}
             >
-              {isMarkingAll ? <Loader2 className="size-4 animate-spin" /> : <CheckCheck className="size-4" />}
-              Mark all read
+              {isMarkingAll ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <CheckCheck className="size-4" aria-hidden="true" />
+              )}
+              Mark All as Read
             </Button>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/70 pt-3 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+            <span>Recent activity</span>
+            <span className="font-medium normal-case tracking-normal">
+              {notifications.length} items
+            </span>
           </div>
         </div>
 
-        <div className="max-h-[28rem] overflow-y-auto">
+        <div className="max-h-[28rem] overflow-y-auto overscroll-contain px-3 py-3">
           {notificationsQuery.isPending ? (
-            <div className="flex flex-col gap-3 px-5 py-5">
+            <div className="flex flex-col gap-2">
               {[0, 1, 2].map((item) => (
                 <div
                   key={item}
-                  className="h-24 animate-pulse rounded-3xl border border-border bg-secondary/35"
+                  className="animate-pulse rounded-[1.35rem] border border-border bg-secondary/30 p-4"
                 />
               ))}
             </div>
           ) : notificationsQuery.isError ? (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm font-medium">Notifications unavailable</p>
-              <p className="mt-2 text-sm text-muted-foreground">
+            <div className="rounded-[1.35rem] border border-border bg-background px-5 py-8 text-center">
+              <p className="text-sm font-semibold">Notifications unavailable</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 We couldn&apos;t load your recent notifications right now.
               </p>
               <Button
@@ -258,14 +265,14 @@ export function NotificationBellDropdown() {
               </Button>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm font-medium">No notifications yet</p>
-              <p className="mt-2 text-sm text-muted-foreground">
+            <div className="rounded-[1.35rem] border border-dashed border-border bg-background px-5 py-10 text-center">
+              <p className="text-sm font-semibold">No notifications yet</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 New assignments, mentions, and announcements will show up here.
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-border">
+            <div className="flex flex-col gap-2">
               {notifications.map((notification) => (
                 <NotificationItem
                   key={notification.id}

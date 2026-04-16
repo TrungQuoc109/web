@@ -10,7 +10,6 @@ type RoleBadgeProps = {
 const roleStyles: Record<MemberRole, string> = {
   OWNER: "bg-primary text-primary-foreground",
   ADMIN: "bg-secondary text-secondary-foreground",
-  MANAGER: "bg-sky-100 text-sky-900",
   MEMBER: "border-border bg-background text-foreground",
   VIEWER: "border-border bg-background text-muted-foreground",
 };
@@ -22,4 +21,3 @@ export function RoleBadge({ role, className }: RoleBadgeProps) {
     </Badge>
   );
 }
-

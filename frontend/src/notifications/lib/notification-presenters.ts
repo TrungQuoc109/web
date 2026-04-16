@@ -2,22 +2,22 @@ import type { Notification } from "@/notifications/types/notification";
 
 export function getNotificationTitle(notification: Notification) {
   if (notification.type === "ASSIGNED") {
-    return "Task assigned";
+    return "New Task Assignment";
   }
 
   if (notification.type === "STATUS_CHANGED") {
-    return "Task status changed";
+    return "Task Status Updated";
   }
 
   if (notification.type === "MENTION") {
-    return "Mention in workspace activity";
+    return "You Were Mentioned";
   }
 
   if (notification.activity.isAnnouncement) {
-    return "Project announcement";
+    return "Project Announcement";
   }
 
-  return "Workspace update";
+  return "Workspace Update";
 }
 
 export function getNotificationHref(notification: Notification) {
@@ -38,4 +38,28 @@ export function getNotificationMeta(notification: Notification) {
   }
 
   return `Project #${notification.activity.projectId}`;
+}
+
+export function getNotificationSourceLabel(notification: Notification) {
+  if (notification.activity.isAnnouncement || notification.activity.isSystem) {
+    return "System";
+  }
+
+  if (notification.type === "ASSIGNED") {
+    return "Assignment";
+  }
+
+  if (notification.type === "MENTION") {
+    return "Team Activity";
+  }
+
+  if (notification.activity.taskId) {
+    return "Task Activity";
+  }
+
+  return "Project Activity";
+}
+
+export function getNotificationPreview(notification: Notification) {
+  return notification.activity.content.trim();
 }

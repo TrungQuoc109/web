@@ -70,6 +70,13 @@ type UpdateTaskStatusPayload = {
   status: TaskStatus;
 };
 
+type UpdateTaskPayload = {
+  taskId: string;
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+};
+
 type AssignTaskUsersPayload = {
   taskId: string;
   assignees: Array<{
@@ -205,6 +212,23 @@ export const tasksApi = {
       { status: payload.status }
     );
     return mapTask(response.data);
+  },
+
+  async update(payload: UpdateTaskPayload): Promise<TaskItem> {
+    const response = await httpClient.patch<BackendTask>(
+      `/tasks/${payload.taskId}`,
+      {
+        title: payload.title,
+        description: payload.description,
+        priority: payload.priority,
+      }
+    );
+
+    return mapTask(response.data);
+  },
+
+  async remove(taskId: string): Promise<void> {
+    await httpClient.delete(`/tasks/${taskId}`);
   },
 
   async getComments(taskId: string): Promise<TaskComment[]> {

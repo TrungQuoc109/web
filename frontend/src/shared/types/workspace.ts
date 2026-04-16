@@ -15,7 +15,7 @@ export type ReportStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export type ProjectStatus = "ACTIVE" | "PLANNING" | "AT_RISK" | "COMPLETED";
 
-export type MemberRole = "OWNER" | "ADMIN" | "MANAGER" | "MEMBER" | "VIEWER";
+export type MemberRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
 export type NotificationType =
   | "MENTION"

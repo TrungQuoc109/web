@@ -4,7 +4,7 @@ import type { MemberRole } from "@/shared/types/workspace";
 
 type BackendProjectMember = {
   id: number;
-  role: "OWNER" | "ADMIN" | "MANAGER" | "MEMBER" | "VIEWER";
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
   joinedAt: string;
   user: {
     id: number;
@@ -20,6 +20,11 @@ export type AddMemberPayload = {
   role: MemberRole;
 };
 
+export type ListMembersFilters = {
+  search?: string;
+  role?: MemberRole;
+};
+
 function mapMember(member: BackendProjectMember): Member {
   return {
     id: String(member.id),
@@ -32,9 +37,15 @@ function mapMember(member: BackendProjectMember): Member {
 }
 
 export const membersApi = {
-  async list(projectId: string): Promise<Member[]> {
+  async list(projectId: string, filters?: ListMembersFilters): Promise<Member[]> {
     const response = await httpClient.get<BackendProjectMember[]>(
-      `/projects/${projectId}/members`
+      `/projects/${projectId}/members`,
+      {
+        params: {
+          search: filters?.search,
+          role: filters?.role,
+        },
+      }
     );
     return response.data.map(mapMember);
   },
@@ -53,5 +64,18 @@ export const membersApi = {
 
   async remove(projectId: string, memberId: string): Promise<void> {
     await httpClient.delete(`/projects/${projectId}/members/${memberId}`);
+  },
+
+  async updateRole(
+    projectId: string,
+    memberId: string,
+    role: MemberRole
+  ): Promise<Member> {
+    const response = await httpClient.patch<BackendProjectMember>(
+      `/projects/${projectId}/members/${memberId}`,
+      { role }
+    );
+
+    return mapMember(response.data);
   },
 };

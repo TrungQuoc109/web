@@ -73,6 +73,20 @@ export class TaskPermissionService {
     return { task, membership };
   }
 
+  async ensureCanManageTask(taskId: number, userId: number) {
+    const task = await this.ensureTaskExists(taskId);
+    const membership = await this.projectPermissionService.ensureActiveMember(
+      task.projectId,
+      userId,
+    );
+
+    if (membership.role === ProjectRole.VIEWER) {
+      throw new ForbiddenException('Viewers cannot manage tasks.');
+    }
+
+    return { task, membership };
+  }
+
   async ensureCanUpdateStatus(taskId: number, userId: number, nextStatus: TaskStatus) {
     const task = await this.ensureTaskExists(taskId);
     const membership = await this.projectPermissionService.ensureActiveMember(

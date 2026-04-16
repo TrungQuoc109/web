@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -8,8 +9,10 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { authUserSelect } from './auth.constants';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import {
   AuthenticatedUser,
   JwtPayload,
@@ -74,6 +77,73 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async updateProfile(
+    userId: number,
+    dto: UpdateProfileDto,
+  ): Promise<AuthenticatedUser> {
+    try {
+      return await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name.trim() || null } : {}),
+          ...(dto.email !== undefined ? { email: dto.email.toLowerCase() } : {}),
+        },
+        select: authUserSelect,
+      });
+    } catch (error: unknown) {
+      if (this.isUniqueConstraintViolation(error)) {
+        throw new ConflictException('Email is already registered.');
+      }
+
+      throw error;
+    }
+  }
+
+  async changePassword(
+    userId: number,
+    dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        password: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid authentication token.');
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.password,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    const isSamePassword = await bcrypt.compare(dto.newPassword, user.password);
+
+    if (isSamePassword) {
+      throw new BadRequestException(
+        'New password must be different from the current password.',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: await this.hashPassword(dto.newPassword),
+      },
+    });
+
+    return {
+      message: 'Password updated successfully.',
+    };
   }
 
   private async validateCredentials(

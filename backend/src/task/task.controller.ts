@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -27,6 +28,7 @@ import { AssignTaskUsersDto } from './dto/assign-task-users.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { TaskResponseDto } from './dto/task-response.dto';
 import { TaskAssignmentResponseDto } from './dto/task-assignment-response.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { TaskAssignmentView, TaskView } from './task.types';
 import { TaskService } from './task.service';
@@ -121,5 +123,50 @@ export class TaskController {
     @Body() dto: UpdateTaskStatusDto,
   ): Promise<TaskView> {
     return this.taskService.updateStatus(taskId, currentUser, dto);
+  }
+
+  @Patch('tasks/:taskId')
+  @ApiOperation({ summary: 'Cập nhật thông tin công việc' })
+  @ApiParam({
+    name: 'taskId',
+    description: 'ID công việc cần cập nhật',
+    example: 103,
+  })
+  @ApiOkResponse({
+    description: 'Công việc đã được cập nhật',
+    type: TaskResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Dữ liệu công việc không hợp lệ' })
+  @ApiUnauthorizedResponse({ description: 'Không có quyền truy cập' })
+  @ApiForbiddenResponse({ description: 'Không có quyền cập nhật công việc' })
+  @ApiNotFoundResponse({ description: 'Công việc không tồn tại' })
+  updateTask(
+    @Param('taskId', ParseIntPipe) taskId: number,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: UpdateTaskDto,
+  ): Promise<TaskView> {
+    return this.taskService.updateTask(taskId, currentUser, dto);
+  }
+
+  @Delete('tasks/:taskId')
+  @ApiOperation({ summary: 'Xóa công việc' })
+  @ApiParam({
+    name: 'taskId',
+    description: 'ID công việc cần xóa',
+    example: 103,
+  })
+  @ApiOkResponse({
+    description: 'Công việc đã được xóa',
+    type: TaskResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Tham số không hợp lệ' })
+  @ApiUnauthorizedResponse({ description: 'Không có quyền truy cập' })
+  @ApiForbiddenResponse({ description: 'Không có quyền xóa công việc' })
+  @ApiNotFoundResponse({ description: 'Công việc không tồn tại' })
+  deleteTask(
+    @Param('taskId', ParseIntPipe) taskId: number,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<TaskView> {
+    return this.taskService.deleteTask(taskId, currentUser);
   }
 }

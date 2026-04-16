@@ -63,4 +63,11 @@ export const notificationsApi = {
   async markAsRead(notificationId: string): Promise<void> {
     await httpClient.patch(`/notifications/${notificationId}/read`);
   },
+
+  async markAllAsRead(): Promise<{ updatedCount: number }> {
+    const response = await httpClient.patch<{ updatedCount: number }>(
+      "/notifications/read-all"
+    );
+    return response.data;
+  },
 };

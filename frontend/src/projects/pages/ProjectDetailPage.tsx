@@ -1,21 +1,29 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
   ListTodo,
   MessageSquare,
+  Settings2,
   Users,
 } from "lucide-react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 
 import { ActivityList } from "@/dashboard/components/ActivityList";
 import { StatCard } from "@/dashboard/components/StatCard";
+import { useAuthStore } from "@/auth/store/authStore";
 import { ProjectHeader } from "@/projects/components/ProjectHeader";
+import { ManageProjectModal } from "@/projects/components/ManageProjectModal";
 import { ProjectTabs } from "@/projects/components/ProjectTabs";
+import { useDeleteProjectMutation } from "@/projects/hooks/useDeleteProjectMutation";
+import { useLeaveProjectMutation } from "@/projects/hooks/useLeaveProjectMutation";
 import { useProjectDetail } from "@/projects/hooks/useProjectDetail";
+import { useTransferProjectOwnershipMutation } from "@/projects/hooks/useTransferProjectOwnershipMutation";
+import { useUpdateProjectMutation } from "@/projects/hooks/useUpdateProjectMutation";
 import { getDisplayName } from "@/shared/lib/display";
 import { formatRelativeDate } from "@/shared/lib/format-date";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
@@ -30,8 +38,28 @@ const tabItems = [
 
 export function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const currentUser = useAuthStore((state) => state.currentUser);
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [isManageOpen, setIsManageOpen] = useState(false);
   const detailQuery = useProjectDetail(projectId);
+  const updateProject = useUpdateProjectMutation();
+  const deleteProject = useDeleteProjectMutation();
+  const leaveProject = useLeaveProjectMutation();
+  const transferOwnership = useTransferProjectOwnershipMutation();
+  const project = detailQuery.data;
+  const currentMember = useMemo(
+    () =>
+      (project?.members ?? []).find(
+        (member) => member.userId === String(currentUser?.id)
+      ) ?? null,
+    [currentUser?.id, project?.members]
+  );
+  const canManageProject =
+    currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
+  const canDeleteProject = currentMember?.role === "OWNER";
+  const canTransferOwnership = currentMember?.role === "OWNER";
+  const canOpenSettings = Boolean(currentMember);
 
   if (detailQuery.isPending) {
     return (
@@ -54,7 +82,6 @@ export function ProjectDetailPage() {
     );
   }
 
-  const project = detailQuery.data;
   if (!project) {
     return <Navigate to="/projects" replace />;
   }
@@ -69,7 +96,22 @@ export function ProjectDetailPage() {
         Back to projects
       </Link>
 
-      <ProjectHeader project={project} />
+      <ProjectHeader
+        project={project}
+        actions={
+          canOpenSettings ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setIsManageOpen(true)}
+            >
+              <Settings2 className="size-4" />
+              Project settings
+            </Button>
+          ) : undefined
+        }
+      />
 
       <ProjectTabs
         items={[...tabItems]}
@@ -259,6 +301,32 @@ export function ProjectDetailPage() {
           )}
         </section>
       ) : null}
+
+      <ManageProjectModal
+        open={isManageOpen}
+        project={project}
+        currentUserId={currentUser?.id ? String(currentUser.id) : null}
+        canManageProject={canManageProject}
+        canDeleteProject={Boolean(canDeleteProject)}
+        canTransferOwnership={Boolean(canTransferOwnership)}
+        isSaving={updateProject.isPending}
+        isDeleting={deleteProject.isPending}
+        isLeaving={leaveProject.isPending}
+        isTransferring={transferOwnership.isPending}
+        onClose={() => setIsManageOpen(false)}
+        onSave={(input) => updateProject.mutateAsync(input)}
+        onDelete={async (targetProjectId) => {
+          await deleteProject.mutateAsync(targetProjectId);
+          navigate("/projects", { replace: true });
+        }}
+        onLeaveProject={async (targetProjectId) => {
+          await leaveProject.mutateAsync(targetProjectId);
+          navigate("/projects", { replace: true });
+        }}
+        onTransferOwnership={(input) =>
+          transferOwnership.mutateAsync(input)
+        }
+      />
     </section>
   );
 }

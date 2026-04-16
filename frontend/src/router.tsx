@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
+import { RouteErrorBoundary } from "@/app/components/RouteErrorBoundary";
 import { ProtectedLayout } from "@/app/layouts/ProtectedLayout";
 import { PublicLayout } from "@/app/layouts/PublicLayout";
 
@@ -22,6 +23,7 @@ function loadRoute<TModule extends LazyPageModule>(
 export const router = createBrowserRouter([
   {
     element: <PublicLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         path: "/login",
@@ -46,6 +48,7 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <ProtectedLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         index: true,
@@ -102,5 +105,9 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: "*", element: <Navigate to="/" replace /> },
+  {
+    path: "*",
+    element: <Navigate to="/" replace />,
+    errorElement: <RouteErrorBoundary />,
+  },
 ]);

@@ -72,6 +72,22 @@ export class NotificationController {
     return this.notificationService.markAsRead(notificationId, currentUser.id);
   }
 
+  @Patch('read-all')
+  @ApiOperation({ summary: 'Đánh dấu toàn bộ thông báo là đã đọc' })
+  @ApiOkResponse({
+    description: 'Tổng số thông báo đã được cập nhật',
+    schema: {
+      example: {
+        updatedCount: 7,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Thiếu token hợp lệ' })
+  @ApiForbiddenResponse({ description: 'Không đủ quyền truy cập thông báo' })
+  markAllAsRead(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.notificationService.markAllAsRead(currentUser.id);
+  }
+
   @Get('unread-count')
   @ApiOperation({ summary: 'Lấy tổng số thông báo chưa đọc' })
   @ApiOkResponse({

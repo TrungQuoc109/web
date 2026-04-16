@@ -93,6 +93,48 @@ export class NotificationService {
     });
   }
 
+  async markAllAsRead(userId: number): Promise<{ updatedCount: number }> {
+    const accessibleNotificationIds = await this.prisma.notification.findMany({
+      where: {
+        recipientId: userId,
+        isRead: false,
+        activity: {
+          project: {
+            members: {
+              some: {
+                userId,
+                leftAt: null,
+              },
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (accessibleNotificationIds.length === 0) {
+      return { updatedCount: 0 };
+    }
+
+    const result = await this.prisma.notification.updateMany({
+      where: {
+        id: {
+          in: accessibleNotificationIds.map((notification) => notification.id),
+        },
+      },
+      data: {
+        isRead: true,
+        readAt: new Date(),
+      },
+    });
+
+    return {
+      updatedCount: result.count,
+    };
+  }
+
   async getUnreadCount(userId: number): Promise<{ unreadCount: number }> {
     const unreadCount = await this.prisma.notification.count({
       where: {

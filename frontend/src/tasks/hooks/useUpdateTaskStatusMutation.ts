@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useAuthStore } from "@/auth/store/authStore";
+import { updateRealtimeTaskStatus } from "@/realtime/lib/realtime-actions";
 import { tasksApi } from "@/tasks/api/tasksApi";
 import type { TaskItem, TaskStatus } from "@/tasks/types/task";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
@@ -13,9 +15,20 @@ type UpdateTaskStatusInput = {
 
 export function useUpdateTaskStatusMutation() {
   const queryClient = useQueryClient();
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   return useMutation({
-    mutationFn: (payload: UpdateTaskStatusInput) => tasksApi.updateStatus(payload),
+    mutationFn: async (payload: UpdateTaskStatusInput) => {
+      if (!accessToken) {
+        return tasksApi.updateStatus(payload);
+      }
+
+      try {
+        return await updateRealtimeTaskStatus(accessToken, payload);
+      } catch {
+        return tasksApi.updateStatus(payload);
+      }
+    },
     onMutate: async ({ taskId, status }) => {
       await queryClient.cancelQueries({ queryKey: tasksKeys.board() });
 

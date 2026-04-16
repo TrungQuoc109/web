@@ -28,6 +28,21 @@ export interface ProjectListItemView extends ProjectView {
   blockedTaskCount: number;
 }
 
+export type ProjectStatusView = 'ACTIVE' | 'PLANNING' | 'AT_RISK' | 'COMPLETED';
+
+export interface ProjectCatalogItemView extends ProjectListItemView {
+  status: ProjectStatusView;
+  progress: number;
+}
+
+export interface ProjectCatalogView {
+  items: ProjectCatalogItemView[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface ProjectTaskListItemView {
   id: number;
   title: string;

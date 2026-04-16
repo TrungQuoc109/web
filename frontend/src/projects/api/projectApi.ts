@@ -2,6 +2,7 @@ import { httpClient } from "@/shared/api/http-client";
 import type {
   Project,
   ProjectActivity,
+  ProjectsCatalog,
   ProjectDetail,
   ProjectMember,
   ProjectMessage,
@@ -84,12 +85,38 @@ export type CreateProjectPayload = {
   description?: string;
 };
 
+export type UpdateProjectPayload = {
+  projectId: string;
+  name: string;
+  description?: string;
+};
+
+export type TransferProjectOwnershipPayload = {
+  projectId: string;
+  targetMemberId: string;
+};
+
+export type ListProjectsCatalogFilters = {
+  search?: string;
+  status?: Exclude<ProjectStatus, never>;
+  page?: number;
+  pageSize?: number;
+};
+
 type BackendCreateProjectResponse = {
   id: number;
   name: string;
   description: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type BackendProjectsCatalogResponse = {
+  items: BackendProjectSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 function deriveProjectStatus(input: {
@@ -123,6 +150,7 @@ function mapProjectSummary(project: BackendProjectSummary): Project {
 function mapProjectMember(member: BackendProjectMember): ProjectMember {
   return {
     id: String(member.id),
+    userId: String(member.user.id),
     name: member.user.name,
     email: member.user.email,
     role: member.role,
@@ -191,6 +219,30 @@ export const projectApi = {
     return response.data.map(mapProjectSummary);
   },
 
+  async listCatalog(
+    filters: ListProjectsCatalogFilters
+  ): Promise<ProjectsCatalog> {
+    const response = await httpClient.get<BackendProjectsCatalogResponse>(
+      "/projects/catalog",
+      {
+        params: {
+          search: filters.search,
+          status: filters.status,
+          page: filters.page,
+          pageSize: filters.pageSize,
+        },
+      }
+    );
+
+    return {
+      items: response.data.items.map(mapProjectSummary),
+      total: response.data.total,
+      page: response.data.page,
+      pageSize: response.data.pageSize,
+      totalPages: response.data.totalPages,
+    };
+  },
+
   async getDetail(projectId: string): Promise<ProjectDetail | null> {
     const response = await httpClient.get<BackendProjectDetail>(
       `/projects/${projectId}`
@@ -210,6 +262,40 @@ export const projectApi = {
       totalTasks: 0,
       completedTaskCount: 0,
       blockedTaskCount: 0,
+    });
+  },
+
+  async update(payload: UpdateProjectPayload): Promise<Project> {
+    const response = await httpClient.patch<BackendCreateProjectResponse>(
+      `/projects/${payload.projectId}`,
+      {
+        name: payload.name,
+        description: payload.description,
+      }
+    );
+
+    return mapProjectSummary({
+      ...response.data,
+      memberCount: 0,
+      totalTasks: 0,
+      completedTaskCount: 0,
+      blockedTaskCount: 0,
+    });
+  },
+
+  async remove(projectId: string): Promise<void> {
+    await httpClient.delete(`/projects/${projectId}`);
+  },
+
+  async leave(projectId: string): Promise<void> {
+    await httpClient.post(`/projects/${projectId}/leave`);
+  },
+
+  async transferOwnership(
+    payload: TransferProjectOwnershipPayload
+  ): Promise<void> {
+    await httpClient.post(`/projects/${payload.projectId}/ownership-transfer`, {
+      targetMemberId: Number(payload.targetMemberId),
     });
   },
 };

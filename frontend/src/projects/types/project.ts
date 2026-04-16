@@ -6,6 +6,14 @@ import type {
 
 export type ProjectStatusFilter = "ALL" | ProjectStatus;
 
+export type ProjectsCatalog = {
+  items: Project[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 export type Project = {
   id: string;
   name: string;
@@ -18,6 +26,7 @@ export type Project = {
 
 export type ProjectMember = {
   id: string;
+  userId?: string;
   name: string | null;
   role: MemberRole | string;
   email: string;

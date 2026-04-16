@@ -1,5 +1,5 @@
 import type { ChatMessage } from "@/messages/types/message";
-import type { TaskItem, TaskStatus, TaskUser } from "@/tasks/types/task";
+import type { TaskComment, TaskItem, TaskStatus, TaskUser } from "@/tasks/types/task";
 import type { TaskPriority } from "@/shared/types/workspace";
 
 type BackendRealtimeUser = {
@@ -71,6 +71,23 @@ export function mapRealtimeMessage(payload: RealtimeMessagePayload): ChatMessage
   };
 }
 
+export function mapRealtimeTaskComment(
+  payload: RealtimeMessagePayload
+): TaskComment {
+  return {
+    id: String(payload.id),
+    author: payload.sender
+      ? {
+          id: String(payload.sender.id),
+          name: payload.sender.name,
+          email: payload.sender.email,
+        }
+      : null,
+    content: payload.content,
+    createdAt: payload.createdAt,
+  };
+}
+
 export function mapRealtimeTask(payload: RealtimeTaskPayload): TaskItem {
   return {
     id: String(payload.id),
@@ -79,7 +96,10 @@ export function mapRealtimeTask(payload: RealtimeTaskPayload): TaskItem {
     description: payload.description,
     priority: payload.priority,
     status: payload.status,
-    assignees: payload.assignments.map((assignment) => mapTaskUser(assignment.user)),
+    assignees: payload.assignments.map((assignment) => ({
+      ...mapTaskUser(assignment.user),
+      assignmentRole: assignment.role,
+    })),
     comments: [],
   };
 }

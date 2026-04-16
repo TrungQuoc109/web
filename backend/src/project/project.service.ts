@@ -3,16 +3,24 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TaskStatus } from '@prisma/client';
+import { ProjectRole, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { ListProjectCatalogQueryDto } from './dto/list-project-catalog-query.dto';
+import { ListProjectMembersQueryDto } from './dto/list-project-members-query.dto';
+import { TransferProjectOwnershipDto } from './dto/transfer-project-ownership.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
+import { UpdateProjectMemberRoleDto } from './dto/update-project-member-role.dto';
 import { projectMemberSelect } from './project.constants';
 import {
   ProjectActivityView,
+  ProjectCatalogItemView,
+  ProjectCatalogView,
   ProjectDetailView,
   ProjectListItemView,
   ProjectMemberView,
+  ProjectStatusView,
   ProjectView,
 } from './project.types';
 import { ProjectPermissionService } from './project-permission.service';
@@ -93,27 +101,80 @@ export class ProjectService {
       },
     });
 
-    return projects.map((project) => {
-      const totalTasks = project.tasks.length;
-      const completedTaskCount = project.tasks.filter(
-        (task) => task.status === TaskStatus.DONE,
-      ).length;
-      const blockedTaskCount = project.tasks.filter(
-        (task) => task.status === TaskStatus.BLOCKED,
-      ).length;
+    return projects.map((project) => this.mapProjectListItem(project));
+  }
 
-      return {
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-        memberCount: project.members.length,
-        totalTasks,
-        completedTaskCount,
-        blockedTaskCount,
-      };
+  async listProjectCatalog(
+    currentUser: AuthenticatedUser,
+    query: ListProjectCatalogQueryDto,
+  ): Promise<ProjectCatalogView> {
+    const projects = await this.prisma.project.findMany({
+      where: {
+        members: {
+          some: {
+            userId: currentUser.id,
+            leftAt: null,
+          },
+        },
+        ...(query.search?.trim()
+          ? {
+              OR: [
+                {
+                  name: {
+                    contains: query.search.trim(),
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  description: {
+                    contains: query.search.trim(),
+                    mode: 'insensitive',
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+        members: {
+          where: {
+            leftAt: null,
+          },
+          select: {
+            id: true,
+          },
+        },
+        tasks: {
+          select: {
+            status: true,
+          },
+        },
+      },
     });
+
+    const catalogItems = projects
+      .map((project) => this.mapProjectCatalogItem(project))
+      .filter((project) => (query.status ? project.status === query.status : true));
+    const total = catalogItems.length;
+    const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+    const page = Math.min(query.page, totalPages);
+    const start = (page - 1) * query.pageSize;
+
+    return {
+      items: catalogItems.slice(start, start + query.pageSize),
+      total,
+      page,
+      pageSize: query.pageSize,
+      totalPages,
+    };
   }
 
   async getProjectDetail(
@@ -228,6 +289,127 @@ export class ProjectService {
     };
   }
 
+  async updateProject(
+    projectId: number,
+    currentUser: AuthenticatedUser,
+    dto: UpdateProjectDto,
+  ): Promise<ProjectView> {
+    await this.permission.ensureCanManageMembers(projectId, currentUser.id);
+
+    return this.prisma.project.update({
+      where: { id: projectId },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description.trim() || null }
+          : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async deleteProject(
+    projectId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<ProjectView> {
+    await this.permission.ensureProjectOwner(projectId, currentUser.id);
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found.');
+    }
+
+    await this.prisma.project.delete({
+      where: { id: projectId },
+    });
+
+    return project;
+  }
+
+  async leaveProject(
+    projectId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<ProjectMemberView> {
+    const membership = await this.permission.ensureActiveMember(
+      projectId,
+      currentUser.id,
+    );
+
+    if (membership.role === ProjectRole.OWNER) {
+      throw new ConflictException(
+        'Project owners must transfer ownership before leaving the project.',
+      );
+    }
+
+    return this.prisma.projectMember.update({
+      where: { id: membership.id },
+      data: {
+        leftAt: new Date(),
+      },
+      select: projectMemberSelect,
+    });
+  }
+
+  async transferOwnership(
+    projectId: number,
+    currentUser: AuthenticatedUser,
+    dto: TransferProjectOwnershipDto,
+  ): Promise<ProjectMemberView> {
+    const ownerMembership = await this.permission.ensureProjectOwner(
+      projectId,
+      currentUser.id,
+    );
+    const targetMembership = await this.permission.ensureProjectHasMember(
+      projectId,
+      dto.targetMemberId,
+    );
+
+    if (targetMembership.leftAt) {
+      throw new ConflictException('Cannot transfer ownership to an inactive member.');
+    }
+
+    if (targetMembership.id === ownerMembership.id) {
+      throw new ConflictException('Select a different member to transfer ownership.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.projectMember.update({
+        where: { id: ownerMembership.id },
+        data: {
+          role: ProjectRole.ADMIN,
+        },
+      });
+
+      await tx.projectMember.update({
+        where: { id: targetMembership.id },
+        data: {
+          role: ProjectRole.OWNER,
+        },
+      });
+    });
+
+    return this.prisma.projectMember.findUniqueOrThrow({
+      where: { id: targetMembership.id },
+      select: projectMemberSelect,
+    });
+  }
+
   async addMember(
     projectId: number,
     currentUser: AuthenticatedUser,
@@ -285,13 +467,77 @@ export class ProjectService {
   async listMembers(
     projectId: number,
     currentUser: AuthenticatedUser,
+    query?: ListProjectMembersQueryDto,
   ): Promise<ProjectMemberView[]> {
     await this.permission.ensureActiveMember(projectId, currentUser.id);
+
+    const normalizedSearch = query?.search?.trim();
 
     return this.prisma.projectMember.findMany({
       where: {
         projectId,
         leftAt: null,
+        ...(query?.role ? { role: query.role } : {}),
+        ...(normalizedSearch
+          ? {
+              OR: [
+                {
+                  user: {
+                    email: {
+                      contains: normalizedSearch,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+                {
+                  user: {
+                    name: {
+                      contains: normalizedSearch,
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: {
+        joinedAt: 'asc',
+      },
+      select: projectMemberSelect,
+    });
+  }
+
+  async updateMemberRole(
+    projectId: number,
+    memberId: number,
+    currentUser: AuthenticatedUser,
+    dto: UpdateProjectMemberRoleDto,
+  ): Promise<ProjectMemberView> {
+    await this.permission.ensureCanManageMembers(projectId, currentUser.id);
+    const membership =
+      await this.permission.ensureProjectHasMember(projectId, memberId);
+
+    if (membership.leftAt) {
+      throw new ConflictException('Member is no longer active in this project.');
+    }
+
+    if (membership.userId === currentUser.id) {
+      throw new ConflictException(
+        'Use a dedicated self-service flow to change your own project role.',
+      );
+    }
+
+    if (membership.role === ProjectRole.OWNER || dto.role === ProjectRole.OWNER) {
+      throw new ConflictException(
+        'Ownership changes are not supported from the generic role update flow.',
+      );
+    }
+
+    return this.prisma.projectMember.update({
+      where: { id: membership.id },
+      data: {
+        role: dto.role,
       },
       select: projectMemberSelect,
     });
@@ -308,6 +554,18 @@ export class ProjectService {
 
     if (membership.leftAt) {
       throw new ConflictException('Member already removed.');
+    }
+
+    if (membership.userId === currentUser.id) {
+      throw new ConflictException(
+        'Use a dedicated leave-project flow instead of removing your own membership.',
+      );
+    }
+
+    if (membership.role === ProjectRole.OWNER) {
+      throw new ConflictException(
+        'Project owners cannot be removed until ownership transfer is supported.',
+      );
     }
 
     return this.prisma.projectMember.update({
@@ -331,6 +589,85 @@ export class ProjectService {
       DONE: taskStatuses.filter((status) => status === TaskStatus.DONE).length,
       BLOCKED: taskStatuses.filter((status) => status === TaskStatus.BLOCKED)
         .length,
+    };
+  }
+
+  private deriveProjectStatus(input: {
+    totalTasks: number;
+    completedTaskCount: number;
+    blockedTaskCount: number;
+  }): ProjectStatusView {
+    if (input.totalTasks === 0) {
+      return 'PLANNING';
+    }
+
+    if (input.completedTaskCount === input.totalTasks) {
+      return 'COMPLETED';
+    }
+
+    if (input.blockedTaskCount > 0) {
+      return 'AT_RISK';
+    }
+
+    return 'ACTIVE';
+  }
+
+  private deriveProjectProgress(totalTasks: number, completedTaskCount: number) {
+    if (totalTasks === 0) {
+      return 0;
+    }
+
+    return Math.round((completedTaskCount / totalTasks) * 100);
+  }
+
+  private mapProjectListItem(project: {
+    id: number;
+    name: string;
+    description: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    members: { id: number }[];
+    tasks: { status: TaskStatus }[];
+  }): ProjectListItemView {
+    const totalTasks = project.tasks.length;
+    const completedTaskCount = project.tasks.filter(
+      (task) => task.status === TaskStatus.DONE,
+    ).length;
+    const blockedTaskCount = project.tasks.filter(
+      (task) => task.status === TaskStatus.BLOCKED,
+    ).length;
+
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      memberCount: project.members.length,
+      totalTasks,
+      completedTaskCount,
+      blockedTaskCount,
+    };
+  }
+
+  private mapProjectCatalogItem(project: {
+    id: number;
+    name: string;
+    description: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    members: { id: number }[];
+    tasks: { status: TaskStatus }[];
+  }): ProjectCatalogItemView {
+    const summary = this.mapProjectListItem(project);
+
+    return {
+      ...summary,
+      status: this.deriveProjectStatus(summary),
+      progress: this.deriveProjectProgress(
+        summary.totalTasks,
+        summary.completedTaskCount,
+      ),
     };
   }
 

@@ -1,10 +1,12 @@
 import { httpClient } from "@/shared/api/http-client";
 import type {
+  ChangePasswordPayload,
   AuthenticatedUser,
   LoginPayload,
   LoginResponse,
   RegisterPayload,
   RegisterResponse,
+  UpdateProfilePayload,
 } from "@/auth/types/auth";
 import type { Role } from "@/shared/types/workspace";
 
@@ -106,6 +108,30 @@ export async function getMe(accessToken?: string): Promise<AuthenticatedUser> {
   }
 
   return user;
+}
+
+export async function updateProfile(
+  input: UpdateProfilePayload
+): Promise<AuthenticatedUser> {
+  const res = await httpClient.patch<unknown>("/auth/me", input);
+  const user = normalizeUser(res.data);
+  if (!user) {
+    throw new Error("Invalid /auth/me PATCH response");
+  }
+
+  return user;
+}
+
+export async function changePassword(
+  input: ChangePasswordPayload
+): Promise<{ message: string }> {
+  const res = await httpClient.patch<{ message?: unknown }>("/auth/password", input);
+  const message =
+    typeof res.data?.message === "string"
+      ? res.data.message
+      : "Password updated successfully.";
+
+  return { message };
 }
 
 export const me = getMe;

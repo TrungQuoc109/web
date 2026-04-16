@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import {
   FolderKanban,
   LayoutGrid,
@@ -9,6 +9,7 @@ import {
 
 import { CreateProjectModal } from "@/projects/components/CreateProjectModal";
 import { ProjectList } from "@/projects/components/ProjectList";
+import { useProjectsCatalog } from "@/projects/hooks/useProjectsCatalog";
 import { useCreateProjectMutation } from "@/projects/hooks/useCreateProjectMutation";
 import { useProjects } from "@/projects/hooks/useProjects";
 import type { ProjectStatusFilter } from "@/projects/types/project";
@@ -19,23 +20,23 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
 
 export function ProjectsPage() {
-  const projectsQuery = useProjects();
+  const projectsSummaryQuery = useProjects();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>("ALL");
+  const [page, setPage] = useState(1);
   const [view, setView] = useState<"cards" | "table">("cards");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const createProject = useCreateProjectMutation();
-  const projects = projectsQuery.data ?? [];
-
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch =
-      project.name.toLowerCase().includes(search.toLowerCase()) ||
-      (project.description ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchesStatus =
-      statusFilter === "ALL" ? true : project.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
+  const deferredSearch = useDeferredValue(search);
+  const projectsQuery = useProjectsCatalog({
+    search: deferredSearch.trim() || undefined,
+    status: statusFilter === "ALL" ? undefined : statusFilter,
+    page,
+    pageSize: view === "cards" ? 9 : 10,
   });
+  const createProject = useCreateProjectMutation();
+  const projects = projectsSummaryQuery.data ?? [];
+  const catalog = projectsQuery.data;
+  const filteredProjects = catalog?.items ?? [];
 
   const statusCounts = {
     all: projects.length,
@@ -43,7 +44,11 @@ export function ProjectsPage() {
     atRisk: projects.filter((project) => project.status === "AT_RISK").length,
   };
 
-  if (projectsQuery.isPending) {
+  useEffect(() => {
+    setPage(1);
+  }, [deferredSearch, statusFilter, view]);
+
+  if (projectsSummaryQuery.isPending || projectsQuery.isPending) {
     return (
       <LoadingState
         title="Projects"
@@ -53,12 +58,15 @@ export function ProjectsPage() {
     );
   }
 
-  if (projectsQuery.isError) {
+  if (projectsSummaryQuery.isError || projectsQuery.isError) {
     return (
       <ErrorState
         title="Projects unavailable"
         description="The project list could not be loaded from the backend. Retry to restore the workspace."
-        onRetry={() => void projectsQuery.refetch()}
+        onRetry={() => {
+          void projectsSummaryQuery.refetch();
+          void projectsQuery.refetch();
+        }}
       />
     );
   }
@@ -170,7 +178,7 @@ export function ProjectsPage() {
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="px-3 py-1">
-              {filteredProjects.length} visible
+              {catalog?.total ?? filteredProjects.length} visible
             </Badge>
             <Badge variant="outline" className="px-3 py-1">
               Filter: {statusFilter === "ALL" ? "All statuses" : statusFilter}
@@ -180,6 +188,9 @@ export function ProjectsPage() {
                 Search: {search}
               </Badge>
             ) : null}
+            <Badge variant="outline" className="px-3 py-1">
+              Page {catalog?.page ?? page} of {catalog?.totalPages ?? 1}
+            </Badge>
           </div>
         </section>
 
@@ -196,7 +207,52 @@ export function ProjectsPage() {
             }
           />
         ) : (
-          <ProjectList projects={filteredProjects} view={view} />
+          <>
+            <ProjectList projects={filteredProjects} view={view} />
+
+            {filteredProjects.length > 0 ? (
+              <section className="flex flex-col gap-3 rounded-3xl border border-border bg-background/95 px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Showing{" "}
+                  {Math.min(
+                    ((catalog?.page ?? page) - 1) * (catalog?.pageSize ?? filteredProjects.length) + 1,
+                    catalog?.total ?? filteredProjects.length
+                  )}
+                  -
+                  {Math.min(
+                    (catalog?.page ?? page) * (catalog?.pageSize ?? filteredProjects.length),
+                    catalog?.total ?? filteredProjects.length
+                  )}{" "}
+                  of {catalog?.total ?? filteredProjects.length} projects
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={(catalog?.page ?? page) <= 1}
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={(catalog?.page ?? page) >= (catalog?.totalPages ?? 1)}
+                    onClick={() =>
+                      setPage((current) =>
+                        Math.min(catalog?.totalPages ?? current, current + 1)
+                      )
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </section>
+            ) : null}
+          </>
         )}
       </section>
 
