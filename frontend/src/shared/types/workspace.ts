@@ -9,6 +9,10 @@ export type TaskStatus =
 
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
+export type TaskAssignmentRole = "LEAD" | "CONTRIBUTOR";
+
+export type ReportStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 export type ProjectStatus = "ACTIVE" | "PLANNING" | "AT_RISK" | "COMPLETED";
 
 export type MemberRole = "OWNER" | "ADMIN" | "MANAGER" | "MEMBER" | "VIEWER";
@@ -18,3 +22,5 @@ export type NotificationType =
   | "ASSIGNED"
   | "STATUS_CHANGED"
   | "ANNOUNCEMENT";
+
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "REJECTED";

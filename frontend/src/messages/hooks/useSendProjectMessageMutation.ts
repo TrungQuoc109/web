@@ -8,6 +8,7 @@ import { showErrorToast } from "@/shared/lib/toast-store";
 type SendProjectMessageInput = {
   projectId: string;
   content: string;
+  isAnnouncement?: boolean;
 };
 
 export function useSendProjectMessageMutation() {

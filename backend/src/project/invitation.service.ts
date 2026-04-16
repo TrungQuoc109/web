@@ -13,7 +13,7 @@ import { NotificationService } from '../notification/notification.service';
 import { ProjectPermissionService } from './project-permission.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { projectMemberSelect } from './project.constants';
-import { ProjectMemberView } from './project.types';
+import { InvitationView, ProjectMemberView } from './project.types';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -67,6 +67,30 @@ export class InvitationService {
         projectId,
         senderId: currentUser.id,
         expiresAt: this.computeExpiry(),
+      },
+    });
+  }
+
+  async listInvitations(
+    projectId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<InvitationView[]> {
+    await this.permission.ensureCanManageMembers(projectId, currentUser.id);
+
+    return this.prisma.invitation.findMany({
+      where: {
+        projectId,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        email: true,
+        token: true,
+        status: true,
+        projectId: true,
+        senderId: true,
+        expiresAt: true,
+        createdAt: true,
       },
     });
   }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseIntPipe,
   Post,
@@ -25,6 +26,7 @@ import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { InvitationResponseDto } from './dto/invitation-response.dto';
 import { ProjectMemberResponseDto } from './dto/project-member-response.dto';
 import { InvitationService } from './invitation.service';
+import { InvitationView } from './project.types';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('bearer')
@@ -32,6 +34,29 @@ import { InvitationService } from './invitation.service';
 @Controller()
 export class InvitationController {
   constructor(private readonly invitationService: InvitationService) {}
+
+  @Get('projects/:projectId/invitations')
+  @ApiOperation({ summary: 'Lấy danh sách lời mời của dự án' })
+  @ApiParam({
+    name: 'projectId',
+    description: 'ID của dự án',
+    example: 7,
+  })
+  @ApiOkResponse({
+    description: 'Danh sách lời mời của dự án',
+    type: InvitationResponseDto,
+    isArray: true,
+  })
+  @ApiBadRequestResponse({ description: 'Tham số không hợp lệ' })
+  @ApiUnauthorizedResponse({ description: 'Đăng nhập là bắt buộc' })
+  @ApiForbiddenResponse({ description: 'Không có quyền xem lời mời của dự án' })
+  @ApiNotFoundResponse({ description: 'Dự án không tồn tại' })
+  listInvitations(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<InvitationView[]> {
+    return this.invitationService.listInvitations(projectId, currentUser);
+  }
 
   @Post('projects/:projectId/invitations')
   @ApiOperation({ summary: 'Tạo lời mời tham gia dự án' })

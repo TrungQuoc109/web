@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseIntPipe,
   Patch,
@@ -34,6 +35,29 @@ import { TaskReportService } from './task-report.service';
 @Controller()
 export class TaskReportController {
   constructor(private readonly taskReportService: TaskReportService) {}
+
+  @Get('tasks/:taskId/reports')
+  @ApiOperation({ summary: 'Liệt kê báo cáo theo công việc' })
+  @ApiParam({
+    name: 'taskId',
+    description: 'ID công việc cần lấy danh sách báo cáo',
+    example: 103,
+  })
+  @ApiOkResponse({
+    description: 'Danh sách báo cáo của công việc',
+    type: TaskReportResponseDto,
+    isArray: true,
+  })
+  @ApiBadRequestResponse({ description: 'Tham số không hợp lệ' })
+  @ApiUnauthorizedResponse({ description: 'Yêu cầu cần xác thực' })
+  @ApiForbiddenResponse({ description: 'Không có quyền xem báo cáo công việc' })
+  @ApiNotFoundResponse({ description: 'Công việc không tồn tại' })
+  listReports(
+    @Param('taskId', ParseIntPipe) taskId: number,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<TaskReportView[]> {
+    return this.taskReportService.listReports(taskId, currentUser);
+  }
 
   @Post('tasks/:taskId/reports')
   @ApiOperation({ summary: 'Gửi báo cáo công việc' })

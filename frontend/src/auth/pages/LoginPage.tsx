@@ -109,7 +109,11 @@ export function LoginPage() {
 
         <p className="mt-4 text-sm text-muted-foreground">
           No account?{" "}
-          <Link className="text-foreground underline" to="/register">
+          <Link
+            className="text-foreground underline"
+            to="/register"
+            state={{ from: state.from }}
+          >
             Create one
           </Link>
         </p>

@@ -4,20 +4,22 @@ import { tasksApi } from "@/tasks/api/tasksApi";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
 import { projectsKeys, tasksKeys } from "@/shared/lib/query-keys";
 import { showErrorToast } from "@/shared/lib/toast-store";
+import type { TaskAssignmentRole } from "@/tasks/types/task";
 
 type AssignTaskUsersInput = {
   taskId: string;
   userId: string;
+  role: TaskAssignmentRole;
 };
 
 export function useAssignTaskUsersMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId, userId }: AssignTaskUsersInput) =>
+    mutationFn: ({ taskId, userId, role }: AssignTaskUsersInput) =>
       tasksApi.assignUsers({
         taskId,
-        userIds: [userId],
+        assignees: [{ userId, role }],
       }),
     onError: (error) => {
       showErrorToast(getApiErrorMessage(error), "Assign task user failed");

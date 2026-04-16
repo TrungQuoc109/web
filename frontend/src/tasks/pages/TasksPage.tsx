@@ -9,9 +9,14 @@ import { useAssignTaskUsersMutation } from "@/tasks/hooks/useAssignTaskUsersMuta
 import { useCreateTaskMutation } from "@/tasks/hooks/useCreateTaskMutation";
 import { useTaskComments } from "@/tasks/hooks/useTaskComments";
 import { useTaskBoard } from "@/tasks/hooks/useTaskBoard";
+import { useTaskReports } from "@/tasks/hooks/useTaskReports";
+import { useSubmitTaskReportMutation } from "@/tasks/hooks/useSubmitTaskReportMutation";
+import { useReviewTaskReportMutation } from "@/tasks/hooks/useReviewTaskReportMutation";
+import { useSendTaskMessageMutation } from "@/tasks/hooks/useSendTaskMessageMutation";
 import { useUpdateTaskStatusMutation } from "@/tasks/hooks/useUpdateTaskStatusMutation";
 import type { TaskItem, TaskPriorityFilter, TaskStatus } from "@/tasks/types/task";
 import { useProjects } from "@/projects/hooks/useProjects";
+import { useAuthStore } from "@/auth/store/authStore";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
@@ -24,6 +29,7 @@ const statusOrder: TaskStatus[] = boardColumns.map((column) => column.key);
 export function TasksPage() {
   const taskBoardQuery = useTaskBoard();
   const projectsQuery = useProjects();
+  const currentUser = useAuthStore((state) => state.currentUser);
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<TaskPriorityFilter>("ALL");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -31,6 +37,9 @@ export function TasksPage() {
   const updateTaskStatus = useUpdateTaskStatusMutation();
   const assignTaskUsers = useAssignTaskUsersMutation();
   const createTask = useCreateTaskMutation();
+  const submitTaskReport = useSubmitTaskReportMutation();
+  const reviewTaskReport = useReviewTaskReportMutation();
+  const sendTaskMessage = useSendTaskMessageMutation();
   const tasks = taskBoardQuery.data ?? [];
   const projects = projectsQuery.data ?? [];
   const selectedTaskBase =
@@ -38,6 +47,7 @@ export function TasksPage() {
       ? null
       : tasks.find((task) => task.id === selectedTaskId) ?? null;
   const taskCommentsQuery = useTaskComments(selectedTaskBase?.id);
+  const taskReportsQuery = useTaskReports(selectedTaskBase?.id);
   const assignableUsersQuery = useAssignableUsers(selectedTaskBase?.projectId);
   const selectedTask = useMemo<TaskItem | null>(() => {
     if (!selectedTaskBase) {
@@ -260,10 +270,16 @@ export function TasksPage() {
       <TaskDetailDrawer
         task={selectedTask}
         availableUsers={availableUsers}
+        reports={taskReportsQuery.data ?? []}
+        currentUserId={currentUser?.id ? String(currentUser.id) : null}
         isCommentsLoading={taskCommentsQuery.isPending}
         isUsersLoading={assignableUsersQuery.isPending}
+        isReportsLoading={taskReportsQuery.isPending}
         isStatusUpdating={updateTaskStatus.isPending}
         isAssigningUser={assignTaskUsers.isPending}
+        isSendingComment={sendTaskMessage.isPending}
+        isSubmittingReport={submitTaskReport.isPending}
+        isReviewingReport={reviewTaskReport.isPending}
         canEditPriority={false}
         open={selectedTask !== null}
         onClose={() => setSelectedTaskId(null)}
@@ -278,9 +294,31 @@ export function TasksPage() {
             variant: "info",
           });
         }}
-        onAssignUser={(taskId, userId) => {
-          assignTaskUsers.mutate({ taskId, userId });
+        onAssignUser={(taskId, userId, role) => {
+          assignTaskUsers.mutate({ taskId, userId, role });
         }}
+        onSendComment={(taskId, content) =>
+          sendTaskMessage.mutateAsync({
+            taskId,
+            content,
+          })
+        }
+        onSubmitReport={(taskId, input) =>
+          submitTaskReport.mutateAsync({
+            taskId,
+            content: input.content,
+            attachments: input.attachments,
+          })
+        }
+        onReviewReport={(reportId, taskId, input) =>
+          reviewTaskReport.mutateAsync({
+            reportId,
+            taskId,
+            status: input.status,
+            feedback: input.feedback,
+            rejectionReason: input.rejectionReason,
+          })
+        }
       />
 
       <CreateTaskModal

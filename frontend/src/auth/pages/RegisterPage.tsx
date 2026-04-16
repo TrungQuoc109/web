@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
 import { useRegisterMutation } from "@/auth/hooks/useRegisterMutation";
@@ -20,6 +20,8 @@ type FormValues = z.infer<typeof schema>;
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = (location.state || {}) as { from?: { pathname?: string } };
   const registerMutation = useRegisterMutation();
 
   const form = useForm<FormValues>({
@@ -39,6 +41,7 @@ export function RegisterPage() {
         state: {
           email: values.email,
           success: "Account created successfully. Please sign in to continue.",
+          from: state.from,
         },
       });
     } catch {
@@ -122,7 +125,11 @@ export function RegisterPage() {
 
         <p className="mt-4 text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link className="text-foreground underline" to="/login">
+          <Link
+            className="text-foreground underline"
+            to="/login"
+            state={{ from: state.from }}
+          >
             Sign in
           </Link>
         </p>

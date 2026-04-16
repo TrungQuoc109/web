@@ -1,4 +1,5 @@
 import { ProjectRole, Role, TaskPriority, TaskStatus } from '@prisma/client';
+import { InvitationStatus } from '@prisma/client';
 
 export interface ProjectMemberView {
   id: number;
@@ -67,4 +68,15 @@ export interface ProjectDetailView extends ProjectView {
   members: ProjectMemberView[];
   messages: ProjectMessageListItemView[];
   recentActivity: ProjectActivityView[];
+}
+
+export interface InvitationView {
+  id: number;
+  email: string;
+  token: string;
+  status: InvitationStatus;
+  projectId: number;
+  senderId: number;
+  expiresAt: Date;
+  createdAt: Date;
 }

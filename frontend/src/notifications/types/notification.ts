@@ -4,9 +4,18 @@ export type { NotificationType } from "@/shared/types/workspace";
 
 export type Notification = {
   id: string;
-  title: string;
-  message: string;
   type: NotificationType;
   createdAt: string;
-  read: boolean;
+  isRead: boolean;
+  readAt: string | null;
+  activity: {
+    id: string;
+    content: string;
+    projectId: string;
+    taskId: string | null;
+    isSystem: boolean;
+    isAnnouncement: boolean;
+    metadata: Record<string, unknown> | null;
+    createdAt: string;
+  };
 };

@@ -34,6 +34,13 @@ export const router = createBrowserRouter([
           "RegisterPage"
         ),
       },
+      {
+        path: "/invite/:token",
+        lazy: loadRoute(
+          () => import("@/invitations/pages/AcceptInvitationPage"),
+          "AcceptInvitationPage"
+        ),
+      },
     ],
   },
   {

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { MessageSquare, Send } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Megaphone, MessageSquare, Send } from "lucide-react";
 
 import { MessageBubble } from "@/messages/components/MessageBubble";
 import { useProjectChat } from "@/messages/hooks/useProjectChat";
 import { useSendProjectMessageMutation } from "@/messages/hooks/useSendProjectMessageMutation";
 import { useAuthStore } from "@/auth/store/authStore";
+import { useMembers } from "@/members/hooks/useMembers";
 import { useProjects } from "@/projects/hooks/useProjects";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -17,7 +18,9 @@ export function MessagesPage() {
   const currentUser = useAuthStore((state) => state.currentUser);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [input, setInput] = useState("");
+  const [isAnnouncement, setIsAnnouncement] = useState(false);
   const chatQuery = useProjectChat(selectedProjectId || undefined);
+  const membersQuery = useMembers(selectedProjectId || undefined);
   const sendProjectMessage = useSendProjectMessageMutation();
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,8 +30,22 @@ export function MessagesPage() {
     }
   }, [projectsQuery.data, selectedProjectId]);
 
+  useEffect(() => {
+    setIsAnnouncement(false);
+  }, [selectedProjectId]);
+
   const selectedProject =
     projectsQuery.data?.find((project) => project.id === selectedProjectId) ?? null;
+  const currentMember = useMemo(
+    () =>
+      (membersQuery.data ?? []).find(
+        (member) => member.userId === String(currentUser?.id)
+      ) ?? null,
+    [currentUser?.id, membersQuery.data]
+  );
+  const canSendMessages = currentMember?.role !== "VIEWER";
+  const canSendAnnouncements =
+    currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
   const messages = (chatQuery.data ?? []).map((message) => ({
     ...message,
     isCurrentUser:
@@ -42,13 +59,15 @@ export function MessagesPage() {
 
   async function sendMessage() {
     const trimmed = input.trim();
-    if (!trimmed || !selectedProjectId) return;
+    if (!trimmed || !selectedProjectId || !canSendMessages) return;
 
     await sendProjectMessage.mutateAsync({
       projectId: selectedProjectId,
       content: trimmed,
+      isAnnouncement,
     });
     setInput("");
+    setIsAnnouncement(false);
   }
 
   const summary = {
@@ -58,7 +77,10 @@ export function MessagesPage() {
     unread: messages.filter((message) => !message.isCurrentUser).length,
   };
 
-  if (projectsQuery.isPending || (selectedProjectId && chatQuery.isPending)) {
+  if (
+    projectsQuery.isPending ||
+    (selectedProjectId && (chatQuery.isPending || membersQuery.isPending))
+  ) {
     return (
       <LoadingState
         title="Messages"
@@ -88,12 +110,15 @@ export function MessagesPage() {
     );
   }
 
-  if (chatQuery.isError) {
+  if (chatQuery.isError || membersQuery.isError) {
     return (
       <ErrorState
         title="Messages unavailable"
-        description="The project chat could not be loaded from the backend. Retry to restore the page."
-        onRetry={() => void chatQuery.refetch()}
+        description="The project chat or member permissions could not be loaded from the backend. Retry to restore the page."
+        onRetry={() => {
+          void chatQuery.refetch();
+          void membersQuery.refetch();
+        }}
       />
     );
   }
@@ -155,9 +180,13 @@ export function MessagesPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-              <p className="text-sm font-medium">Message types</p>
+              <p className="text-sm font-medium">Posting permissions</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Normal updates, system events, and announcements all live in the same thread.
+                {canSendAnnouncements
+                  ? "You can send both normal updates and project announcements."
+                  : canSendMessages
+                    ? "You can send normal updates. Announcements are limited to owners and admins."
+                    : "Your current role is view-only in this project room."}
               </p>
             </div>
           </div>
@@ -203,19 +232,58 @@ export function MessagesPage() {
                   className="min-h-24 w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
-                  placeholder="Write a message to the project room..."
+                  placeholder={
+                    canSendMessages
+                      ? "Write a message to the project room..."
+                      : "Viewers cannot send messages in this project room."
+                  }
+                  disabled={!canSendMessages || sendProjectMessage.isPending}
                 />
               </label>
 
-              <Button
-                type="button"
-                className="gap-2"
-                onClick={() => void sendMessage()}
-                disabled={!input.trim() || sendProjectMessage.isPending}
-              >
-                <Send />
-                {sendProjectMessage.isPending ? "Sending..." : "Send"}
-              </Button>
+              <div className="flex flex-col gap-3 sm:w-56">
+                {canSendAnnouncements ? (
+                  <label className="flex items-center gap-3 rounded-2xl border border-border bg-secondary/30 px-3 py-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-input"
+                      checked={isAnnouncement}
+                      onChange={(event) => setIsAnnouncement(event.target.checked)}
+                      disabled={sendProjectMessage.isPending}
+                    />
+                    <span className="flex items-center gap-2">
+                      <Megaphone className="size-4" />
+                      Announcement
+                    </span>
+                  </label>
+                ) : canSendMessages ? (
+                  <div className="rounded-2xl border border-border bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
+                    Announcements are available to project owners and admins.
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-border bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
+                    Your current role is view-only in this project.
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  className="gap-2"
+                  onClick={() => void sendMessage()}
+                  disabled={
+                    !canSendMessages ||
+                    !input.trim() ||
+                    sendProjectMessage.isPending
+                  }
+                >
+                  <Send />
+                  {sendProjectMessage.isPending
+                    ? "Sending..."
+                    : isAnnouncement
+                      ? "Send announcement"
+                      : "Send"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

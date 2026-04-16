@@ -1,4 +1,13 @@
-import { Controller, Get, Param, ParseIntPipe, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  DefaultValuePipe,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -24,6 +33,22 @@ import { UnreadCountResponseDto } from './dto/unread-count-response.dto';
 @Controller('notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Lấy danh sách thông báo gần đây' })
+  @ApiOkResponse({
+    description: 'Danh sách thông báo gần đây của người dùng',
+    type: NotificationResponseDto,
+    isArray: true,
+  })
+  @ApiUnauthorizedResponse({ description: 'Không có quyền truy cập' })
+  @ApiForbiddenResponse({ description: 'Không đủ quyền truy cập thông tin' })
+  list(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
+  ): Promise<NotificationView[]> {
+    return this.notificationService.listForUser(currentUser.id, limit);
+  }
 
   @Patch(':notificationId/read')
   @ApiOperation({ summary: 'Đánh dấu thông báo là đã đọc' })

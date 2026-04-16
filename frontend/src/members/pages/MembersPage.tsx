@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { Plus, Users } from "lucide-react";
+import { Copy, Link2, Plus, Users } from "lucide-react";
 
+import { InviteMemberModal } from "@/invitations/components/InviteMemberModal";
+import { useCreateInvitationMutation } from "@/invitations/hooks/useCreateInvitationMutation";
+import { useProjectInvitations } from "@/invitations/hooks/useProjectInvitations";
 import { AddMemberModal } from "@/members/components/AddMemberModal";
 import { useAddMemberMutation } from "@/members/hooks/useAddMemberMutation";
 import { useMembers } from "@/members/hooks/useMembers";
@@ -16,6 +19,7 @@ import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
+import { useToastStore } from "@/shared/lib/toast-store";
 
 const roleOptions: MemberRole[] = [
   "OWNER",
@@ -28,8 +32,11 @@ export function MembersPage() {
   const projectsQuery = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const membersQuery = useMembers(selectedProjectId || undefined);
+  const invitationsQuery = useProjectInvitations(selectedProjectId || undefined);
   const addMember = useAddMemberMutation();
+  const createInvitation = useCreateInvitationMutation();
   const removeMember = useRemoveMemberMutation();
 
   useEffect(() => {
@@ -41,6 +48,7 @@ export function MembersPage() {
   const selectedProject =
     projectsQuery.data?.find((project) => project.id === selectedProjectId) ?? null;
   const members = membersQuery.data ?? [];
+  const invitations = invitationsQuery.data ?? [];
 
   const summary = {
     total: members.length,
@@ -48,7 +56,27 @@ export function MembersPage() {
       ["OWNER", "ADMIN", "MANAGER"].includes(member.role)
     ).length,
     viewers: members.filter((member) => member.role === "VIEWER").length,
+    pendingInvites: invitations.filter((invitation) => invitation.status === "PENDING").length,
   };
+
+  async function copyInviteLink(token: string) {
+    const invitationUrl = `${window.location.origin}/invite/${token}`;
+
+    try {
+      await navigator.clipboard.writeText(invitationUrl);
+      useToastStore.getState().push({
+        title: "Invite link copied",
+        description: invitationUrl,
+        variant: "success",
+      });
+    } catch {
+      useToastStore.getState().push({
+        title: "Copy failed",
+        description: "Your browser blocked clipboard access for the invitation link.",
+        variant: "error",
+      });
+    }
+  }
 
   if (projectsQuery.isPending || (selectedProjectId && membersQuery.isPending)) {
     return (
@@ -107,6 +135,10 @@ export function MembersPage() {
             <Plus />
             Add member
           </Button>
+          <Button type="button" variant="outline" className="gap-2" onClick={() => setIsInviteOpen(true)}>
+            <Link2 />
+            Invite by email
+          </Button>
           <select
             className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
             value={selectedProjectId}
@@ -145,6 +177,13 @@ export function MembersPage() {
           <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.viewers}</p>
           <p className="mt-3 text-sm text-muted-foreground">
             Read-focused collaborators with limited project permissions.
+          </p>
+        </article>
+        <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
+          <p className="text-sm text-muted-foreground">Pending invites</p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.pendingInvites}</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Outstanding links waiting for invited teammates to accept access.
           </p>
         </article>
       </section>
@@ -233,6 +272,86 @@ export function MembersPage() {
         </section>
       )}
 
+      <section className="overflow-hidden rounded-3xl border border-border bg-background/95 shadow-sm">
+        <div className="border-b border-border px-6 py-5">
+          <h3 className="text-lg font-semibold">Invitations</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track active invite links and share them with teammates who are not yet in the project.
+          </p>
+        </div>
+
+        {invitationsQuery.isPending ? (
+          <div className="px-6 py-8 text-sm text-muted-foreground">
+            Loading invitations...
+          </div>
+        ) : invitationsQuery.isError ? (
+          <div className="px-6 py-8">
+            <ErrorState
+              title="Invitations unavailable"
+              description="The project invitation list could not be loaded from the backend."
+              onRetry={() => void invitationsQuery.refetch()}
+            />
+          </div>
+        ) : invitations.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              icon={<Link2 />}
+              title="No invitations yet"
+              description="Create an invite link to let a teammate join this project after they sign in."
+              action={
+                <Button type="button" className="gap-2" onClick={() => setIsInviteOpen(true)}>
+                  <Link2 />
+                  Create invitation
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {invitations.map((invitation) => (
+              <article
+                key={invitation.id}
+                className="flex flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-foreground">{invitation.email}</p>
+                    <Badge
+                      variant={
+                        invitation.status === "PENDING" ? "secondary" : "outline"
+                      }
+                      className="px-3 py-1"
+                    >
+                      {invitation.status}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Created {formatCalendarDate(invitation.createdAt)}. Expires{" "}
+                    {formatCalendarDate(invitation.expiresAt)}.
+                  </p>
+                  <p className="mt-2 truncate text-xs text-muted-foreground">
+                    /invite/{invitation.token}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={invitation.status !== "PENDING"}
+                    onClick={() => void copyInviteLink(invitation.token)}
+                  >
+                    <Copy className="size-4" />
+                    Copy link
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <AddMemberModal
         open={isAddOpen}
         projectName={selectedProject?.name}
@@ -243,6 +362,19 @@ export function MembersPage() {
             projectId: selectedProjectId,
             email: input.email,
             role: input.role,
+          })
+        }
+      />
+
+      <InviteMemberModal
+        open={isInviteOpen}
+        projectName={selectedProject?.name}
+        isPending={createInvitation.isPending}
+        onClose={() => setIsInviteOpen(false)}
+        onInvite={(input) =>
+          createInvitation.mutateAsync({
+            projectId: selectedProjectId,
+            email: input.email,
           })
         }
       />

@@ -2,6 +2,8 @@ import { httpClient } from "@/shared/api/http-client";
 import type {
   TaskComment,
   TaskItem,
+  TaskReport,
+  TaskAssignmentRole,
   TaskStatus,
   TaskUser,
 } from "@/tasks/types/task";
@@ -70,7 +72,23 @@ type UpdateTaskStatusPayload = {
 
 type AssignTaskUsersPayload = {
   taskId: string;
-  userIds: string[];
+  assignees: Array<{
+    userId: string;
+    role: TaskAssignmentRole;
+  }>;
+};
+
+type SubmitTaskReportPayload = {
+  taskId: string;
+  content: string;
+  attachments?: string[];
+};
+
+type ReviewTaskReportPayload = {
+  reportId: string;
+  status: TaskReport["status"];
+  feedback?: string;
+  rejectionReason?: string;
 };
 
 export type CreateTaskPayload = {
@@ -85,6 +103,7 @@ function mapTaskUser(assignment: BackendTaskAssignment): TaskUser {
     id: String(assignment.user.id),
     name: assignment.user.name,
     email: assignment.user.email,
+    assignmentRole: assignment.role,
   };
 }
 
@@ -121,6 +140,43 @@ function mapProjectMember(member: BackendProjectMember): TaskUser {
     id: String(member.user.id),
     name: member.user.name,
     email: member.user.email,
+  };
+}
+
+type BackendTaskReport = {
+  id: number;
+  content: string;
+  attachments: string[];
+  status: TaskReport["status"];
+  feedback: string | null;
+  taskId: number;
+  authorId: number;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: number;
+    email: string;
+    name: string | null;
+    role: string;
+  };
+};
+
+function mapTaskReport(report: BackendTaskReport): TaskReport {
+  return {
+    id: String(report.id),
+    content: report.content,
+    attachments: report.attachments,
+    status: report.status,
+    feedback: report.feedback,
+    taskId: String(report.taskId),
+    authorId: String(report.authorId),
+    createdAt: report.createdAt,
+    updatedAt: report.updatedAt,
+    author: {
+      id: String(report.author.id),
+      name: report.author.name,
+      email: report.author.email,
+    },
   };
 }
 
@@ -167,10 +223,42 @@ export const tasksApi = {
 
   async assignUsers(payload: AssignTaskUsersPayload): Promise<void> {
     await httpClient.post(`/tasks/${payload.taskId}/assignments`, {
-      assignees: payload.userIds.map((userId) => ({
-        userId: Number(userId),
-        role: "CONTRIBUTOR",
+      assignees: payload.assignees.map((assignee) => ({
+        userId: Number(assignee.userId),
+        role: assignee.role,
       })),
     });
+  },
+
+  async getReports(taskId: string): Promise<TaskReport[]> {
+    const response = await httpClient.get<BackendTaskReport[]>(
+      `/tasks/${taskId}/reports`
+    );
+    return response.data.map(mapTaskReport);
+  },
+
+  async submitReport(payload: SubmitTaskReportPayload): Promise<TaskReport> {
+    const response = await httpClient.post<BackendTaskReport>(
+      `/tasks/${payload.taskId}/reports`,
+      {
+        content: payload.content,
+        attachments: payload.attachments,
+      }
+    );
+
+    return mapTaskReport(response.data);
+  },
+
+  async reviewReport(payload: ReviewTaskReportPayload): Promise<TaskReport> {
+    const response = await httpClient.patch<BackendTaskReport>(
+      `/task-reports/${payload.reportId}/review`,
+      {
+        status: payload.status,
+        feedback: payload.feedback,
+        rejectionReason: payload.rejectionReason,
+      }
+    );
+
+    return mapTaskReport(response.data);
   },
 };

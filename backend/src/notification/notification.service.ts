@@ -15,6 +15,29 @@ import { notificationSelect } from './notification.constants';
 export class NotificationService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listForUser(userId: number, limit = 12): Promise<NotificationView[]> {
+    return this.prisma.notification.findMany({
+      where: {
+        recipientId: userId,
+        activity: {
+          project: {
+            members: {
+              some: {
+                userId,
+                leftAt: null,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+      select: notificationSelect,
+    });
+  }
+
   async createNotifications(
     input: CreateNotificationsInput,
     tx?: Prisma.TransactionClient,

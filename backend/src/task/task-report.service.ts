@@ -22,6 +22,21 @@ export class TaskReportService {
     private readonly notificationService: NotificationService,
   ) {}
 
+  async listReports(
+    taskId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<TaskReportView[]> {
+    await this.taskPermissionService.ensureCanViewTask(taskId, currentUser.id);
+
+    return this.prisma.taskReport.findMany({
+      where: {
+        taskId,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: taskReportSelect,
+    });
+  }
+
   async submitReport(
     taskId: number,
     currentUser: AuthenticatedUser,

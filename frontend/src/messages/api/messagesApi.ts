@@ -23,6 +23,12 @@ type BackendMessage = {
 type SendProjectMessagePayload = {
   projectId: string;
   content: string;
+  isAnnouncement?: boolean;
+};
+
+type SendTaskMessagePayload = {
+  taskId: string;
+  content: string;
 };
 
 function getMessageType(message: BackendMessage): ChatMessageType {
@@ -64,6 +70,17 @@ export const messagesApi = {
   async sendProjectMessage(payload: SendProjectMessagePayload): Promise<ChatMessage> {
     const response = await httpClient.post<BackendMessage>(
       `/projects/${payload.projectId}/messages`,
+      {
+        content: payload.content,
+        isAnnouncement: payload.isAnnouncement,
+      }
+    );
+    return mapMessage(response.data);
+  },
+
+  async sendTaskMessage(payload: SendTaskMessagePayload): Promise<ChatMessage> {
+    const response = await httpClient.post<BackendMessage>(
+      `/tasks/${payload.taskId}/messages`,
       {
         content: payload.content,
       }

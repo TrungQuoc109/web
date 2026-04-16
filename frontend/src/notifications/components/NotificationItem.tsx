@@ -4,6 +4,7 @@ import {
   CheckCheck,
   ClipboardCheck,
   Megaphone,
+  ArrowUpRight,
 } from "lucide-react";
 
 import type {
@@ -13,11 +14,18 @@ import type {
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/cn";
+import { formatRelativeDate } from "@/shared/lib/format-date";
 import { StatusBadge } from "@/shared/ui/status-badge";
+import {
+  getNotificationMeta,
+  getNotificationTitle,
+} from "@/notifications/lib/notification-presenters";
 
 type NotificationItemProps = {
   notification: Notification;
-  onMarkAsRead: (notificationId: string) => void;
+  isPending?: boolean;
+  onMarkAsRead: (notificationId: string) => void | Promise<void>;
+  onOpen: (notification: Notification) => void;
 };
 
 const iconMap: Record<NotificationType, typeof AtSign> = {
@@ -29,15 +37,26 @@ const iconMap: Record<NotificationType, typeof AtSign> = {
 
 export function NotificationItem({
   notification,
+  isPending = false,
   onMarkAsRead,
+  onOpen,
 }: NotificationItemProps) {
   const Icon = iconMap[notification.type];
 
   return (
     <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(notification)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(notification);
+        }
+      }}
       className={cn(
-        "flex flex-col gap-4 px-6 py-5 transition-colors sm:flex-row sm:items-start sm:justify-between",
-        !notification.read && "bg-secondary/20"
+        "flex cursor-pointer flex-col gap-4 px-5 py-4 transition-colors outline-none hover:bg-secondary/20 focus-visible:bg-secondary/20 sm:flex-row sm:items-start sm:justify-between",
+        !notification.isRead && "bg-secondary/20"
       )}
     >
       <div className="flex min-w-0 gap-4">
@@ -48,10 +67,10 @@ export function NotificationItem({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-foreground">
-              {notification.title}
+              {getNotificationTitle(notification)}
             </p>
             <StatusBadge value={notification.type} />
-            {!notification.read ? (
+            {!notification.isRead ? (
               <Badge variant="outline" className="px-3 py-1">
                 Unread
               </Badge>
@@ -59,25 +78,34 @@ export function NotificationItem({
           </div>
 
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {notification.message}
+            {notification.activity.content}
           </p>
-          <p className="mt-3 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            {notification.createdAt}
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+            <span>{formatRelativeDate(notification.createdAt)}</span>
+            <span>&bull;</span>
+            <span>{getNotificationMeta(notification)}</span>
+          </div>
         </div>
       </div>
 
-      <div className="shrink-0">
+      <div className="flex shrink-0 items-center gap-2">
         <Button
           type="button"
-          variant={notification.read ? "ghost" : "outline"}
+          variant={notification.isRead ? "ghost" : "outline"}
           className="gap-2"
-          disabled={notification.read}
-          onClick={() => onMarkAsRead(notification.id)}
+          disabled={notification.isRead || isPending}
+          onClick={(event) => {
+            event.stopPropagation();
+            void onMarkAsRead(notification.id);
+          }}
         >
           <CheckCheck />
-          {notification.read ? "Read" : "Mark as read"}
+          {notification.isRead ? "Read" : isPending ? "Saving..." : "Mark as read"}
         </Button>
+
+        <div className="rounded-full border border-border bg-background p-2 text-muted-foreground">
+          <ArrowUpRight className="size-4" />
+        </div>
       </div>
     </article>
   );

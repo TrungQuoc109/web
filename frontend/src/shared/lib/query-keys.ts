@@ -24,6 +24,12 @@ export const membersKeys = {
     [...membersKeys.all, "project", projectId] as const,
 };
 
+export const invitationsKeys = {
+  all: ["invitations"] as const,
+  project: (projectId?: string) =>
+    [...invitationsKeys.all, "project", projectId] as const,
+};
+
 export const messagesKeys = {
   all: ["messages"] as const,
   project: (projectId?: string) =>
@@ -35,6 +41,8 @@ export const tasksKeys = {
   board: () => [...tasksKeys.all, "board"] as const,
   comments: (taskId?: string) =>
     [...tasksKeys.all, "detail", taskId, "comments"] as const,
+  reports: (taskId?: string) =>
+    [...tasksKeys.all, "detail", taskId, "reports"] as const,
   projectMembers: (projectId?: string) =>
     [...tasksKeys.all, "project-members", projectId] as const,
 };

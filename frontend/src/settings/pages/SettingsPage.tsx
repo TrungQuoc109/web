@@ -57,7 +57,10 @@ export function SettingsPage() {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <article className="rounded-[2rem] border border-border bg-background/95 p-6 shadow-sm">
+        <article
+          id="profile"
+          className="rounded-[2rem] border border-border bg-background/95 p-6 shadow-sm scroll-mt-28"
+        >
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
@@ -156,6 +159,68 @@ export function SettingsPage() {
             </Link>
           </div>
         </article>
+      </section>
+
+      <section
+        id="security"
+        className="rounded-[2rem] border border-border bg-background/95 p-6 shadow-sm scroll-mt-28"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+              Security
+            </p>
+            <h3 className="mt-3 text-xl font-semibold">Session and access</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Review the current authenticated session and the security capabilities that are already wired in the app.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border bg-secondary/70 p-3">
+            <ShieldCheck />
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <article className="rounded-2xl border border-border bg-secondary/35 p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Session status
+            </p>
+            <p className="mt-2 font-medium">Authenticated</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Your JWT-backed session is currently loaded in the frontend auth store.
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-border bg-secondary/35 p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Password management
+            </p>
+            <p className="mt-2 font-medium">Backend blocker</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              A change-password endpoint is not exposed yet, so password rotation cannot be completed from the UI today.
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-border bg-secondary/35 p-4">
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Sign out
+            </p>
+            <p className="mt-2 font-medium">Available now</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              You can safely clear the current session from the account menu or with the button below.
+            </p>
+          </article>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button type="button" variant="outline" className="gap-2" onClick={() => logout()}>
+            <LogOut />
+            Sign out
+          </Button>
+          <Badge variant="outline" className="px-3 py-1">
+            Password update unavailable
+          </Badge>
+        </div>
       </section>
     </section>
   );
