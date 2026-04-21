@@ -90,6 +90,7 @@ export interface InvitationView {
   email: string;
   token: string;
   status: InvitationStatus;
+  role: ProjectRole;
   projectId: number;
   senderId: number;
   expiresAt: Date;

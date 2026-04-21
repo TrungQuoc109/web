@@ -2,7 +2,8 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Megaphone, MessageSquare, Search, Send, Users } from "lucide-react";
 
 import { MessageBubble } from "@/messages/components/MessageBubble";
-import { useProjectChat } from "@/messages/hooks/useProjectChat";
+import { useProjectChatCatalog } from "@/messages/hooks/useProjectChatCatalog";
+import { useProjectChatPresence } from "@/messages/hooks/useProjectChatPresence";
 import { useSendProjectMessageMutation } from "@/messages/hooks/useSendProjectMessageMutation";
 import { useAuthStore } from "@/auth/store/authStore";
 import { RoleBadge } from "@/members/components/RoleBadge";
@@ -23,7 +24,15 @@ export function MessagesPage() {
   const [input, setInput] = useState("");
   const [isAnnouncement, setIsAnnouncement] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
-  const chatQuery = useProjectChat(selectedProjectId || undefined);
+  const [messageSearch, setMessageSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const deferredMessageSearch = useDeferredValue(messageSearch);
+  const chatQuery = useProjectChatCatalog({
+    projectId: selectedProjectId || undefined,
+    search: deferredMessageSearch,
+    page,
+    pageSize: 30,
+  });
   const membersQuery = useMembers(selectedProjectId || undefined);
   const sendProjectMessage = useSendProjectMessageMutation();
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -38,7 +47,13 @@ export function MessagesPage() {
   useEffect(() => {
     setIsAnnouncement(false);
     setMemberSearch("");
+    setMessageSearch("");
+    setPage(1);
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [deferredMessageSearch]);
 
   const members = membersQuery.data ?? [];
   const selectedProject =
@@ -54,7 +69,12 @@ export function MessagesPage() {
   const canSendAnnouncements =
     !membersQuery.isError &&
     (currentMember?.role === "OWNER" || currentMember?.role === "ADMIN");
-  const messages = (chatQuery.data ?? []).map((message) => ({
+  const chatPresence = useProjectChatPresence({
+    projectId: selectedProjectId || undefined,
+    draftValue: input,
+    enabled: Boolean(selectedProjectId) && canSendMessages,
+  });
+  const messages = (chatQuery.data?.items ?? []).map((message) => ({
     ...message,
     isCurrentUser:
       Boolean(currentUser?.id) && message.senderId === String(currentUser?.id),
@@ -80,8 +100,20 @@ export function MessagesPage() {
         member.role === "OWNER" || member.role === "ADMIN"
       ).length,
       viewers: members.filter((member) => member.role === "VIEWER").length,
+      online: members.filter((member) =>
+        chatPresence.onlineUserIds.includes(member.userId ?? "")
+      ).length,
     }),
-    [members]
+    [chatPresence.onlineUserIds, members]
+  );
+  const typingMembers = useMemo(
+    () =>
+      members.filter(
+        (member) =>
+          chatPresence.typingUserIds.includes(member.userId ?? "") &&
+          member.userId !== String(currentUser?.id)
+      ),
+    [chatPresence.typingUserIds, currentUser?.id, members]
   );
 
   useEffect(() => {
@@ -103,7 +135,7 @@ export function MessagesPage() {
   }
 
   const summary = {
-    total: messages.length,
+    total: chatQuery.data?.total ?? 0,
     announcements: messages.filter((message) => message.type === "announcement")
       .length,
     unread: messages.filter((message) => !message.isCurrentUser).length,
@@ -325,14 +357,25 @@ export function MessagesPage() {
 
         <div className="rounded-[2rem] border border-border bg-background/95 shadow-sm">
           <div className="border-b border-border px-5 py-5">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-lg font-semibold">Project chat</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Scrollable workspace thread with chat bubbles and system updates.
                 </p>
               </div>
-              <Badge variant="secondary">Live API</Badge>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full min-w-[16rem] lg:w-80">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    className="h-11 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                    value={messageSearch}
+                    onChange={(event) => setMessageSearch(event.target.value)}
+                    placeholder="Search messages in this project"
+                  />
+                </div>
+                <Badge variant="secondary">Live API</Badge>
+              </div>
             </div>
           </div>
 
@@ -353,6 +396,39 @@ export function MessagesPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="border-t border-border px-5 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Page {chatQuery.data?.page ?? 1} of {chatQuery.data?.totalPages ?? 1}
+              </p>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={(chatQuery.data?.page ?? 1) <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={(chatQuery.data?.page ?? 1) >= (chatQuery.data?.totalPages ?? 1)}
+                  onClick={() =>
+                    setPage((current) =>
+                      Math.min(chatQuery.data?.totalPages ?? current, current + 1)
+                    )
+                  }
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-border px-5 py-4">
@@ -414,6 +490,11 @@ export function MessagesPage() {
                       ? "Send announcement"
                       : "Send"}
                 </Button>
+                {canSendMessages ? (
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Mentions are supported. Use handles like <span className="font-medium">@Noah</span> or <span className="font-medium">@noah.kim</span> to notify teammates in this project.
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -422,3 +503,4 @@ export function MessagesPage() {
     </section>
   );
 }
+

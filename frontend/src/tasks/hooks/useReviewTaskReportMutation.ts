@@ -19,7 +19,7 @@ export function useReviewTaskReportMutation() {
     onSuccess: (report) => {
       void queryClient.invalidateQueries({ queryKey: tasksKeys.reports(report.taskId) });
       void queryClient.invalidateQueries({ queryKey: tasksKeys.comments(report.taskId) });
-      void queryClient.invalidateQueries({ queryKey: tasksKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.all });
       void queryClient.invalidateQueries({ queryKey: projectsKeys.details() });
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
 

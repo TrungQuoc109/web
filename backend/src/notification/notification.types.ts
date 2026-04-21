@@ -22,6 +22,14 @@ export interface NotificationView {
   activity: NotificationActivityView;
 }
 
+export interface NotificationCatalogView {
+  items: NotificationView[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface CreateNotificationsInput {
   activityId: number;
   type: NotificationType;

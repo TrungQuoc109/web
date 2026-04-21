@@ -19,6 +19,14 @@ export interface MessageView {
   } | null;
 }
 
+export interface MessageCatalogView {
+  items: MessageView[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface CreateSystemMessageInput {
   projectId: number;
   content: string;

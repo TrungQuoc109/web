@@ -24,3 +24,11 @@ export interface TaskView {
   updatedAt: Date;
   assignments: TaskAssignmentView[];
 }
+
+export interface TaskCatalogView {
+  items: TaskView[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}

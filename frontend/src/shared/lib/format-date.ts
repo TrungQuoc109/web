@@ -1,6 +1,11 @@
-const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
-  numeric: "auto",
-});
+import { getCurrentLocale } from "@/i18n/languageStore";
+import { getCurrentTranslation } from "@/i18n/useI18n";
+
+function getRelativeTimeFormatter() {
+  return new Intl.RelativeTimeFormat(getCurrentLocale(), {
+    numeric: "auto",
+  });
+}
 
 function parseDate(value: string) {
   const date = new Date(value);
@@ -21,6 +26,7 @@ export function formatRelativeDate(value: string) {
   const diffMs = date.getTime() - Date.now();
   const diffMinutes = Math.round(diffMs / 60_000);
   const absMinutes = Math.abs(diffMinutes);
+  const relativeTimeFormatter = getRelativeTimeFormatter();
 
   if (absMinutes < 60) {
     return relativeTimeFormatter.format(diffMinutes, "minute");
@@ -37,7 +43,7 @@ export function formatRelativeDate(value: string) {
     return relativeTimeFormatter.format(diffDays, "day");
   }
 
-  return date.toLocaleDateString();
+  return date.toLocaleDateString(getCurrentLocale());
 }
 
 export function formatCalendarDate(value: string) {
@@ -48,14 +54,14 @@ export function formatCalendarDate(value: string) {
     return value;
   }
 
-  return date.toLocaleDateString();
+  return date.toLocaleDateString(getCurrentLocale());
 }
 
 export function formatProjectUpdatedAt(value: string) {
   if (!value) return "";
   if (value.startsWith("Updated ")) {
-    return value;
+    return `${getCurrentTranslation("common.updated")} ${value.replace(/^Updated\s+/, "")}`;
   }
 
-  return `Updated ${formatRelativeDate(value)}`;
+  return `${getCurrentTranslation("common.updated")} ${formatRelativeDate(value)}`;
 }

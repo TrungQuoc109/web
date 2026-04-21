@@ -1,8 +1,19 @@
 import { httpClient } from "@/shared/api/http-client";
-import type { Notification } from "@/notifications/types/notification";
+import type {
+  Notification,
+  NotificationsCatalog,
+  NotificationReadState,
+} from "@/notifications/types/notification";
 
 type BackendUnreadCountResponse = {
   unreadCount: number;
+};
+
+type ListNotificationsCatalogFilters = {
+  page?: number;
+  pageSize?: number;
+  readState?: NotificationReadState;
+  type?: Notification["type"];
 };
 
 type BackendNotification = {
@@ -21,6 +32,14 @@ type BackendNotification = {
     metadata: Record<string, unknown> | null;
     createdAt: string;
   };
+};
+
+type BackendNotificationsCatalogResponse = {
+  items: BackendNotification[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 function mapNotification(notification: BackendNotification): Notification {
@@ -69,5 +88,29 @@ export const notificationsApi = {
       "/notifications/read-all"
     );
     return response.data;
+  },
+
+  async getCatalog(
+    filters: ListNotificationsCatalogFilters
+  ): Promise<NotificationsCatalog> {
+    const response = await httpClient.get<BackendNotificationsCatalogResponse>(
+      "/notifications/catalog",
+      {
+        params: {
+          page: filters.page,
+          pageSize: filters.pageSize,
+          readState: filters.readState,
+          type: filters.type,
+        },
+      }
+    );
+
+    return {
+      items: response.data.items.map(mapNotification),
+      total: response.data.total,
+      page: response.data.page,
+      pageSize: response.data.pageSize,
+      totalPages: response.data.totalPages,
+    };
   },
 };

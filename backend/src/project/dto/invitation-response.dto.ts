@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { InvitationStatus } from '@prisma/client';
+import { InvitationStatus, ProjectRole } from '@prisma/client';
 
 export class InvitationResponseDto {
   @ApiProperty({
@@ -37,6 +37,12 @@ export class InvitationResponseDto {
     example: InvitationStatus.PENDING,
   })
   status!: InvitationStatus;
+
+  @ApiProperty({
+    description: 'Vai trò sẽ được áp dụng khi lời mời được chấp nhận',
+    example: ProjectRole.MEMBER,
+  })
+  role!: ProjectRole;
 
   @ApiProperty({
     description: 'Thời điểm lời mời hết hạn',

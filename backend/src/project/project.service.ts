@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ProjectRole, TaskStatus } from '@prisma/client';
+import { InvitationStatus, ProjectRole, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -287,6 +287,136 @@ export class ProjectService {
       })),
       recentActivity: this.buildRecentActivity(project.messages),
     };
+  }
+
+  async getProjectActivity(
+    projectId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<ProjectActivityView[]> {
+    await this.permission.ensureActiveMember(projectId, currentUser.id);
+
+    const [messages, taskReports, invitations] = await Promise.all([
+      this.prisma.message.findMany({
+        where: {
+          projectId,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 20,
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          taskId: true,
+          isSystem: true,
+          isAnnouncement: true,
+          sender: {
+            select: {
+              email: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      this.prisma.taskReport.findMany({
+        where: {
+          task: {
+            projectId,
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 20,
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          status: true,
+          task: {
+            select: {
+              title: true,
+            },
+          },
+          author: {
+            select: {
+              email: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      this.prisma.invitation.findMany({
+        where: {
+          projectId,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 20,
+        select: {
+          id: true,
+          email: true,
+          status: true,
+          role: true,
+          createdAt: true,
+          sender: {
+            select: {
+              email: true,
+              name: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const messageActivities: ProjectActivityView[] = messages.map((message) => {
+      const authorName = message.sender?.name ?? message.sender?.email ?? 'System';
+      const prefix = message.taskId
+        ? 'Task discussion'
+        : message.isAnnouncement
+          ? 'Announcement'
+          : message.isSystem
+            ? 'System update'
+            : 'Project message';
+
+      return {
+        id: `activity-message-${message.id}`,
+        title: `${prefix} by ${authorName}`,
+        description: message.content,
+        timestamp: message.createdAt,
+      };
+    });
+
+    const reportActivities: ProjectActivityView[] = taskReports.map((report) => {
+      const authorName = report.author.name ?? report.author.email;
+      return {
+        id: `activity-report-${report.id}`,
+        title: `Task report ${report.status.toLowerCase()} for ${report.task.title}`,
+        description: `${authorName} submitted delivery evidence: ${report.content}`,
+        timestamp: report.createdAt,
+      };
+    });
+
+    const invitationActivities: ProjectActivityView[] = invitations.map((invitation) => {
+      const senderName = invitation.sender.name ?? invitation.sender.email;
+      const statusLabel =
+        invitation.status === InvitationStatus.CANCELED
+          ? 'canceled'
+          : invitation.status.toLowerCase();
+
+      return {
+        id: `activity-invitation-${invitation.id}`,
+        title: `Invitation ${statusLabel}`,
+        description: `${senderName} invited ${invitation.email} as ${invitation.role}.`,
+        timestamp: invitation.createdAt,
+      };
+    });
+
+    return [...messageActivities, ...reportActivities, ...invitationActivities]
+      .sort((left, right) => right.timestamp.getTime() - left.timestamp.getTime())
+      .slice(0, 20);
   }
 
   async updateProject(

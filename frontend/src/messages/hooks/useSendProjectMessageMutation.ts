@@ -33,6 +33,7 @@ export function useSendProjectMessageMutation() {
       showErrorToast(getApiErrorMessage(error), "Send message failed");
     },
     onSuccess: (_message, variables) => {
+      void queryClient.invalidateQueries({ queryKey: messagesKeys.all });
       void queryClient.invalidateQueries({ queryKey: messagesKeys.project(variables.projectId) });
       void queryClient.invalidateQueries({ queryKey: projectsKeys.detail(variables.projectId) });
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });

@@ -80,6 +80,7 @@ export function RealtimeBootstrap() {
         );
       }
 
+      void queryClient.invalidateQueries({ queryKey: messagesKeys.all });
       void queryClient.invalidateQueries({ queryKey: projectsKeys.detail(projectId) });
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
       void queryClient.invalidateQueries({ queryKey: notificationsKeys.list() });
@@ -99,6 +100,7 @@ export function RealtimeBootstrap() {
         return current.map((item) => (item.id === task.id ? { ...item, ...task } : item));
       });
 
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.all });
       void queryClient.invalidateQueries({ queryKey: projectsKeys.detail(task.projectId) });
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
       void queryClient.invalidateQueries({ queryKey: notificationsKeys.list() });

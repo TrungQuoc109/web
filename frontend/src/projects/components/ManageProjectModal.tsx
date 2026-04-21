@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowRightLeft, LogOut, PencilLine, Trash2, X } from "lu
 
 import type { ProjectDetail } from "@/projects/types/project";
 import { Button } from "@/shared/ui/button";
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 
 type ManageProjectModalProps = {
   open: boolean;
@@ -51,6 +52,7 @@ export function ManageProjectModal({
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [transferTargetId, setTransferTargetId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!project || !open) {
@@ -116,14 +118,6 @@ export function ManageProjectModal({
   }
 
   async function handleLeaveProject() {
-    if (
-      !window.confirm(
-        `Leave "${currentProject.name}"? You will lose access to this project's tasks, messages, and members until someone adds you again.`
-      )
-    ) {
-      return;
-    }
-
     await onLeaveProject(currentProject.id);
   }
 
@@ -285,7 +279,7 @@ export function ManageProjectModal({
                 type="button"
                 variant="outline"
                 disabled={isSaving || isDeleting || isLeaving || isTransferring}
-                onClick={() => void handleLeaveProject()}
+                onClick={() => setIsLeaveConfirmOpen(true)}
               >
                 {isLeaving ? "Leaving..." : "Leave project"}
               </Button>
@@ -368,6 +362,20 @@ export function ManageProjectModal({
           </div>
         </form>
       </div>
+
+      <ConfirmDialog
+        open={isLeaveConfirmOpen}
+        title="Leave project"
+        description={`Leave "${currentProject.name}"? You will lose access to this project's tasks, messages, and members until someone adds you again.`}
+        confirmLabel="Leave project"
+        tone="danger"
+        isPending={isLeaving}
+        onClose={() => setIsLeaveConfirmOpen(false)}
+        onConfirm={async () => {
+          await handleLeaveProject();
+          setIsLeaveConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

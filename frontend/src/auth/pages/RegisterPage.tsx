@@ -3,25 +3,36 @@ import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
+import { useI18n } from "@/i18n/useI18n";
 import { useRegisterMutation } from "@/auth/hooks/useRegisterMutation";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
 import { Button } from "@/shared/ui/button";
 
-const schema = z.object({
-  name: z
-    .string()
-    .trim()
-    .refine((v) => v === "" || v.length >= 2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  name: string;
+  email: string;
+  password: string;
+};
 
 export function RegisterPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state || {}) as { from?: { pathname?: string } };
+  const schema = z.object({
+    name: z
+      .string()
+      .trim()
+      .refine(
+        (v) => v === "" || v.length >= 2,
+        t("auth.validation.nameLength")
+      ),
+    email: z.string().email(t("auth.validation.email")),
+    password: z
+      .string()
+      .min(8, t("auth.validation.passwordLength")),
+  });
+
   const registerMutation = useRegisterMutation();
 
   const form = useForm<FormValues>({
@@ -40,7 +51,7 @@ export function RegisterPage() {
         replace: true,
         state: {
           email: values.email,
-          success: "Account created successfully. Please sign in to continue.",
+          success: t("auth.register.success"),
           from: state.from,
         },
       });
@@ -57,9 +68,9 @@ export function RegisterPage() {
     <div className="mx-auto w-full max-w-md">
       <div className="rounded-3xl border border-border bg-background/90 p-8 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.28)] backdrop-blur">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Create account</h1>
+          <h1 className="text-2xl font-semibold">{t("auth.register.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Register to start managing projects.
+            {t("auth.register.subtitle")}
           </p>
         </div>
 
@@ -71,7 +82,7 @@ export function RegisterPage() {
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Name (optional)</span>
+            <span className="text-sm font-medium">{t("auth.register.nameOptional")}</span>
             <input
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               autoComplete="name"
@@ -85,7 +96,7 @@ export function RegisterPage() {
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Email</span>
+            <span className="text-sm font-medium">{t("auth.common.email")}</span>
             <input
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               autoComplete="email"
@@ -100,7 +111,7 @@ export function RegisterPage() {
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Password</span>
+            <span className="text-sm font-medium">{t("auth.common.password")}</span>
             <input
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               type="password"
@@ -119,18 +130,20 @@ export function RegisterPage() {
             type="submit"
             disabled={registerMutation.isPending}
           >
-            {registerMutation.isPending ? "Creating..." : "Create account"}
+            {registerMutation.isPending
+              ? t("auth.register.creating")
+              : t("auth.register.submit")}
           </Button>
         </form>
 
         <p className="mt-4 text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("auth.register.hasAccount")}{" "}
           <Link
             className="text-foreground underline"
             to="/login"
             state={{ from: state.from }}
           >
-            Sign in
+            {t("auth.register.signIn")}
           </Link>
         </p>
       </div>

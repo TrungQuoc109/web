@@ -30,7 +30,7 @@ export function useUpdateTaskMutation() {
         current.map((item) => (item.id === task.id ? { ...item, ...task } : item))
       );
 
-      void queryClient.invalidateQueries({ queryKey: tasksKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.all });
       void queryClient.invalidateQueries({
         queryKey: projectsKeys.detail(variables.projectId),
       });

@@ -23,4 +23,8 @@ export type NotificationType =
   | "STATUS_CHANGED"
   | "ANNOUNCEMENT";
 
-export type InvitationStatus = "PENDING" | "ACCEPTED" | "REJECTED";
+export type InvitationStatus =
+  | "PENDING"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "CANCELED";

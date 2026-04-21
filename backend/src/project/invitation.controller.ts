@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   ParseIntPipe,
   Post,
   UseGuards,
@@ -82,6 +83,70 @@ export class InvitationController {
       projectId,
       currentUser,
       dto,
+    );
+  }
+
+  @Post('projects/:projectId/invitations/:invitationId/resend')
+  @ApiOperation({ summary: 'Gửi lại lời mời tham gia dự án' })
+  @ApiParam({
+    name: 'projectId',
+    description: 'ID của dự án',
+    example: 7,
+  })
+  @ApiParam({
+    name: 'invitationId',
+    description: 'ID lời mời cần gửi lại',
+    example: 19,
+  })
+  @ApiOkResponse({
+    description: 'Lời mời đã được làm mới token và hạn dùng',
+    type: InvitationResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Tham số hoặc trạng thái lời mời không hợp lệ' })
+  @ApiUnauthorizedResponse({ description: 'Đăng nhập là bắt buộc' })
+  @ApiForbiddenResponse({ description: 'Không có quyền quản lý lời mời của dự án' })
+  @ApiNotFoundResponse({ description: 'Lời mời không tồn tại' })
+  resendInvitation(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('invitationId', ParseIntPipe) invitationId: number,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<InvitationView> {
+    return this.invitationService.resendInvitation(
+      projectId,
+      invitationId,
+      currentUser,
+    );
+  }
+
+  @Patch('projects/:projectId/invitations/:invitationId/cancel')
+  @ApiOperation({ summary: 'Hủy lời mời tham gia dự án' })
+  @ApiParam({
+    name: 'projectId',
+    description: 'ID của dự án',
+    example: 7,
+  })
+  @ApiParam({
+    name: 'invitationId',
+    description: 'ID lời mời cần hủy',
+    example: 19,
+  })
+  @ApiOkResponse({
+    description: 'Lời mời đã được hủy',
+    type: InvitationResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Tham số hoặc trạng thái lời mời không hợp lệ' })
+  @ApiUnauthorizedResponse({ description: 'Đăng nhập là bắt buộc' })
+  @ApiForbiddenResponse({ description: 'Không có quyền quản lý lời mời của dự án' })
+  @ApiNotFoundResponse({ description: 'Lời mời không tồn tại' })
+  cancelInvitation(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @Param('invitationId', ParseIntPipe) invitationId: number,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<InvitationView> {
+    return this.invitationService.cancelInvitation(
+      projectId,
+      invitationId,
+      currentUser,
     );
   }
 

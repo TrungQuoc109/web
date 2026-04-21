@@ -4,15 +4,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 
 import { useLoginMutation } from "@/auth/hooks/useLoginMutation";
+import { useI18n } from "@/i18n/useI18n";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
 import { Button } from "@/shared/ui/button";
 
-const schema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  email: string;
+  password: string;
+};
 
 type LocationState = {
   from?: { pathname?: string };
@@ -22,9 +21,17 @@ type LocationState = {
 };
 
 export function LoginPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state || {}) as LocationState;
+
+  const schema = z.object({
+    email: z.string().email(t("auth.validation.email")),
+    password: z
+      .string()
+      .min(8, t("auth.validation.passwordLength")),
+  });
 
   const login = useLoginMutation();
 
@@ -53,9 +60,9 @@ export function LoginPage() {
     <div className="mx-auto w-full max-w-md">
       <div className="rounded-3xl border border-border bg-background/90 p-8 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.28)] backdrop-blur">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Welcome back</h1>
+          <h1 className="text-2xl font-semibold">{t("auth.login.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Sign in to continue.
+            {t("auth.login.subtitle")}
           </p>
         </div>
 
@@ -73,7 +80,7 @@ export function LoginPage() {
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Email</span>
+            <span className="text-sm font-medium">{t("auth.common.email")}</span>
             <input
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               autoComplete="email"
@@ -88,7 +95,7 @@ export function LoginPage() {
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Password</span>
+            <span className="text-sm font-medium">{t("auth.common.password")}</span>
             <input
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               type="password"
@@ -103,18 +110,18 @@ export function LoginPage() {
           </label>
 
           <Button className="w-full" type="submit" disabled={login.isPending}>
-            {login.isPending ? "Signing in..." : "Sign in"}
+            {login.isPending ? t("auth.login.signingIn") : t("auth.login.submit")}
           </Button>
         </form>
 
         <p className="mt-4 text-sm text-muted-foreground">
-          No account?{" "}
+          {t("auth.login.noAccount")}{" "}
           <Link
             className="text-foreground underline"
             to="/register"
             state={{ from: state.from }}
           >
-            Create one
+            {t("auth.login.createOne")}
           </Link>
         </p>
       </div>

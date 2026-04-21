@@ -1,10 +1,13 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const defaultCorsOrigins = [
     'http://localhost:5173',
@@ -44,6 +47,15 @@ async function bootstrap(): Promise<void> {
       },
     }),
   );
+
+  const uploadsDirectory = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadsDirectory)) {
+    mkdirSync(uploadsDirectory, { recursive: true });
+  }
+
+  app.useStaticAssets(uploadsDirectory, {
+    prefix: '/uploads/',
+  });
 
   const config = new DocumentBuilder()
     .setTitle('API Quản lý dự án cộng tác thời gian thực')

@@ -7,6 +7,7 @@ import {
   Megaphone,
 } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import type {
   Notification,
   NotificationType,
@@ -43,6 +44,7 @@ export function NotificationItem({
   onMarkAsRead,
   onOpen,
 }: NotificationItemProps) {
+  const { t } = useI18n();
   const Icon = iconMap[notification.type];
   const sourceLabel = getNotificationSourceLabel(notification);
   const preview = getNotificationPreview(notification);
@@ -97,7 +99,7 @@ export function NotificationItem({
                     !notification.isRead && "bg-sky-100 text-sky-900"
                   )}
                 >
-                  {notification.isRead ? "Read" : "Unread"}
+                  {notification.isRead ? t("common.read") : t("common.unread")}
                 </Badge>
               </div>
 
@@ -130,7 +132,11 @@ export function NotificationItem({
             }}
           >
             <CheckCheck className="size-4" aria-hidden="true" />
-            {notification.isRead ? "Read" : isPending ? "Saving…" : "Mark Read"}
+            {notification.isRead
+              ? t("common.read")
+              : isPending
+                ? t("notifications.saving")
+                : t("notifications.markRead")}
           </Button>
 
           <Button
@@ -140,7 +146,7 @@ export function NotificationItem({
             className="gap-2 text-muted-foreground hover:text-foreground"
             onClick={() => onOpen(notification)}
           >
-            Open
+            {t("common.open")}
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </Button>
         </div>

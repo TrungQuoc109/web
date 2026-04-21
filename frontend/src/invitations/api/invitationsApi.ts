@@ -8,6 +8,7 @@ type BackendInvitation = {
   projectId: number;
   senderId: number;
   status: ProjectInvitation["status"];
+  role: ProjectInvitation["role"];
   expiresAt: string;
   createdAt: string;
 };
@@ -20,6 +21,7 @@ function mapInvitation(invitation: BackendInvitation): ProjectInvitation {
     projectId: String(invitation.projectId),
     senderId: String(invitation.senderId),
     status: invitation.status,
+    role: invitation.role,
     expiresAt: invitation.expiresAt,
     createdAt: invitation.createdAt,
   };
@@ -33,10 +35,34 @@ export const invitationsApi = {
     return response.data.map(mapInvitation);
   },
 
-  async createInvitation(projectId: string, email: string): Promise<ProjectInvitation> {
+  async createInvitation(
+    projectId: string,
+    email: string,
+    role: ProjectInvitation["role"]
+  ): Promise<ProjectInvitation> {
     const response = await httpClient.post<BackendInvitation>(
       `/projects/${projectId}/invitations`,
-      { email }
+      { email, role }
+    );
+    return mapInvitation(response.data);
+  },
+
+  async resendInvitation(
+    projectId: string,
+    invitationId: string
+  ): Promise<ProjectInvitation> {
+    const response = await httpClient.post<BackendInvitation>(
+      `/projects/${projectId}/invitations/${invitationId}/resend`
+    );
+    return mapInvitation(response.data);
+  },
+
+  async cancelInvitation(
+    projectId: string,
+    invitationId: string
+  ): Promise<ProjectInvitation> {
+    const response = await httpClient.patch<BackendInvitation>(
+      `/projects/${projectId}/invitations/${invitationId}/cancel`
     );
     return mapInvitation(response.data);
   },

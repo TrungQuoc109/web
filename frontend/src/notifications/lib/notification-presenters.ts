@@ -1,23 +1,24 @@
 import type { Notification } from "@/notifications/types/notification";
+import { getCurrentTranslation } from "@/i18n/useI18n";
 
 export function getNotificationTitle(notification: Notification) {
   if (notification.type === "ASSIGNED") {
-    return "New Task Assignment";
+    return getCurrentTranslation("notifications.newTaskAssignment");
   }
 
   if (notification.type === "STATUS_CHANGED") {
-    return "Task Status Updated";
+    return getCurrentTranslation("notifications.taskStatusUpdated");
   }
 
   if (notification.type === "MENTION") {
-    return "You Were Mentioned";
+    return getCurrentTranslation("notifications.mentioned");
   }
 
   if (notification.activity.isAnnouncement) {
-    return "Project Announcement";
+    return getCurrentTranslation("notifications.projectAnnouncement");
   }
 
-  return "Workspace Update";
+  return getCurrentTranslation("notifications.workspaceUpdate");
 }
 
 export function getNotificationHref(notification: Notification) {
@@ -25,7 +26,10 @@ export function getNotificationHref(notification: Notification) {
     return "/tasks";
   }
 
-  if (notification.type === "ANNOUNCEMENT") {
+  if (
+    notification.type === "ANNOUNCEMENT" ||
+    notification.type === "MENTION"
+  ) {
     return "/messages";
   }
 
@@ -34,30 +38,34 @@ export function getNotificationHref(notification: Notification) {
 
 export function getNotificationMeta(notification: Notification) {
   if (notification.activity.taskId) {
-    return `Task #${notification.activity.taskId}`;
+    return getCurrentTranslation("notifications.taskMeta", {
+      id: notification.activity.taskId,
+    });
   }
 
-  return `Project #${notification.activity.projectId}`;
+  return getCurrentTranslation("notifications.projectMeta", {
+    id: notification.activity.projectId,
+  });
 }
 
 export function getNotificationSourceLabel(notification: Notification) {
   if (notification.activity.isAnnouncement || notification.activity.isSystem) {
-    return "System";
+    return getCurrentTranslation("notifications.system");
   }
 
   if (notification.type === "ASSIGNED") {
-    return "Assignment";
+    return getCurrentTranslation("notifications.assignment");
   }
 
   if (notification.type === "MENTION") {
-    return "Team Activity";
+    return getCurrentTranslation("notifications.teamActivity");
   }
 
   if (notification.activity.taskId) {
-    return "Task Activity";
+    return getCurrentTranslation("notifications.taskActivity");
   }
 
-  return "Project Activity";
+  return getCurrentTranslation("notifications.projectActivity");
 }
 
 export function getNotificationPreview(notification: Notification) {

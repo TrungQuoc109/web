@@ -1,5 +1,9 @@
 import { httpClient } from "@/shared/api/http-client";
-import type { ChatMessage, ChatMessageType } from "@/messages/types/message";
+import type {
+  ChatMessage,
+  ChatMessageType,
+  ChatMessagesCatalog,
+} from "@/messages/types/message";
 
 type BackendMessage = {
   id: number;
@@ -29,6 +33,21 @@ type SendProjectMessagePayload = {
 type SendTaskMessagePayload = {
   taskId: string;
   content: string;
+};
+
+type ListProjectMessagesCatalogFilters = {
+  projectId: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+type BackendMessagesCatalogResponse = {
+  items: BackendMessage[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 function getMessageType(message: BackendMessage): ChatMessageType {
@@ -86,5 +105,28 @@ export const messagesApi = {
       }
     );
     return mapMessage(response.data);
+  },
+
+  async listProjectMessagesCatalog(
+    filters: ListProjectMessagesCatalogFilters
+  ): Promise<ChatMessagesCatalog> {
+    const response = await httpClient.get<BackendMessagesCatalogResponse>(
+      `/projects/${filters.projectId}/messages/catalog`,
+      {
+        params: {
+          search: filters.search,
+          page: filters.page,
+          pageSize: filters.pageSize,
+        },
+      }
+    );
+
+    return {
+      items: response.data.items.map(mapMessage),
+      total: response.data.total,
+      page: response.data.page,
+      pageSize: response.data.pageSize,
+      totalPages: response.data.totalPages,
+    };
   },
 };

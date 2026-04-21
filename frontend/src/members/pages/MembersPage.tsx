@@ -1,10 +1,13 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Copy, Link2, Plus, Search, Users } from "lucide-react";
+import { Copy, Link2, Plus, Search, Users, X } from "lucide-react";
 
 import { useAuthStore } from "@/auth/store/authStore";
+import { useI18n } from "@/i18n/useI18n";
 import { InviteMemberModal } from "@/invitations/components/InviteMemberModal";
+import { useCancelInvitationMutation } from "@/invitations/hooks/useCancelInvitationMutation";
 import { useCreateInvitationMutation } from "@/invitations/hooks/useCreateInvitationMutation";
 import { useProjectInvitations } from "@/invitations/hooks/useProjectInvitations";
+import { useResendInvitationMutation } from "@/invitations/hooks/useResendInvitationMutation";
 import type { ProjectInvitation } from "@/invitations/types/invitation";
 import { AddMemberModal } from "@/members/components/AddMemberModal";
 import { useAddMemberMutation } from "@/members/hooks/useAddMemberMutation";
@@ -22,6 +25,7 @@ import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import { useToastStore } from "@/shared/lib/toast-store";
 
 const roleOptions: MemberRole[] = ["ADMIN", "MEMBER", "VIEWER"];
@@ -37,10 +41,12 @@ const invitationStatusOptions: Array<"ALL" | ProjectInvitation["status"]> = [
   "PENDING",
   "ACCEPTED",
   "REJECTED",
+  "CANCELED",
 ];
 const membersPerPage = 8;
 
 export function MembersPage() {
+  const { language } = useI18n();
   const projectsQuery = useProjects();
   const currentUser = useAuthStore((state) => state.currentUser);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -52,6 +58,10 @@ export function MembersPage() {
   const [inviteSearch, setInviteSearch] = useState("");
   const [inviteStatusFilter, setInviteStatusFilter] =
     useState<"ALL" | ProjectInvitation["status"]>("ALL");
+  const [memberRemovalTarget, setMemberRemovalTarget] = useState<{
+    id: string;
+    email: string;
+  } | null>(null);
   const deferredMemberSearch = useDeferredValue(memberSearch);
   const allMembersQuery = useMembers(selectedProjectId || undefined);
   const membersQuery = useMembers(selectedProjectId || undefined, {
@@ -61,8 +71,212 @@ export function MembersPage() {
   const invitationsQuery = useProjectInvitations(selectedProjectId || undefined);
   const addMember = useAddMemberMutation();
   const createInvitation = useCreateInvitationMutation();
+  const resendInvitation = useResendInvitationMutation();
+  const cancelInvitation = useCancelInvitationMutation();
   const removeMember = useRemoveMemberMutation();
   const updateMemberRole = useUpdateMemberRoleMutation();
+  const ui =
+    language === "vi"
+      ? {
+          workspace: "Không gian làm việc",
+          title: "Thành viên",
+          subtitle:
+            "Quản lý ai đang ở trong dự án đã chọn, vai trò họ đang giữ và thời điểm họ tham gia.",
+          addMember: "Thêm thành viên",
+          inviteByEmail: "Mời qua email",
+          members: "thành viên",
+          loadingTitle: "Thành viên",
+          loadingDescription:
+            "Đang tải danh sách thành viên dự án và các cấp quyền truy cập.",
+          unavailableTitle: "Không thể tải thành viên",
+          unavailableDescription:
+            "Không thể tải danh sách dự án từ backend. Hãy thử lại để khôi phục trang.",
+          noProjectsTitle: "Chưa có dự án nào",
+          noProjectsDescription:
+            "Hãy tham gia hoặc tạo dự án trước khi quản lý thành viên. Backend hiện đang trả thành viên theo từng dự án.",
+          totalMembers: "Tổng thành viên",
+          totalMembersHelp: (name: string) =>
+            `Tất cả mọi người hiện đang có trong ${name}.`,
+          elevatedRoles: "Vai trò nâng cao",
+          elevatedRolesHelp:
+            "Owner và admin có quyền rộng hơn trong dự án này.",
+          viewers: "Người xem",
+          viewersHelp:
+            "Các cộng tác viên chủ yếu có quyền xem trong dự án.",
+          pendingInvites: "Lời mời chờ xử lý",
+          pendingInvitesHelp:
+            "Các link còn hiệu lực đang chờ đồng đội chấp nhận quyền truy cập.",
+          searchMembers: "Tìm thành viên theo tên hoặc email",
+          allRoles: "Tất cả vai trò",
+          visible: "hiển thị",
+          filter: "Bộ lọc",
+          search: "Tìm kiếm",
+          page: "Trang",
+          of: "trên",
+          noMembersTitle: "Chưa có thành viên",
+          noMembersDescription:
+            "Khi đồng đội được thêm vào dự án này, họ sẽ xuất hiện tại đây cùng vai trò và ngày tham gia.",
+          noMembersMatchTitle: "Không có thành viên phù hợp bộ lọc",
+          noMembersMatchDescription:
+            "Hãy thử từ khóa khác hoặc đổi bộ lọc vai trò để hiển thị lại thành viên.",
+          member: "Thành viên",
+          email: "Email",
+          role: "Vai trò",
+          joined: "Ngày tham gia",
+          actions: "Hành động",
+          ownerRoleLocked:
+            "Chuyển quyền sở hữu chưa hỗ trợ tại đây, nên vai trò owner được cố định.",
+          selfRoleLocked:
+            "Việc đổi vai trò của chính bạn sẽ được hỗ trợ qua flow riêng sau này.",
+          roleSaved: "Thay đổi vai trò được lưu trực tiếp xuống backend.",
+          cannotManageRoles:
+            "Chỉ owner và admin mới có thể quản lý vai trò trong dự án này.",
+          remove: "Gỡ",
+          showing: "Hiển thị",
+          previous: "Trước",
+          next: "Sau",
+          invitations: "Lời mời",
+          invitationsHelp:
+            "Theo dõi các link mời đang hoạt động và chia sẻ cho đồng đội chưa vào dự án.",
+          searchInvitations: "Tìm lời mời theo email",
+          allStatuses: "Tất cả trạng thái",
+          loadingInvitations: "Đang tải lời mời...",
+          invitationsUnavailableTitle: "Không thể tải lời mời",
+          invitationsUnavailableDescription:
+            "Không thể tải danh sách lời mời của dự án từ backend.",
+          noInvitationsTitle: "Chưa có lời mời nào",
+          noInvitationsDescription:
+            "Hãy tạo link mời để đồng đội có thể tham gia dự án sau khi đăng nhập.",
+          createInvitation: "Tạo lời mời",
+          noInvitationsMatchTitle: "Không có lời mời phù hợp bộ lọc",
+          noInvitationsMatchDescription:
+            "Hãy điều chỉnh email hoặc trạng thái để xem các link mời phù hợp.",
+          created: "Tạo lúc",
+          expires: "Hết hạn",
+          resend: "Gửi lại",
+          copyLink: "Sao chép link",
+          cancel: "Hủy",
+          inviteLinkCopied: "Đã sao chép link mời",
+          copyFailed: "Sao chép thất bại",
+          copyFailedDescription:
+            "Trình duyệt đã chặn quyền truy cập clipboard cho link lời mời.",
+          removeMemberTitle: "Gỡ thành viên",
+          removeMemberConfirm: "Gỡ thành viên",
+          removeMemberDescription: (email: string, project: string) =>
+            `Gỡ ${email} khỏi ${project}? Người này sẽ mất quyền truy cập cho tới khi được thêm lại.`,
+          roleLabels: {
+            OWNER: "Chủ dự án",
+            ADMIN: "Quản trị",
+            MEMBER: "Thành viên",
+            VIEWER: "Người xem",
+          } as Record<MemberRole | "OWNER", string>,
+          invitationStatuses: {
+            PENDING: "Chờ phản hồi",
+            ACCEPTED: "Đã chấp nhận",
+            REJECTED: "Đã từ chối",
+            CANCELED: "Đã hủy",
+          } as Record<ProjectInvitation["status"], string>,
+        }
+      : {
+          workspace: "Workspace",
+          title: "Members",
+          subtitle:
+            "Manage who is in the selected project, what role they hold, and when they joined.",
+          addMember: "Add member",
+          inviteByEmail: "Invite by email",
+          members: "members",
+          loadingTitle: "Members",
+          loadingDescription:
+            "Loading the project roster and access levels.",
+          unavailableTitle: "Members unavailable",
+          unavailableDescription:
+            "The project list could not be loaded from the backend. Retry to restore the page.",
+          noProjectsTitle: "No projects yet",
+          noProjectsDescription:
+            "Join or create a project before managing members. The backend currently exposes members by project.",
+          totalMembers: "Total members",
+          totalMembersHelp: (name: string) =>
+            `Everyone currently included in ${name}.`,
+          elevatedRoles: "Elevated roles",
+          elevatedRolesHelp:
+            "Owners and admins with broader access in this project.",
+          viewers: "Viewers",
+          viewersHelp:
+            "Read-focused collaborators with limited project permissions.",
+          pendingInvites: "Pending invites",
+          pendingInvitesHelp:
+            "Outstanding links waiting for invited teammates to accept access.",
+          searchMembers: "Search members by name or email",
+          allRoles: "All roles",
+          visible: "visible",
+          filter: "Filter",
+          search: "Search",
+          page: "Page",
+          of: "of",
+          noMembersTitle: "No members yet",
+          noMembersDescription:
+            "Once teammates are added to this project, they will appear here with roles and joined dates.",
+          noMembersMatchTitle: "No members match the current filters",
+          noMembersMatchDescription:
+            "Try another search term or switch the selected role filter to bring teammates back into view.",
+          member: "Member",
+          email: "Email",
+          role: "Role",
+          joined: "Joined",
+          actions: "Actions",
+          ownerRoleLocked:
+            "Ownership transfer is not available yet, so owner role stays fixed here.",
+          selfRoleLocked:
+            "Use a dedicated self-service flow to change your own project role later.",
+          roleSaved: "Role changes are saved directly to the backend.",
+          cannotManageRoles:
+            "Only owners and admins can manage roles in this project.",
+          remove: "Remove",
+          showing: "Showing",
+          previous: "Previous",
+          next: "Next",
+          invitations: "Invitations",
+          invitationsHelp:
+            "Track active invite links and share them with teammates who are not yet in the project.",
+          searchInvitations: "Search invitations by email",
+          allStatuses: "All statuses",
+          loadingInvitations: "Loading invitations...",
+          invitationsUnavailableTitle: "Invitations unavailable",
+          invitationsUnavailableDescription:
+            "The project invitation list could not be loaded from the backend.",
+          noInvitationsTitle: "No invitations yet",
+          noInvitationsDescription:
+            "Create an invite link to let a teammate join this project after they sign in.",
+          createInvitation: "Create invitation",
+          noInvitationsMatchTitle: "No invitations match the current filters",
+          noInvitationsMatchDescription:
+            "Adjust the email search or invitation status filter to reveal matching invite links.",
+          created: "Created",
+          expires: "Expires",
+          resend: "Resend",
+          copyLink: "Copy link",
+          cancel: "Cancel",
+          inviteLinkCopied: "Invite link copied",
+          copyFailed: "Copy failed",
+          copyFailedDescription:
+            "Your browser blocked clipboard access for the invitation link.",
+          removeMemberTitle: "Remove member",
+          removeMemberConfirm: "Remove member",
+          removeMemberDescription: (email: string, project: string) =>
+            `Remove ${email} from ${project}? They will lose access until someone adds them again.`,
+          roleLabels: {
+            OWNER: "Owner",
+            ADMIN: "Admin",
+            MEMBER: "Member",
+            VIEWER: "Viewer",
+          } as Record<MemberRole | "OWNER", string>,
+          invitationStatuses: {
+            PENDING: "Pending",
+            ACCEPTED: "Accepted",
+            REJECTED: "Rejected",
+            CANCELED: "Canceled",
+          } as Record<ProjectInvitation["status"], string>,
+        };
 
   useEffect(() => {
     if (!selectedProjectId && projectsQuery.data?.length) {
@@ -123,14 +337,14 @@ export function MembersPage() {
     try {
       await navigator.clipboard.writeText(invitationUrl);
       useToastStore.getState().push({
-        title: "Invite link copied",
+        title: ui.inviteLinkCopied,
         description: invitationUrl,
         variant: "success",
       });
     } catch {
       useToastStore.getState().push({
-        title: "Copy failed",
-        description: "Your browser blocked clipboard access for the invitation link.",
+        title: ui.copyFailed,
+        description: ui.copyFailedDescription,
         variant: "error",
       });
     }
@@ -142,8 +356,8 @@ export function MembersPage() {
   ) {
     return (
       <LoadingState
-        title="Members"
-        description="Loading the project roster and access levels."
+        title={ui.loadingTitle}
+        description={ui.loadingDescription}
       />
     );
   }
@@ -151,8 +365,8 @@ export function MembersPage() {
   if (projectsQuery.isError) {
     return (
       <ErrorState
-        title="Members unavailable"
-        description="The project list could not be loaded from the backend. Retry to restore the page."
+        title={ui.unavailableTitle}
+        description={ui.unavailableDescription}
         onRetry={() => void projectsQuery.refetch()}
       />
     );
@@ -162,8 +376,8 @@ export function MembersPage() {
     return (
       <EmptyState
         icon={<Users />}
-        title="No projects yet"
-        description="Join or create a project before managing members. The backend currently exposes members by project."
+        title={ui.noProjectsTitle}
+        description={ui.noProjectsDescription}
       />
     );
   }
@@ -171,8 +385,12 @@ export function MembersPage() {
   if (membersQuery.isError || allMembersQuery.isError) {
     return (
       <ErrorState
-        title="Members unavailable"
-        description="The project member roster could not be loaded from the backend. Retry to restore the page."
+        title={ui.unavailableTitle}
+        description={
+          language === "vi"
+            ? "Không thể tải danh sách thành viên của dự án từ backend. Hãy thử lại để khôi phục trang."
+            : "The project member roster could not be loaded from the backend. Retry to restore the page."
+        }
         onRetry={() => void membersQuery.refetch()}
       />
     );
@@ -183,11 +401,11 @@ export function MembersPage() {
       <header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-            Workspace
+            {ui.workspace}
           </p>
-          <h2 className="text-3xl font-semibold tracking-tight">Members</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">{ui.title}</h2>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Manage who is in the selected project, what role they hold, and when they joined.
+            {ui.subtitle}
           </p>
         </div>
 
@@ -199,7 +417,7 @@ export function MembersPage() {
             disabled={!canManageMembers}
           >
             <Plus />
-            Add member
+            {ui.addMember}
           </Button>
           <Button
             type="button"
@@ -209,7 +427,7 @@ export function MembersPage() {
             disabled={!canManageMembers}
           >
             <Link2 />
-            Invite by email
+            {ui.inviteByEmail}
           </Button>
           <select
             className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -224,38 +442,38 @@ export function MembersPage() {
           </select>
 
           <Badge variant="secondary" className="px-3 py-1">
-            {summary.total} members
+            {summary.total} {ui.members}
           </Badge>
         </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Total members</p>
+          <p className="text-sm text-muted-foreground">{ui.totalMembers}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.total}</p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Everyone currently included in {selectedProject?.name ?? "this project"}.
+            {ui.totalMembersHelp(selectedProject?.name ?? (language === "vi" ? "dự án này" : "this project"))}
           </p>
         </article>
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Elevated roles</p>
+          <p className="text-sm text-muted-foreground">{ui.elevatedRoles}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.admins}</p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Owners and admins with broader access in this project.
+            {ui.elevatedRolesHelp}
           </p>
         </article>
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Viewers</p>
+          <p className="text-sm text-muted-foreground">{ui.viewers}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.viewers}</p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Read-focused collaborators with limited project permissions.
+            {ui.viewersHelp}
           </p>
         </article>
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Pending invites</p>
+          <p className="text-sm text-muted-foreground">{ui.pendingInvites}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">{summary.pendingInvites}</p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Outstanding links waiting for invited teammates to accept access.
+            {ui.pendingInvitesHelp}
           </p>
         </article>
       </section>
@@ -268,7 +486,7 @@ export function MembersPage() {
               className="h-11 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               value={memberSearch}
               onChange={(event) => setMemberSearch(event.target.value)}
-              placeholder="Search members by name or email"
+              placeholder={ui.searchMembers}
             />
           </div>
 
@@ -282,28 +500,28 @@ export function MembersPage() {
             >
               {memberFilterOptions.map((role) => (
                 <option key={role} value={role}>
-                  {role === "ALL" ? "All roles" : role}
+                  {role === "ALL" ? ui.allRoles : ui.roleLabels[role]}
                 </option>
               ))}
             </select>
 
             <Badge variant="secondary" className="px-3 py-1">
-              {members.length} visible
+              {members.length} {ui.visible}
             </Badge>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="px-3 py-1">
-            Filter: {memberRoleFilter === "ALL" ? "All roles" : memberRoleFilter}
+            {ui.filter}: {memberRoleFilter === "ALL" ? ui.allRoles : memberRoleFilter}
           </Badge>
           {deferredMemberSearch.trim() ? (
             <Badge variant="outline" className="px-3 py-1">
-              Search: {deferredMemberSearch.trim()}
+              {ui.search}: {deferredMemberSearch.trim()}
             </Badge>
           ) : null}
           <Badge variant="outline" className="px-3 py-1">
-            Page {memberPage} of {totalMemberPages}
+            {ui.page} {memberPage} {ui.of} {totalMemberPages}
           </Badge>
         </div>
       </section>
@@ -311,8 +529,8 @@ export function MembersPage() {
       {members.length === 0 ? (
         <EmptyState
           icon={<Users />}
-          title="No members yet"
-          description="Once teammates are added to this project, they will appear here with roles and joined dates."
+          title={ui.noMembersTitle}
+          description={ui.noMembersDescription}
           action={
             <Button
               type="button"
@@ -321,15 +539,15 @@ export function MembersPage() {
               disabled={!canManageMembers}
             >
               <Plus />
-              Add member
+              {ui.addMember}
             </Button>
           }
         />
       ) : paginatedMembers.length === 0 ? (
         <EmptyState
           icon={<Users />}
-          title="No members match the current filters"
-          description="Try another search term or switch the selected role filter to bring teammates back into view."
+          title={ui.noMembersMatchTitle}
+          description={ui.noMembersMatchDescription}
         />
       ) : (
         <section className="overflow-hidden rounded-3xl border border-border bg-background/95 shadow-sm">
@@ -337,11 +555,11 @@ export function MembersPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="bg-secondary/60 text-muted-foreground">
                 <tr>
-                  <th className="px-6 py-4 font-medium">Member</th>
-                  <th className="px-6 py-4 font-medium">Email</th>
-                  <th className="px-6 py-4 font-medium">Role</th>
-                  <th className="px-6 py-4 font-medium">Joined</th>
-                  <th className="px-6 py-4 font-medium">Actions</th>
+                  <th className="px-6 py-4 font-medium">{ui.member}</th>
+                  <th className="px-6 py-4 font-medium">{ui.email}</th>
+                  <th className="px-6 py-4 font-medium">{ui.role}</th>
+                  <th className="px-6 py-4 font-medium">{ui.joined}</th>
+                  <th className="px-6 py-4 font-medium">{ui.actions}</th>
                 </tr>
               </thead>
               <tbody>
@@ -380,18 +598,18 @@ export function MembersPage() {
                         >
                           {roleOptions.map((role) => (
                             <option key={role} value={role}>
-                              {role}
+                              {ui.roleLabels[role]}
                             </option>
                           ))}
                         </select>
                         <p className="text-xs text-muted-foreground">
                           {member.role === "OWNER"
-                            ? "Ownership transfer is not available yet, so owner role stays fixed here."
+                            ? ui.ownerRoleLocked
                             : member.userId === String(currentUser?.id)
-                              ? "Use a dedicated self-service flow to change your own project role later."
+                              ? ui.selfRoleLocked
                               : canManageMembers
-                                ? "Role changes are saved directly to the backend."
-                                : "Only owners and admins can manage roles in this project."}
+                                ? ui.roleSaved
+                                : ui.cannotManageRoles}
                         </p>
                       </div>
                     </td>
@@ -408,22 +626,14 @@ export function MembersPage() {
                           member.userId === String(currentUser?.id) ||
                           removeMember.isPending
                         }
-                        onClick={() => {
-                          if (
-                            !window.confirm(
-                              `Remove ${member.email} from ${selectedProject?.name ?? "this project"}?`
-                            )
-                          ) {
-                            return;
-                          }
-
-                          removeMember.mutate({
-                            projectId: selectedProjectId,
-                            memberId: member.id,
-                          });
-                        }}
+                        onClick={() =>
+                          setMemberRemovalTarget({
+                            id: member.id,
+                            email: member.email,
+                          })
+                        }
                       >
-                        Remove
+                        {ui.remove}
                       </Button>
                     </td>
                   </tr>
@@ -434,8 +644,8 @@ export function MembersPage() {
 
           <div className="flex flex-col gap-3 border-t border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              Showing {(memberPage - 1) * membersPerPage + 1}-
-              {Math.min(memberPage * membersPerPage, members.length)} of {members.length} members
+              {ui.showing} {(memberPage - 1) * membersPerPage + 1}-
+              {Math.min(memberPage * membersPerPage, members.length)} {ui.of} {members.length} {ui.members}
             </p>
 
             <div className="flex items-center gap-2">
@@ -446,7 +656,7 @@ export function MembersPage() {
                 disabled={memberPage === 1}
                 onClick={() => setMemberPage((current) => Math.max(1, current - 1))}
               >
-                Previous
+                {ui.previous}
               </Button>
               <Button
                 type="button"
@@ -457,7 +667,7 @@ export function MembersPage() {
                   setMemberPage((current) => Math.min(totalMemberPages, current + 1))
                 }
               >
-                Next
+                {ui.next}
               </Button>
             </div>
           </div>
@@ -466,9 +676,9 @@ export function MembersPage() {
 
       <section className="overflow-hidden rounded-3xl border border-border bg-background/95 shadow-sm">
         <div className="border-b border-border px-6 py-5">
-          <h3 className="text-lg font-semibold">Invitations</h3>
+          <h3 className="text-lg font-semibold">{ui.invitations}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Track active invite links and share them with teammates who are not yet in the project.
+            {ui.invitationsHelp}
           </p>
         </div>
 
@@ -480,7 +690,7 @@ export function MembersPage() {
                 className="h-11 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                 value={inviteSearch}
                 onChange={(event) => setInviteSearch(event.target.value)}
-                placeholder="Search invitations by email"
+                placeholder={ui.searchInvitations}
               />
             </div>
 
@@ -496,13 +706,13 @@ export function MembersPage() {
               >
                 {invitationStatusOptions.map((status) => (
                   <option key={status} value={status}>
-                    {status === "ALL" ? "All statuses" : status}
+                    {status === "ALL" ? ui.allStatuses : ui.invitationStatuses[status]}
                   </option>
                 ))}
               </select>
 
               <Badge variant="secondary" className="px-3 py-1">
-                {filteredInvitations.length} visible
+                {filteredInvitations.length} {ui.visible}
               </Badge>
             </div>
           </div>
@@ -510,13 +720,13 @@ export function MembersPage() {
 
         {invitationsQuery.isPending ? (
           <div className="px-6 py-8 text-sm text-muted-foreground">
-            Loading invitations...
+            {ui.loadingInvitations}
           </div>
         ) : invitationsQuery.isError ? (
           <div className="px-6 py-8">
             <ErrorState
-              title="Invitations unavailable"
-              description="The project invitation list could not be loaded from the backend."
+              title={ui.invitationsUnavailableTitle}
+              description={ui.invitationsUnavailableDescription}
               onRetry={() => void invitationsQuery.refetch()}
             />
           </div>
@@ -524,8 +734,8 @@ export function MembersPage() {
           <div className="p-6">
             <EmptyState
               icon={<Link2 />}
-              title="No invitations yet"
-              description="Create an invite link to let a teammate join this project after they sign in."
+              title={ui.noInvitationsTitle}
+              description={ui.noInvitationsDescription}
               action={
                 <Button
                   type="button"
@@ -534,7 +744,7 @@ export function MembersPage() {
                   disabled={!canManageMembers}
                 >
                   <Link2 />
-                  Create invitation
+                  {ui.createInvitation}
                 </Button>
               }
             />
@@ -543,8 +753,8 @@ export function MembersPage() {
           <div className="p-6">
             <EmptyState
               icon={<Link2 />}
-              title="No invitations match the current filters"
-              description="Adjust the email search or invitation status filter to reveal matching invite links."
+              title={ui.noInvitationsMatchTitle}
+              description={ui.noInvitationsMatchDescription}
             />
           </div>
         ) : (
@@ -557,17 +767,18 @@ export function MembersPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-foreground">{invitation.email}</p>
+                    <RoleBadge role={invitation.role} />
                     <Badge
                       variant={
                         invitation.status === "PENDING" ? "secondary" : "outline"
                       }
                       className="px-3 py-1"
                     >
-                      {invitation.status}
+                      {ui.invitationStatuses[invitation.status]}
                     </Badge>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Created {formatCalendarDate(invitation.createdAt)}. Expires{" "}
+                    {ui.created} {formatCalendarDate(invitation.createdAt)}. {ui.expires}{" "}
                     {formatCalendarDate(invitation.expiresAt)}.
                   </p>
                   <p className="mt-2 truncate text-xs text-muted-foreground">
@@ -580,11 +791,55 @@ export function MembersPage() {
                     type="button"
                     variant="outline"
                     className="gap-2"
-                    disabled={invitation.status !== "PENDING"}
-                    onClick={() => void copyInviteLink(invitation.token)}
+                    disabled={
+                      invitation.status !== "PENDING" ||
+                      resendInvitation.isPending ||
+                      cancelInvitation.isPending
+                    }
+                    onClick={() =>
+                      void resendInvitation.mutateAsync({
+                        projectId: selectedProjectId,
+                        invitationId: invitation.id,
+                      })
+                    }
+                  >
+                    <Link2 className="size-4" />
+                    {ui.resend}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={
+                      invitation.status !== "PENDING" ||
+                      resendInvitation.isPending ||
+                      cancelInvitation.isPending
+                    }
+                    onClick={() =>
+                      void copyInviteLink(invitation.token)
+                    }
                   >
                     <Copy className="size-4" />
-                    Copy link
+                    {ui.copyLink}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                    disabled={
+                      invitation.status !== "PENDING" ||
+                      resendInvitation.isPending ||
+                      cancelInvitation.isPending
+                    }
+                    onClick={() =>
+                      void cancelInvitation.mutateAsync({
+                        projectId: selectedProjectId,
+                        invitationId: invitation.id,
+                      })
+                    }
+                  >
+                    <X className="size-4" />
+                    {ui.cancel}
                   </Button>
                 </div>
               </article>
@@ -616,8 +871,33 @@ export function MembersPage() {
           createInvitation.mutateAsync({
             projectId: selectedProjectId,
             email: input.email,
+            role: input.role,
           })
         }
+      />
+
+      <ConfirmDialog
+        open={Boolean(memberRemovalTarget)}
+        title={ui.removeMemberTitle}
+        description={ui.removeMemberDescription(
+          memberRemovalTarget?.email ?? (language === "vi" ? "thành viên này" : "this teammate"),
+          selectedProject?.name ?? (language === "vi" ? "dự án này" : "this project")
+        )}
+        confirmLabel={ui.removeMemberConfirm}
+        tone="danger"
+        isPending={removeMember.isPending}
+        onClose={() => setMemberRemovalTarget(null)}
+        onConfirm={async () => {
+          if (!memberRemovalTarget) {
+            return;
+          }
+
+          await removeMember.mutateAsync({
+            projectId: selectedProjectId,
+            memberId: memberRemovalTarget.id,
+          });
+          setMemberRemovalTarget(null);
+        }}
       />
     </section>
   );

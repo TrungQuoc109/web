@@ -3,11 +3,13 @@ import { ArrowRight, CheckCircle2, Link2, Loader2 } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { useAcceptInvitationMutation } from "@/invitations/hooks/useAcceptInvitationMutation";
+import { useI18n } from "@/i18n/useI18n";
 import { useAuthStore } from "@/auth/store/authStore";
 import { normalizeApiError } from "@/shared/api/normalizeApiError";
 import { Button } from "@/shared/ui/button";
 
 export function AcceptInvitationPage() {
+  const { t } = useI18n();
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,7 +29,7 @@ export function AcceptInvitationPage() {
         replace: true,
         state: {
           from: { pathname: location.pathname },
-          error: "Sign in to accept the project invitation.",
+          error: t("invite.signInRequired"),
         },
       });
       return;
@@ -55,7 +57,7 @@ export function AcceptInvitationPage() {
         <div className="rounded-3xl border border-border bg-background/90 p-8 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.28)] backdrop-blur">
           <div className="flex items-center gap-3">
             <Loader2 className="size-5 animate-spin" />
-            <p className="text-sm text-muted-foreground">Preparing invitation...</p>
+            <p className="text-sm text-muted-foreground">{t("invite.preparing")}</p>
           </div>
         </div>
       </div>
@@ -71,14 +73,13 @@ export function AcceptInvitationPage() {
               <Link2 className="size-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold">Joining project</h1>
+              <h1 className="text-2xl font-semibold">{t("invite.joiningTitle")}</h1>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                We&apos;re validating the invitation and adding your account to the
-                project workspace now.
+                {t("invite.joiningDescription")}
               </p>
               <div className="mt-5 flex items-center gap-3 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
-                Processing invitation token...
+                {t("invite.processing")}
               </div>
             </div>
           </div>
@@ -97,21 +98,20 @@ export function AcceptInvitationPage() {
                 <CheckCircle2 className="size-5" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold">Invitation accepted</h1>
+                <h1 className="text-2xl font-semibold">{t("invite.acceptedTitle")}</h1>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  You&apos;ve joined the project successfully. Your workspace data
-                  has been refreshed and the project should now appear in your app.
+                  {t("invite.acceptedDescription")}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-3 pt-2">
               <Button type="button" className="gap-2" onClick={() => navigate("/projects")}>
-                Open projects
+                {t("invite.openProjects")}
                 <ArrowRight className="size-4" />
               </Button>
               <Button type="button" variant="outline" onClick={() => navigate("/")}>
-                Go to dashboard
+                {t("invite.goDashboard")}
               </Button>
             </div>
           </div>
@@ -127,7 +127,7 @@ export function AcceptInvitationPage() {
       <div className="rounded-3xl border border-border bg-background/90 p-8 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.28)] backdrop-blur">
         <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Invitation unavailable</h1>
+            <h1 className="text-2xl font-semibold">{t("invite.unavailableTitle")}</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {normalizedError.message}
             </p>
@@ -135,10 +135,10 @@ export function AcceptInvitationPage() {
 
           <div className="flex flex-wrap gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => navigate("/projects")}>
-              Open projects
+              {t("invite.openProjects")}
             </Button>
             <Link to="/login" state={{ from: { pathname: location.pathname } }}>
-              <Button type="button">Sign in with another account</Button>
+              <Button type="button">{t("invite.signInAnother")}</Button>
             </Link>
           </div>
         </div>

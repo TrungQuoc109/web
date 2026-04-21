@@ -1,4 +1,5 @@
 import { cn } from "@/shared/lib/cn";
+import { getCurrentLanguage } from "@/i18n/languageStore";
 import { Badge } from "@/shared/ui/badge";
 import type {
   NotificationType,
@@ -30,7 +31,41 @@ const statusStyles: Record<StatusBadgeValue, string> = {
 };
 
 function formatStatusLabel(value: StatusBadgeValue) {
-  return value.replaceAll("_", " ");
+  const language = getCurrentLanguage();
+  const labels =
+    language === "vi"
+      ? {
+          TODO: "Cần làm",
+          IN_PROGRESS: "Đang làm",
+          IN_REVIEW: "Đang duyệt",
+          DONE: "Hoàn tất",
+          BLOCKED: "Bị chặn",
+          ACTIVE: "Đang hoạt động",
+          PLANNING: "Đang lên kế hoạch",
+          AT_RISK: "Rủi ro",
+          COMPLETED: "Đã hoàn thành",
+          MENTION: "Nhắc tên",
+          ASSIGNED: "Được giao",
+          STATUS_CHANGED: "Đổi trạng thái",
+          ANNOUNCEMENT: "Thông báo",
+        }
+      : {
+          TODO: "To do",
+          IN_PROGRESS: "In progress",
+          IN_REVIEW: "In review",
+          DONE: "Done",
+          BLOCKED: "Blocked",
+          ACTIVE: "Active",
+          PLANNING: "Planning",
+          AT_RISK: "At risk",
+          COMPLETED: "Completed",
+          MENTION: "Mention",
+          ASSIGNED: "Assigned",
+          STATUS_CHANGED: "Status changed",
+          ANNOUNCEMENT: "Announcement",
+        };
+
+  return labels[value];
 }
 
 export function StatusBadge({ value, className }: StatusBadgeProps) {

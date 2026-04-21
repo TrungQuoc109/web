@@ -23,7 +23,11 @@ import { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotificationService } from './notification.service';
-import { NotificationView } from './notification.types';
+import { NotificationCatalogView, NotificationView } from './notification.types';
+import {
+  ListNotificationsQueryDto,
+} from './dto/list-notifications-query.dto';
+import { NotificationCatalogResponseDto } from './dto/notification-catalog-response.dto';
 import { NotificationResponseDto } from './dto/notification-response.dto';
 import { UnreadCountResponseDto } from './dto/unread-count-response.dto';
 
@@ -48,6 +52,21 @@ export class NotificationController {
     @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
   ): Promise<NotificationView[]> {
     return this.notificationService.listForUser(currentUser.id, limit);
+  }
+
+  @Get('catalog')
+  @ApiOperation({ summary: 'Lấy hộp thư thông báo có phân trang và bộ lọc' })
+  @ApiOkResponse({
+    description: 'Danh sách thông báo theo bộ lọc và phân trang',
+    type: NotificationCatalogResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Không có quyền truy cập' })
+  @ApiForbiddenResponse({ description: 'Không đủ quyền truy cập thông tin' })
+  listCatalog(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query() query: ListNotificationsQueryDto,
+  ): Promise<NotificationCatalogView> {
+    return this.notificationService.listCatalogForUser(currentUser.id, query);
   }
 
   @Patch(':notificationId/read')

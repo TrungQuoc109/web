@@ -87,6 +87,23 @@ export class TaskPermissionService {
     return { task, membership };
   }
 
+  async ensureCanManageAssignment(
+    taskId: number,
+    assignmentId: number,
+    userId: number,
+  ) {
+    const { task, membership } = await this.ensureCanAssignUsers(taskId, userId);
+    const assignment = await this.prisma.taskAssignment.findUnique({
+      where: { id: assignmentId },
+    });
+
+    if (!assignment || assignment.taskId !== taskId) {
+      throw new NotFoundException('Task assignment not found.');
+    }
+
+    return { task, membership, assignment };
+  }
+
   async ensureCanUpdateStatus(taskId: number, userId: number, nextStatus: TaskStatus) {
     const task = await this.ensureTaskExists(taskId);
     const membership = await this.projectPermissionService.ensureActiveMember(

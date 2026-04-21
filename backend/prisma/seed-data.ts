@@ -28,6 +28,7 @@ export type MembershipSeed = {
 export type InvitationSeed = {
   email: string;
   status: InvitationStatus;
+  role: ProjectRole;
   senderKey: string;
   createdDaysAgo: number;
   expiresInDays: number;
@@ -208,6 +209,7 @@ export const seedProjects: ProjectSeed[] = [
       {
         email: 'grace.chen@northstaradvisory.com',
         status: InvitationStatus.ACCEPTED,
+        role: ProjectRole.VIEWER,
         senderKey: 'linh',
         createdDaysAgo: 67,
         expiresInDays: 7,
@@ -215,6 +217,7 @@ export const seedProjects: ProjectSeed[] = [
       {
         email: 'ops.qa.contractor@vendorflow.io',
         status: InvitationStatus.PENDING,
+        role: ProjectRole.MEMBER,
         senderKey: 'linh',
         createdDaysAgo: 2,
         expiresInDays: 5,
@@ -543,6 +546,7 @@ export const seedProjects: ProjectSeed[] = [
       {
         email: 'daniel.brooks@lighthousecapital.io',
         status: InvitationStatus.ACCEPTED,
+        role: ProjectRole.VIEWER,
         senderKey: 'marcus',
         createdDaysAgo: 55,
         expiresInDays: 7,
@@ -550,6 +554,7 @@ export const seedProjects: ProjectSeed[] = [
       {
         email: 'compliance.lead@pilotbank.co',
         status: InvitationStatus.PENDING,
+        role: ProjectRole.ADMIN,
         senderKey: 'marcus',
         createdDaysAgo: 16,
         expiresInDays: -2,
@@ -854,6 +859,7 @@ export const seedProjects: ProjectSeed[] = [
       {
         email: 'marketplace.analyst@retailops.io',
         status: InvitationStatus.REJECTED,
+        role: ProjectRole.VIEWER,
         senderKey: 'linh',
         createdDaysAgo: 14,
         expiresInDays: 7,
@@ -1145,9 +1151,18 @@ export const seedProjects: ProjectSeed[] = [
       {
         email: 'customer.success@draftforge.ai',
         status: InvitationStatus.PENDING,
+        role: ProjectRole.VIEWER,
         senderKey: 'marcus',
         createdDaysAgo: 1,
         expiresInDays: 6,
+      },
+      {
+        email: 'marketing.ops@draftforge.ai',
+        status: InvitationStatus.CANCELED,
+        role: ProjectRole.MEMBER,
+        senderKey: 'marcus',
+        createdDaysAgo: 9,
+        expiresInDays: 7,
       },
     ],
     projectMessages: [
@@ -1444,6 +1459,7 @@ export const seedProjects: ProjectSeed[] = [
       {
         email: 'data.engineer.contractor@insightgrid.io',
         status: InvitationStatus.PENDING,
+        role: ProjectRole.MEMBER,
         senderKey: 'linh',
         createdDaysAgo: 3,
         expiresInDays: 4,

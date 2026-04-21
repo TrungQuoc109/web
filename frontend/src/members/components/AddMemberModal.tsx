@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import type { MemberRole } from "@/members/types/member";
 import { Button } from "@/shared/ui/button";
 
@@ -31,8 +32,44 @@ export function AddMemberModal({
   onClose,
   onAdd,
 }: AddMemberModalProps) {
+  const { language } = useI18n();
   const [form, setForm] = useState<FormState>(initialState);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const ui =
+    language === "vi"
+      ? {
+          section: "Thành viên dự án",
+          title: "Thêm thành viên",
+          subtitle: `Mời một người dùng đã có sẵn vào ${projectName ?? "dự án đang chọn"} với vai trò trong dự án.`,
+          close: "Đóng hộp thoại",
+          email: "Email",
+          emailPlaceholder: "dongdoi@example.com",
+          role: "Vai trò",
+          emptyEmail: "Hãy nhập email trước khi thêm thành viên.",
+          addFailed: "Không thể thêm thành viên. Vui lòng thử lại.",
+          cancel: "Hủy",
+          adding: "Đang thêm...",
+          add: "Thêm thành viên",
+        }
+      : {
+          section: "Project member",
+          title: "Add member",
+          subtitle: `Invite an existing user into ${projectName ?? "the selected project"} with a project role.`,
+          close: "Close modal",
+          email: "Email",
+          emailPlaceholder: "teammate@example.com",
+          role: "Role",
+          emptyEmail: "Enter an email address before adding a member.",
+          addFailed: "The member could not be added. Please try again.",
+          cancel: "Cancel",
+          adding: "Adding...",
+          add: "Add member",
+          roles: {
+            ADMIN: "Admin",
+            MEMBER: "Member",
+            VIEWER: "Viewer",
+          } as Record<MemberRole, string>,
+        };
 
   if (!open) return null;
 
@@ -48,7 +85,7 @@ export function AddMemberModal({
 
     const email = form.email.trim();
     if (!email) {
-      setSubmitError("Enter an email address before adding a member.");
+      setSubmitError(ui.emptyEmail);
       return;
     }
 
@@ -65,7 +102,7 @@ export function AddMemberModal({
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "The member could not be added. Please try again."
+          : ui.addFailed
       );
     }
   }
@@ -81,13 +118,13 @@ export function AddMemberModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-              Project member
+              {ui.section}
             </p>
             <h3 id="add-member-title" className="mt-2 text-2xl font-semibold tracking-tight">
-              Add member
+              {ui.title}
             </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Invite an existing user into {projectName ?? "the selected project"} with a project role.
+              {ui.subtitle}
             </p>
           </div>
 
@@ -96,7 +133,7 @@ export function AddMemberModal({
             size="icon"
             variant="ghost"
             onClick={resetAndClose}
-            aria-label="Close modal"
+            aria-label={ui.close}
             disabled={isPending}
           >
             <X />
@@ -105,7 +142,7 @@ export function AddMemberModal({
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Email</span>
+            <span className="text-sm font-medium">{ui.email}</span>
             <input
               type="email"
               className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -114,13 +151,13 @@ export function AddMemberModal({
                 setSubmitError(null);
                 setForm((current) => ({ ...current, email: event.target.value }));
               }}
-              placeholder="teammate@example.com"
+              placeholder={ui.emailPlaceholder}
               disabled={isPending}
             />
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Role</span>
+            <span className="text-sm font-medium">{ui.role}</span>
             <select
               className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               value={form.role}
@@ -134,7 +171,7 @@ export function AddMemberModal({
             >
               {roleOptions.map((role) => (
                 <option key={role} value={role}>
-                  {role}
+                  {ui.roles?.[role] ?? role}
                 </option>
               ))}
             </select>
@@ -148,10 +185,10 @@ export function AddMemberModal({
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={resetAndClose} disabled={isPending}>
-              Cancel
+              {ui.cancel}
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Adding..." : "Add member"}
+              {isPending ? ui.adding : ui.add}
             </Button>
           </div>
         </form>

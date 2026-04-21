@@ -6,10 +6,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { AssignTaskUsersDto } from './dto/assign-task-users.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
+import { UpdateTaskAssignmentDto } from './dto/update-task-assignment.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { taskAssignmentSelect, taskSelect } from './task.constants';
-import { TaskAssignmentView, TaskView } from './task.types';
+import { TaskAssignmentView, TaskCatalogView, TaskView } from './task.types';
 import { TaskPermissionService } from './task-permission.service';
 
 @Injectable()
@@ -21,21 +23,92 @@ export class TaskService {
     private readonly notificationService: NotificationService,
   ) {}
 
-  async listTasks(currentUser: AuthenticatedUser): Promise<TaskView[]> {
-    return this.prisma.task.findMany({
-      where: {
-        project: {
-          members: {
-            some: {
-              userId: currentUser.id,
-              leftAt: null,
-            },
+  async listTasks(
+    currentUser: AuthenticatedUser,
+    query: ListTasksQueryDto,
+  ): Promise<TaskCatalogView> {
+    const normalizedSearch = query.search?.trim();
+    const where = {
+      project: {
+        members: {
+          some: {
+            userId: currentUser.id,
+            leftAt: null,
           },
         },
       },
+      ...(query.projectId ? { projectId: query.projectId } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.priority ? { priority: query.priority } : {}),
+      ...(query.assigneeId
+        ? {
+            assignments: {
+              some: {
+                userId: query.assigneeId,
+              },
+            },
+          }
+        : {}),
+      ...(normalizedSearch
+        ? {
+            OR: [
+              {
+                title: {
+                  contains: normalizedSearch,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                description: {
+                  contains: normalizedSearch,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                assignments: {
+                  some: {
+                    user: {
+                      OR: [
+                        {
+                          email: {
+                            contains: normalizedSearch,
+                            mode: 'insensitive' as const,
+                          },
+                        },
+                        {
+                          name: {
+                            contains: normalizedSearch,
+                            mode: 'insensitive' as const,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const total = await this.prisma.task.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+    const page = Math.min(query.page, totalPages);
+    const items = await this.prisma.task.findMany({
+      where,
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      skip: (page - 1) * query.pageSize,
+      take: query.pageSize,
       select: taskSelect,
     });
+
+    return {
+      items,
+      total,
+      page,
+      pageSize: query.pageSize,
+      totalPages,
+    };
   }
 
   async createTask(
@@ -209,6 +282,44 @@ export class TaskService {
         ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
       },
       select: taskSelect,
+    });
+  }
+
+  async updateAssignment(
+    taskId: number,
+    assignmentId: number,
+    currentUser: AuthenticatedUser,
+    dto: UpdateTaskAssignmentDto,
+  ): Promise<TaskAssignmentView> {
+    await this.taskPermissionService.ensureCanManageAssignment(
+      taskId,
+      assignmentId,
+      currentUser.id,
+    );
+
+    return this.prisma.taskAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        role: dto.role,
+      },
+      select: taskAssignmentSelect,
+    });
+  }
+
+  async removeAssignment(
+    taskId: number,
+    assignmentId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<TaskAssignmentView> {
+    await this.taskPermissionService.ensureCanManageAssignment(
+      taskId,
+      assignmentId,
+      currentUser.id,
+    );
+
+    return this.prisma.taskAssignment.delete({
+      where: { id: assignmentId },
+      select: taskAssignmentSelect,
     });
   }
 

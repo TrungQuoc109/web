@@ -2,6 +2,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 import { navigationItems } from "@/app/config/navigation";
+import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
 
@@ -18,6 +19,8 @@ export function Sidebar({
   collapsed,
   onToggleCollapsed,
 }: SidebarProps) {
+  const { t } = useI18n();
+
   return (
     <>
       <div
@@ -39,9 +42,9 @@ export function Sidebar({
         <div className="flex items-center justify-between gap-3 px-2">
           <div className={cn("min-w-0", collapsed && "md:hidden")}>
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-              Workspace
+              {t("sidebar.workspace")}
             </p>
-            <h1 className="truncate text-lg font-semibold">Project Hub</h1>
+            <h1 className="truncate text-lg font-semibold">{t("sidebar.title")}</h1>
           </div>
 
           <Button
@@ -50,7 +53,9 @@ export function Sidebar({
             size="icon"
             className="hidden md:inline-flex"
             onClick={onToggleCollapsed}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={
+              collapsed ? t("sidebar.expand") : t("sidebar.collapse")
+            }
           >
             {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
           </Button>
@@ -76,7 +81,7 @@ export function Sidebar({
               >
                 <Icon aria-hidden="true" />
                 <span className={cn("truncate", collapsed && "md:hidden")}>
-                  {item.label}
+                  {t(item.labelKey)}
                 </span>
               </NavLink>
             );
@@ -89,13 +94,12 @@ export function Sidebar({
             collapsed && "md:hidden"
           )}
         >
-          <p className="text-sm font-medium">Team workspace</p>
+          <p className="text-sm font-medium">{t("sidebar.teamWorkspace")}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Focused shell for projects, tasks, messages, and updates.
+            {t("sidebar.teamWorkspaceDescription")}
           </p>
         </div>
       </aside>
     </>
   );
 }
-

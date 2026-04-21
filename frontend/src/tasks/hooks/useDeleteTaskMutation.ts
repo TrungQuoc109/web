@@ -21,7 +21,7 @@ export function useDeleteTaskMutation() {
         current.filter((item) => item.id !== variables.taskId)
       );
 
-      void queryClient.invalidateQueries({ queryKey: tasksKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.all });
       void queryClient.invalidateQueries({
         queryKey: projectsKeys.detail(variables.projectId),
       });

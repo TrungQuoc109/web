@@ -1,6 +1,7 @@
 import { httpClient } from "@/shared/api/http-client";
 import type {
   TaskComment,
+  TasksCatalog,
   TaskItem,
   TaskReport,
   TaskAssignmentRole,
@@ -70,6 +71,16 @@ type UpdateTaskStatusPayload = {
   status: TaskStatus;
 };
 
+type ListTasksCatalogFilters = {
+  search?: string;
+  projectId?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assigneeId?: string;
+  page?: number;
+  pageSize?: number;
+};
+
 type UpdateTaskPayload = {
   taskId: string;
   title: string;
@@ -83,6 +94,17 @@ type AssignTaskUsersPayload = {
     userId: string;
     role: TaskAssignmentRole;
   }>;
+};
+
+type UpdateTaskAssignmentPayload = {
+  taskId: string;
+  assignmentId: string;
+  role: TaskAssignmentRole;
+};
+
+type RemoveTaskAssignmentPayload = {
+  taskId: string;
+  assignmentId: string;
 };
 
 type SubmitTaskReportPayload = {
@@ -105,9 +127,18 @@ export type CreateTaskPayload = {
   priority?: TaskPriority;
 };
 
+type BackendTasksCatalogResponse = {
+  items: BackendTask[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 function mapTaskUser(assignment: BackendTaskAssignment): TaskUser {
   return {
     id: String(assignment.user.id),
+    assignmentId: String(assignment.id),
     name: assignment.user.name,
     email: assignment.user.email,
     assignmentRole: assignment.role,
@@ -189,8 +220,33 @@ function mapTaskReport(report: BackendTaskReport): TaskReport {
 
 export const tasksApi = {
   async getBoard(): Promise<TaskItem[]> {
-    const response = await httpClient.get<BackendTask[]>("/tasks");
-    return response.data.map(mapTask);
+    const catalog = await tasksApi.listCatalog({
+      page: 1,
+      pageSize: 200,
+    });
+    return catalog.items;
+  },
+
+  async listCatalog(filters: ListTasksCatalogFilters): Promise<TasksCatalog> {
+    const response = await httpClient.get<BackendTasksCatalogResponse>("/tasks", {
+      params: {
+        search: filters.search,
+        projectId: filters.projectId,
+        status: filters.status,
+        priority: filters.priority,
+        assigneeId: filters.assigneeId,
+        page: filters.page,
+        pageSize: filters.pageSize,
+      },
+    });
+
+    return {
+      items: response.data.items.map(mapTask),
+      total: response.data.total,
+      page: response.data.page,
+      pageSize: response.data.pageSize,
+      totalPages: response.data.totalPages,
+    };
   },
 
   async create(payload: CreateTaskPayload): Promise<TaskItem> {
@@ -252,6 +308,21 @@ export const tasksApi = {
         role: assignee.role,
       })),
     });
+  },
+
+  async updateAssignment(payload: UpdateTaskAssignmentPayload): Promise<void> {
+    await httpClient.patch(
+      `/tasks/${payload.taskId}/assignments/${payload.assignmentId}`,
+      {
+        role: payload.role,
+      }
+    );
+  },
+
+  async removeAssignment(payload: RemoveTaskAssignmentPayload): Promise<void> {
+    await httpClient.delete(
+      `/tasks/${payload.taskId}/assignments/${payload.assignmentId}`
+    );
   },
 
   async getReports(taskId: string): Promise<TaskReport[]> {

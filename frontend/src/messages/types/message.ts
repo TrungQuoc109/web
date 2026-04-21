@@ -12,3 +12,11 @@ export type ChatMessage = {
   senderId?: string | null;
   isCurrentUser?: boolean;
 };
+
+export type ChatMessagesCatalog = {
+  items: ChatMessage[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};

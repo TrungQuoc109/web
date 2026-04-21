@@ -5,9 +5,14 @@ import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectPermissionService } from '../project/project-permission.service';
 import { TaskPermissionService } from '../task/task-permission.service';
+import { ListMessagesQueryDto } from './dto/list-messages-query.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { messageSelect } from './message.constants';
-import { CreateSystemMessageInput, MessageView } from './message.types';
+import {
+  CreateSystemMessageInput,
+  MessageCatalogView,
+  MessageView,
+} from './message.types';
 
 @Injectable()
 export class MessageService {
@@ -39,24 +44,42 @@ export class MessageService {
       );
     }
 
+    const activeMembers = await this.getActiveProjectMembers(projectId);
+    const mentionedMemberIds = this.extractMentionedMemberIds(
+      dto.content,
+      activeMembers,
+      currentUser.id,
+    );
+    const metadata = this.buildMessageMetadata(dto.metadata, mentionedMemberIds);
+
     const message = await this.prisma.message.create({
       data: {
         content: dto.content.trim(),
         senderId: currentUser.id,
         projectId,
         taskId: null,
-        metadata: this.toJsonValue(dto.metadata),
+        metadata: this.toJsonValue(metadata),
         isSystem: false,
         isAnnouncement: dto.isAnnouncement ?? false,
       },
       select: messageSelect,
     });
 
+    if (mentionedMemberIds.length > 0) {
+      await this.notificationService.createNotifications({
+        activityId: message.id,
+        type: NotificationType.MENTION,
+        recipientIds: mentionedMemberIds,
+      });
+    }
+
     if (message.isAnnouncement) {
-      const recipientIds = await this.getActiveProjectRecipientIds(
-        projectId,
-        [currentUser.id],
-      );
+      const recipientIds = activeMembers
+        .map((member) => member.userId)
+        .filter(
+          (userId) =>
+            userId !== currentUser.id && !mentionedMemberIds.includes(userId),
+        );
 
       await this.notificationService.createNotifications({
         activityId: message.id,
@@ -86,18 +109,36 @@ export class MessageService {
       throw new ForbiddenException('Viewers cannot send task messages.');
     }
 
-    return this.prisma.message.create({
+    const activeMembers = await this.getActiveProjectMembers(task.projectId);
+    const mentionedMemberIds = this.extractMentionedMemberIds(
+      dto.content,
+      activeMembers,
+      currentUser.id,
+    );
+    const metadata = this.buildMessageMetadata(dto.metadata, mentionedMemberIds);
+
+    const message = await this.prisma.message.create({
       data: {
         content: dto.content.trim(),
         senderId: currentUser.id,
         projectId: task.projectId,
         taskId,
-        metadata: this.toJsonValue(dto.metadata),
+        metadata: this.toJsonValue(metadata),
         isSystem: false,
         isAnnouncement: false,
       },
       select: messageSelect,
     });
+
+    if (mentionedMemberIds.length > 0) {
+      await this.notificationService.createNotifications({
+        activityId: message.id,
+        type: NotificationType.MENTION,
+        recipientIds: mentionedMemberIds,
+      });
+    }
+
+    return message;
   }
 
   async listProjectMessages(
@@ -116,6 +157,48 @@ export class MessageService {
       },
       select: messageSelect,
     });
+  }
+
+  async listProjectMessagesCatalog(
+    projectId: number,
+    currentUser: AuthenticatedUser,
+    query: ListMessagesQueryDto,
+  ): Promise<MessageCatalogView> {
+    await this.projectPermissionService.ensureActiveMember(projectId, currentUser.id);
+
+    const normalizedSearch = query.search?.trim();
+    const where = {
+      projectId,
+      taskId: null,
+      ...(normalizedSearch
+        ? {
+            content: {
+              contains: normalizedSearch,
+              mode: 'insensitive' as const,
+            },
+          }
+        : {}),
+    };
+    const total = await this.prisma.message.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+    const page = Math.min(query.page, totalPages);
+    const items = await this.prisma.message.findMany({
+      where,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip: (page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: messageSelect,
+    });
+
+    return {
+      items: items.reverse(),
+      total,
+      page,
+      pageSize: query.pageSize,
+      totalPages,
+    };
   }
 
   async listTaskMessages(
@@ -137,6 +220,51 @@ export class MessageService {
       },
       select: messageSelect,
     });
+  }
+
+  async listTaskMessagesCatalog(
+    taskId: number,
+    currentUser: AuthenticatedUser,
+    query: ListMessagesQueryDto,
+  ): Promise<MessageCatalogView> {
+    const task = await this.taskPermissionService.ensureCanViewTask(
+      taskId,
+      currentUser.id,
+    );
+
+    const normalizedSearch = query.search?.trim();
+    const where = {
+      projectId: task.projectId,
+      taskId,
+      ...(normalizedSearch
+        ? {
+            content: {
+              contains: normalizedSearch,
+              mode: 'insensitive' as const,
+            },
+          }
+        : {}),
+    };
+    const total = await this.prisma.message.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+    const page = Math.min(query.page, totalPages);
+    const items = await this.prisma.message.findMany({
+      where,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip: (page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: messageSelect,
+    });
+
+    return {
+      items: items.reverse(),
+      total,
+      page,
+      pageSize: query.pageSize,
+      totalPages,
+    };
   }
 
   async createSystemMessage(
@@ -184,5 +312,116 @@ export class MessageService {
     });
 
     return members.map((member) => member.userId);
+  }
+
+  private async getActiveProjectMembers(projectId: number): Promise<
+    {
+      userId: number;
+      email: string;
+      name: string | null;
+    }[]
+  > {
+    return this.prisma.projectMember.findMany({
+      where: {
+        projectId,
+        leftAt: null,
+      },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            email: true,
+            name: true,
+          },
+        },
+      },
+    }).then((members) =>
+      members.map((member) => ({
+        userId: member.userId,
+        email: member.user.email,
+        name: member.user.name,
+      })),
+    );
+  }
+
+  private extractMentionedMemberIds(
+    content: string,
+    members: { userId: number; email: string; name: string | null }[],
+    senderId: number,
+  ): number[] {
+    const mentionMatches = Array.from(
+      content.matchAll(/@([a-zA-Z0-9._-]+)/g),
+      (match) => this.normalizeMentionToken(match[1]),
+    );
+
+    if (mentionMatches.length === 0) {
+      return [];
+    }
+
+    const matchedUserIds = new Set<number>();
+
+    for (const member of members) {
+      if (member.userId === senderId) {
+        continue;
+      }
+
+      const candidateTokens = this.getMentionCandidateTokens(member);
+      if (candidateTokens.some((token) => mentionMatches.includes(token))) {
+        matchedUserIds.add(member.userId);
+      }
+    }
+
+    return [...matchedUserIds];
+  }
+
+  private getMentionCandidateTokens(member: {
+    email: string;
+    name: string | null;
+  }): string[] {
+    const email = member.email.toLowerCase();
+    const emailLocalPart = email.split('@')[0] ?? email;
+    const tokens = new Set<string>([
+      this.normalizeMentionToken(email),
+      this.normalizeMentionToken(emailLocalPart),
+    ]);
+
+    if (member.name) {
+      const normalizedName = member.name.trim().toLowerCase();
+      const nameParts = normalizedName.split(/\s+/).filter(Boolean);
+
+      tokens.add(this.normalizeMentionToken(normalizedName));
+      tokens.add(this.normalizeMentionToken(normalizedName.replace(/\s+/g, '')));
+      tokens.add(this.normalizeMentionToken(normalizedName.replace(/\s+/g, '.')));
+      tokens.add(this.normalizeMentionToken(normalizedName.replace(/\s+/g, '-')));
+
+      for (const part of nameParts) {
+        tokens.add(this.normalizeMentionToken(part));
+      }
+    }
+
+    return [...tokens];
+  }
+
+  private buildMessageMetadata(
+    metadata: Record<string, unknown> | Prisma.InputJsonValue | undefined,
+    mentionedUserIds: number[],
+  ): Record<string, unknown> | Prisma.InputJsonValue | undefined {
+    if (mentionedUserIds.length === 0) {
+      return metadata;
+    }
+
+    const baseMetadata =
+      metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+        ? (metadata as Record<string, unknown>)
+        : {};
+
+    return {
+      ...baseMetadata,
+      mentionedUserIds,
+    };
+  }
+
+  private normalizeMentionToken(value: string): string {
+    return value.trim().toLowerCase();
   }
 }

@@ -25,6 +25,8 @@ export const projectsKeys = {
   details: () => [...projectsKeys.all, "detail"] as const,
   detail: (projectId?: string) =>
     [...projectsKeys.all, "detail", projectId] as const,
+  activity: (projectId?: string) =>
+    [...projectsKeys.all, "activity", projectId] as const,
 };
 
 export const membersKeys = {
@@ -45,11 +47,30 @@ export const messagesKeys = {
   all: ["messages"] as const,
   project: (projectId?: string) =>
     [...messagesKeys.all, "project", projectId] as const,
+  catalog: (
+    projectId?: string,
+    filters?: { search?: string; page?: number; pageSize?: number }
+  ) =>
+    filters
+      ? [...messagesKeys.all, "catalog", projectId, filters] as const
+      : [...messagesKeys.all, "catalog", projectId] as const,
 };
 
 export const tasksKeys = {
   all: ["tasks"] as const,
   board: () => [...tasksKeys.all, "board"] as const,
+  catalog: (filters?: {
+    search?: string;
+    projectId?: string;
+    status?: string;
+    priority?: string;
+    assigneeId?: string;
+    page?: number;
+    pageSize?: number;
+  }) =>
+    filters
+      ? [...tasksKeys.all, "catalog", filters] as const
+      : [...tasksKeys.all, "catalog"] as const,
   comments: (taskId?: string) =>
     [...tasksKeys.all, "detail", taskId, "comments"] as const,
   reports: (taskId?: string) =>
@@ -61,6 +82,15 @@ export const tasksKeys = {
 export const notificationsKeys = {
   all: ["notifications"] as const,
   list: () => [...notificationsKeys.all, "list"] as const,
+  catalog: (filters?: {
+    page?: number;
+    pageSize?: number;
+    readState?: string;
+    type?: string;
+  }) =>
+    filters
+      ? [...notificationsKeys.all, "catalog", filters] as const
+      : [...notificationsKeys.all, "catalog"] as const,
   unreadCount: () => [...notificationsKeys.all, "unread-count"] as const,
 };
 

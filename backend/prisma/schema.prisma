@@ -51,6 +51,7 @@ enum InvitationStatus {
   PENDING
   ACCEPTED
   REJECTED
+  CANCELED
 }
 
 enum NotificationType {
@@ -189,6 +190,7 @@ model Invitation {
   email            String
   token            String           @unique
   status           InvitationStatus @default(PENDING)
+  role             ProjectRole      @default(MEMBER)
 
   projectId        Int
   project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -204,6 +206,7 @@ model Invitation {
   @@index([status])
   @@index([expiresAt])
   @@index([projectId, email, status])
+  @@index([projectId, role, status])
 }
 
 model Message {

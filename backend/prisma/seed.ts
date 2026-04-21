@@ -194,6 +194,7 @@ async function main() {
               invitation.status,
             ),
             status: invitation.status,
+            role: invitation.role,
             projectId: createdProject.id,
             senderId: usersByKey.get(invitation.senderKey)!.id,
             expiresAt: new Date(
@@ -209,6 +210,8 @@ async function main() {
               ? 'accepted access to'
               : invitation.status === InvitationStatus.REJECTED
                 ? 'declined the invitation for'
+                : invitation.status === InvitationStatus.CANCELED
+                  ? 'had the invitation withdrawn for'
                 : 'received an invitation to';
 
           await createMessageWithNotifications(tx, {
@@ -224,6 +227,7 @@ async function main() {
               metadata: {
                 kind: 'invitation_activity',
                 invitationStatus: invitation.status,
+                invitationRole: invitation.role,
                 recipientEmail: invitation.email.toLowerCase(),
               },
               notifications: [

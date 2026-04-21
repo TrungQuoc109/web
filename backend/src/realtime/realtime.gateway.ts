@@ -11,6 +11,7 @@ import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
+  OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
@@ -28,6 +29,7 @@ import { TaskView } from '../task/task.types';
 import { TaskPermissionService } from '../task/task-permission.service';
 import { JoinProjectRoomDto } from './dto/join-project-room.dto';
 import { JoinTaskRoomDto } from './dto/join-task-room.dto';
+import { ProjectTypingDto } from './dto/project-typing.dto';
 import { SocketMessageCreateDto } from './dto/socket-message-create.dto';
 import { SocketTaskUpdateDto } from './dto/socket-task-update.dto';
 import { SocketAck, SocketAckResponse, SocketState } from './realtime.types';
@@ -53,6 +55,8 @@ type AuthenticatedSocket = Socket & {
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   @WebSocketServer()
   private server!: Server;
+  private readonly projectPresence = new Map<number, Map<number, Set<string>>>();
+  private readonly projectTyping = new Map<number, Set<number>>();
 
   constructor(
     private readonly jwtService: JwtService,
@@ -75,9 +79,32 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
       client.data.user = await this.authService.findAuthenticatedUserById(
         payload.id,
       );
+      client.data.joinedProjectIds = new Set<number>();
+      client.data.typingProjectIds = new Set<number>();
     } catch {
       client.emit('socket:error', this.errorResponse('Unauthorized socket connection.'));
       client.disconnect();
+    }
+  }
+
+  async handleDisconnect(client: AuthenticatedSocket): Promise<void> {
+    const user = client.data.user;
+    if (!user) {
+      return;
+    }
+
+    for (const projectId of client.data.joinedProjectIds ?? []) {
+      this.unregisterProjectPresence(projectId, user.id, client.id);
+      this.broadcastProjectPresence(projectId);
+    }
+
+    for (const projectId of client.data.typingProjectIds ?? []) {
+      this.unregisterProjectTyping(projectId, user.id);
+      this.server.to(this.projectRoom(projectId)).emit('project:typing', {
+        projectId,
+        userId: user.id,
+        isTyping: false,
+      });
     }
   }
 
@@ -85,7 +112,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   async handleProjectJoin(
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: JoinProjectRoomDto,
-    @Ack() ack: SocketAck<{ room: string }>,
+    @Ack() ack: SocketAck<{ room: string; onlineUserIds: number[] }>,
   ): Promise<void> {
     ack(
       await this.withAck(async () => {
@@ -97,8 +124,36 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
 
       const room = this.projectRoom(payload.projectId);
       await client.join(room);
+      client.data.joinedProjectIds?.add(payload.projectId);
+      this.registerProjectPresence(payload.projectId, user.id, client.id);
+      this.broadcastProjectPresence(payload.projectId);
 
-      return { room };
+      return {
+        room,
+        onlineUserIds: this.getProjectOnlineUserIds(payload.projectId),
+      };
+      }),
+    );
+  }
+
+  @SubscribeMessage('project:presence:get')
+  async handleProjectPresenceGet(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() payload: JoinProjectRoomDto,
+    @Ack() ack: SocketAck<{ projectId: number; onlineUserIds: number[] }>,
+  ): Promise<void> {
+    ack(
+      await this.withAck(async () => {
+        const user = this.getUser(client);
+        await this.projectPermissionService.ensureActiveMember(
+          payload.projectId,
+          user.id,
+        );
+
+        return {
+          projectId: payload.projectId,
+          onlineUserIds: this.getProjectOnlineUserIds(payload.projectId),
+        };
       }),
     );
   }
@@ -166,11 +221,57 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
         dto,
       );
 
+      this.unregisterProjectTyping(payload.projectId!, user.id);
+      client.data.typingProjectIds?.delete(payload.projectId!);
+      this.server.to(this.projectRoom(payload.projectId!)).emit('project:typing', {
+        projectId: payload.projectId!,
+        userId: user.id,
+        isTyping: false,
+      });
+
       this.server
         .to(this.projectRoom(payload.projectId!))
         .emit('message:created', message);
 
       return message;
+      }),
+    );
+  }
+
+  @SubscribeMessage('project:typing')
+  async handleProjectTyping(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() payload: ProjectTypingDto,
+    @Ack()
+    ack: SocketAck<{ projectId: number; userId: number; isTyping: boolean }>,
+  ): Promise<void> {
+    ack(
+      await this.withAck(async () => {
+        const user = this.getUser(client);
+        await this.projectPermissionService.ensureActiveMember(
+          payload.projectId,
+          user.id,
+        );
+
+        if (payload.isTyping) {
+          this.registerProjectTyping(payload.projectId, user.id);
+          client.data.typingProjectIds?.add(payload.projectId);
+        } else {
+          this.unregisterProjectTyping(payload.projectId, user.id);
+          client.data.typingProjectIds?.delete(payload.projectId);
+        }
+
+        this.server.to(this.projectRoom(payload.projectId)).emit('project:typing', {
+          projectId: payload.projectId,
+          userId: user.id,
+          isTyping: payload.isTyping,
+        });
+
+        return {
+          projectId: payload.projectId,
+          userId: user.id,
+          isTyping: payload.isTyping,
+        };
       }),
     );
   }
@@ -241,6 +342,72 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
 
   private taskRoom(taskId: number): string {
     return `task:${taskId}`;
+  }
+
+  private registerProjectPresence(
+    projectId: number,
+    userId: number,
+    socketId: string,
+  ): void {
+    const roomPresence = this.projectPresence.get(projectId) ?? new Map<number, Set<string>>();
+    const userSockets = roomPresence.get(userId) ?? new Set<string>();
+    userSockets.add(socketId);
+    roomPresence.set(userId, userSockets);
+    this.projectPresence.set(projectId, roomPresence);
+  }
+
+  private unregisterProjectPresence(
+    projectId: number,
+    userId: number,
+    socketId: string,
+  ): void {
+    const roomPresence = this.projectPresence.get(projectId);
+    if (!roomPresence) {
+      return;
+    }
+
+    const userSockets = roomPresence.get(userId);
+    if (!userSockets) {
+      return;
+    }
+
+    userSockets.delete(socketId);
+    if (userSockets.size === 0) {
+      roomPresence.delete(userId);
+    }
+
+    if (roomPresence.size === 0) {
+      this.projectPresence.delete(projectId);
+    }
+  }
+
+  private getProjectOnlineUserIds(projectId: number): number[] {
+    return [...(this.projectPresence.get(projectId)?.keys() ?? [])];
+  }
+
+  private broadcastProjectPresence(projectId: number): void {
+    this.server.to(this.projectRoom(projectId)).emit('project:presence', {
+      projectId,
+      onlineUserIds: this.getProjectOnlineUserIds(projectId),
+    });
+  }
+
+  private registerProjectTyping(projectId: number, userId: number): void {
+    const typingUsers = this.projectTyping.get(projectId) ?? new Set<number>();
+    typingUsers.add(userId);
+    this.projectTyping.set(projectId, typingUsers);
+  }
+
+  private unregisterProjectTyping(projectId: number, userId: number): void {
+    const typingUsers = this.projectTyping.get(projectId);
+    if (!typingUsers) {
+      return;
+    }
+
+    typingUsers.delete(userId);
+    if (typingUsers.size === 0) {
+      this.projectTyping.delete(projectId);
+    }
   }
 
   private getErrorMessage(error: unknown): string {

@@ -9,8 +9,16 @@ export function useCreateInvitationMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { projectId: string; email: string }) =>
-      invitationsApi.createInvitation(payload.projectId, payload.email),
+    mutationFn: (payload: {
+      projectId: string;
+      email: string;
+      role: "ADMIN" | "MEMBER" | "VIEWER";
+    }) =>
+      invitationsApi.createInvitation(
+        payload.projectId,
+        payload.email,
+        payload.role
+      ),
     onSuccess: (invitation) => {
       void queryClient.invalidateQueries({
         queryKey: invitationsKeys.project(invitation.projectId),
@@ -22,7 +30,7 @@ export function useCreateInvitationMutation() {
 
       useToastStore.getState().push({
         title: "Invitation created",
-        description: `${invitation.email} can now join the project with the invite link.`,
+        description: `${invitation.email} can now join the project as ${invitation.role}.`,
         variant: "success",
       });
     },

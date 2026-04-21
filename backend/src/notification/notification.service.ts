@@ -7,9 +7,14 @@ import { Prisma, NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateNotificationsInput,
+  NotificationCatalogView,
   NotificationView,
 } from './notification.types';
 import { notificationSelect } from './notification.constants';
+import {
+  ListNotificationsQueryDto,
+  NotificationReadState,
+} from './dto/list-notifications-query.dto';
 
 @Injectable()
 export class NotificationService {
@@ -36,6 +41,52 @@ export class NotificationService {
       take: limit,
       select: notificationSelect,
     });
+  }
+
+  async listCatalogForUser(
+    userId: number,
+    query: ListNotificationsQueryDto,
+  ): Promise<NotificationCatalogView> {
+    const where = {
+      recipientId: userId,
+      activity: {
+        project: {
+          members: {
+            some: {
+              userId,
+              leftAt: null,
+            },
+          },
+        },
+      },
+      ...(query.readState === NotificationReadState.READ
+        ? { isRead: true }
+        : query.readState === NotificationReadState.UNREAD
+          ? { isRead: false }
+          : {}),
+      ...(query.type ? { type: query.type } : {}),
+    };
+
+    const total = await this.prisma.notification.count({ where });
+    const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+    const page = Math.min(query.page, totalPages);
+    const items = await this.prisma.notification.findMany({
+      where,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip: (page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: notificationSelect,
+    });
+
+    return {
+      items,
+      total,
+      page,
+      pageSize: query.pageSize,
+      totalPages,
+    };
   }
 
   async createNotifications(

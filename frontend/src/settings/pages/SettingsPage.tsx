@@ -1,4 +1,12 @@
-import { Bell, LogOut, ShieldCheck, User2, Workflow } from "lucide-react";
+import {
+  Bell,
+  Check,
+  Languages,
+  LogOut,
+  ShieldCheck,
+  User2,
+  Workflow,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -6,6 +14,7 @@ import { useChangePasswordMutation } from "@/auth/hooks/useChangePasswordMutatio
 import { useUpdateProfileMutation } from "@/auth/hooks/useUpdateProfileMutation";
 import { useLogout } from "@/auth/hooks/useLogout";
 import { useAuthStore } from "@/auth/store/authStore";
+import { useI18n } from "@/i18n/useI18n";
 import { formatCalendarDate } from "@/shared/lib/format-date";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -15,6 +24,7 @@ export function SettingsPage() {
   const logout = useLogout();
   const updateProfile = useUpdateProfileMutation();
   const changePassword = useChangePasswordMutation();
+  const { language, setLanguage, t } = useI18n();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -34,12 +44,12 @@ export function SettingsPage() {
     const trimmedName = name.trim();
 
     if (!trimmedEmail) {
-      setProfileError("Email is required.");
+      setProfileError(t("settings.validationEmailRequired"));
       return;
     }
 
     if (trimmedName.length > 0 && trimmedName.length < 2) {
-      setProfileError("Name must be at least 2 characters when provided.");
+      setProfileError(t("settings.validationNameShort"));
       return;
     }
 
@@ -52,22 +62,22 @@ export function SettingsPage() {
 
   async function handleChangePassword() {
     if (!currentPassword.trim()) {
-      setPasswordError("Current password is required.");
+      setPasswordError(t("settings.validationCurrentPasswordRequired"));
       return;
     }
 
     if (newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters.");
+      setPasswordError(t("settings.validationNewPasswordShort"));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError("Password confirmation does not match.");
+      setPasswordError(t("settings.validationPasswordMismatch"));
       return;
     }
 
     if (currentPassword === newPassword) {
-      setPasswordError("New password must be different from the current password.");
+      setPasswordError(t("settings.validationPasswordSame"));
       return;
     }
 
@@ -86,42 +96,44 @@ export function SettingsPage() {
       <header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-            Workspace
+            {t("settings.workspace")}
           </p>
-          <h2 className="text-3xl font-semibold tracking-tight">Settings</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">{t("settings.title")}</h2>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Review your current profile, session state, and the production features already connected in this portfolio workspace.
+            {t("settings.description")}
           </p>
         </div>
 
         <Button type="button" variant="outline" className="gap-2" onClick={() => logout()}>
           <LogOut />
-          Sign out
+          {t("settings.signOut")}
         </Button>
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Current role</p>
+          <p className="text-sm text-muted-foreground">{t("settings.currentRole")}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">
             {currentUser?.role ?? "MEMBER"}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Active authorization role returned by the authenticated backend session.
+            {t("settings.currentRoleHelp")}
           </p>
         </article>
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Profile status</p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight">Ready</p>
+          <p className="text-sm text-muted-foreground">{t("settings.profileStatus")}</p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight">
+            {t("settings.profileReady")}
+          </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Your account is hydrated in the frontend auth store and available across protected routes.
+            {t("settings.profileStatusHelp")}
           </p>
         </article>
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Connected modules</p>
+          <p className="text-sm text-muted-foreground">{t("settings.connectedModules")}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">4+</p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Auth, projects, tasks, messages, and notification summary are already wired to real APIs.
+            {t("settings.connectedModulesHelp")}
           </p>
         </article>
       </section>
@@ -134,11 +146,11 @@ export function SettingsPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                Profile
+                {t("settings.profile")}
               </p>
-              <h3 className="mt-3 text-xl font-semibold">Account overview</h3>
+              <h3 className="mt-3 text-xl font-semibold">{t("settings.accountOverview")}</h3>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Read-only identity details from the authenticated user profile.
+                {t("settings.profileOverviewHelp")}
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/70 p-3">
@@ -147,24 +159,24 @@ export function SettingsPage() {
           </div>
 
           <div className="mt-6 grid gap-3">
-              <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                  Name
-                </p>
-                <input
-                  className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-                  value={name}
-                  onChange={(event) => {
-                    setProfileError(null);
-                    setName(event.target.value);
-                  }}
-                  placeholder="Your display name"
-                  disabled={updateProfile.isPending}
-                />
-              </div>
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
               <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Email
+                {t("settings.name")}
+              </p>
+              <input
+                className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                value={name}
+                onChange={(event) => {
+                  setProfileError(null);
+                  setName(event.target.value);
+                }}
+                placeholder={t("settings.displayNamePlaceholder")}
+                disabled={updateProfile.isPending}
+              />
+            </div>
+            <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                {t("settings.email")}
               </p>
               <input
                 className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -174,16 +186,18 @@ export function SettingsPage() {
                   setProfileError(null);
                   setEmail(event.target.value);
                 }}
-                placeholder="you@example.com"
+                placeholder={t("settings.emailPlaceholder")}
                 disabled={updateProfile.isPending}
               />
             </div>
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
               <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Created
+                {t("settings.created")}
               </p>
               <p className="mt-2 font-medium">
-                {currentUser?.createdAt ? formatCalendarDate(currentUser.createdAt) : "Unavailable"}
+                {currentUser?.createdAt
+                  ? formatCalendarDate(currentUser.createdAt)
+                  : t("settings.unavailable")}
               </p>
             </div>
           </div>
@@ -200,7 +214,9 @@ export function SettingsPage() {
               onClick={() => void handleSaveProfile()}
               disabled={updateProfile.isPending}
             >
-              {updateProfile.isPending ? "Saving..." : "Save profile"}
+              {updateProfile.isPending
+                ? t("settings.savingProfile")
+                : t("settings.saveProfile")}
             </Button>
           </div>
         </article>
@@ -209,11 +225,11 @@ export function SettingsPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                Workspace status
+                {t("settings.workspaceStatus")}
               </p>
-              <h3 className="mt-3 text-xl font-semibold">Feature coverage</h3>
+              <h3 className="mt-3 text-xl font-semibold">{t("settings.featureCoverage")}</h3>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                A quick status board for the parts of the app currently backed by real services.
+                {t("settings.featureCoverageHelp")}
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/70 p-3">
@@ -225,23 +241,23 @@ export function SettingsPage() {
             <div className="flex items-center justify-between rounded-2xl border border-border bg-secondary/35 px-4 py-3">
               <div className="flex items-center gap-3">
                 <Workflow />
-                <span className="text-sm font-medium">Tasks and project board</span>
+                <span className="text-sm font-medium">{t("settings.tasksBoard")}</span>
               </div>
-              <Badge variant="secondary">Live</Badge>
+              <Badge variant="secondary">{t("settings.live")}</Badge>
             </div>
             <div className="flex items-center justify-between rounded-2xl border border-border bg-secondary/35 px-4 py-3">
               <div className="flex items-center gap-3">
                 <Bell />
-                <span className="text-sm font-medium">Notification unread count</span>
+                <span className="text-sm font-medium">{t("settings.notificationUnread")}</span>
               </div>
-              <Badge variant="secondary">Live</Badge>
+              <Badge variant="secondary">{t("settings.live")}</Badge>
             </div>
             <div className="flex items-center justify-between rounded-2xl border border-border bg-secondary/35 px-4 py-3">
               <div className="flex items-center gap-3">
                 <ShieldCheck />
-                <span className="text-sm font-medium">Full notification inbox</span>
+                <span className="text-sm font-medium">{t("settings.notificationInbox")}</span>
               </div>
-              <Badge variant="secondary">Live</Badge>
+              <Badge variant="secondary">{t("settings.live")}</Badge>
             </div>
           </div>
 
@@ -250,16 +266,92 @@ export function SettingsPage() {
               to="/projects"
               className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent"
             >
-              Open projects
+              {t("settings.openProjects")}
             </Link>
             <Link
               to="/notifications"
               className="rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium transition-colors hover:bg-accent"
             >
-              Open notifications
+              {t("settings.openNotifications")}
             </Link>
           </div>
         </article>
+      </section>
+
+      <section
+        id="language"
+        className="rounded-[2rem] border border-border bg-background/95 p-6 shadow-sm scroll-mt-28"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+              {t("settings.languageSection")}
+            </p>
+            <h3 className="mt-3 text-xl font-semibold">{t("settings.languageTitle")}</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              {t("settings.languageHelp")}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border bg-secondary/70 p-3">
+            <Languages />
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <article className="rounded-[1.75rem] border border-border bg-secondary/20 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold">{t("settings.languageEnglishTitle")}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {t("settings.languageEnglishDescription")}
+                </p>
+              </div>
+              {language === "en" ? (
+                <Badge variant="secondary" className="gap-1 px-3 py-1">
+                  <Check className="size-3.5" />
+                  {t("settings.selected")}
+                </Badge>
+              ) : null}
+            </div>
+
+            <div className="mt-5">
+              <Button
+                type="button"
+                variant={language === "en" ? "secondary" : "outline"}
+                onClick={() => setLanguage("en")}
+              >
+                {t("settings.selectLanguage")}
+              </Button>
+            </div>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-border bg-secondary/20 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold">{t("settings.languageVietnameseTitle")}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {t("settings.languageVietnameseDescription")}
+                </p>
+              </div>
+              {language === "vi" ? (
+                <Badge variant="secondary" className="gap-1 px-3 py-1">
+                  <Check className="size-3.5" />
+                  {t("settings.selected")}
+                </Badge>
+              ) : null}
+            </div>
+
+            <div className="mt-5">
+              <Button
+                type="button"
+                variant={language === "vi" ? "secondary" : "outline"}
+                onClick={() => setLanguage("vi")}
+              >
+                {t("settings.selectLanguage")}
+              </Button>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section
@@ -269,11 +361,11 @@ export function SettingsPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-              Security
+              {t("settings.security")}
             </p>
-            <h3 className="mt-3 text-xl font-semibold">Session and access</h3>
+            <h3 className="mt-3 text-xl font-semibold">{t("settings.sessionAccess")}</h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Review the current authenticated session and the security capabilities that are already wired in the app.
+              {t("settings.securityHelp")}
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-secondary/70 p-3">
@@ -284,31 +376,31 @@ export function SettingsPage() {
         <div className="mt-6 grid gap-3 md:grid-cols-3">
           <article className="rounded-2xl border border-border bg-secondary/35 p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              Session status
+              {t("settings.sessionStatus")}
             </p>
-            <p className="mt-2 font-medium">Authenticated</p>
+            <p className="mt-2 font-medium">{t("settings.authenticated")}</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Your JWT-backed session is currently loaded in the frontend auth store.
+              {t("settings.sessionStatusHelp")}
             </p>
           </article>
 
           <article className="rounded-2xl border border-border bg-secondary/35 p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              Password management
+              {t("settings.passwordManagement")}
             </p>
-            <p className="mt-2 font-medium">Available now</p>
+            <p className="mt-2 font-medium">{t("settings.availableNow")}</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Rotate your password without leaving the app by confirming your current credentials first.
+              {t("settings.passwordManagementHelp")}
             </p>
           </article>
 
           <article className="rounded-2xl border border-border bg-secondary/35 p-4">
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              Sign out
+              {t("settings.signOutCard")}
             </p>
-            <p className="mt-2 font-medium">Available now</p>
+            <p className="mt-2 font-medium">{t("settings.availableNow")}</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              You can safely clear the current session from the account menu or with the button below.
+              {t("settings.signOutCardHelp")}
             </p>
           </article>
         </div>
@@ -316,17 +408,16 @@ export function SettingsPage() {
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
           <article className="rounded-[1.75rem] border border-border bg-secondary/20 p-5">
             <div>
-              <p className="text-sm font-semibold">Change password</p>
+              <p className="text-sm font-semibold">{t("settings.changePassword")}</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Use a strong password with at least 8 characters. Your current
-                session stays active after the update.
+                {t("settings.changePasswordHelp")}
               </p>
             </div>
 
             <div className="mt-5 grid gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                  Current password
+                  {t("settings.currentPassword")}
                 </p>
                 <input
                   className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -344,7 +435,7 @@ export function SettingsPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    New password
+                    {t("settings.newPassword")}
                   </p>
                   <input
                     className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -361,7 +452,7 @@ export function SettingsPage() {
 
                 <div>
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                    Confirm new password
+                    {t("settings.confirmNewPassword")}
                   </p>
                   <input
                     className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -390,23 +481,19 @@ export function SettingsPage() {
                 onClick={() => void handleChangePassword()}
                 disabled={changePassword.isPending}
               >
-                {changePassword.isPending ? "Updating..." : "Update password"}
+                {changePassword.isPending
+                  ? t("settings.updatingPassword")
+                  : t("settings.updatePassword")}
               </Button>
             </div>
           </article>
 
           <article className="rounded-[1.75rem] border border-border bg-secondary/20 p-5">
-            <p className="text-sm font-semibold">Security guidance</p>
+            <p className="text-sm font-semibold">{t("settings.securityGuidance")}</p>
             <div className="mt-4 flex flex-col gap-3 text-sm text-muted-foreground">
-              <p>
-                Use a password you do not reuse in other environments or demo accounts.
-              </p>
-              <p>
-                After updating your password, future sign-ins will require the new value immediately.
-              </p>
-              <p>
-                If you are testing shared seed accounts, make sure teammates know the credential has changed.
-              </p>
+              <p>{t("settings.securityTip1")}</p>
+              <p>{t("settings.securityTip2")}</p>
+              <p>{t("settings.securityTip3")}</p>
             </div>
           </article>
         </div>
@@ -414,10 +501,10 @@ export function SettingsPage() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Button type="button" variant="outline" className="gap-2" onClick={() => logout()}>
             <LogOut />
-            Sign out
+            {t("settings.signOut")}
           </Button>
           <Badge variant="secondary" className="px-3 py-1">
-            Password update live
+            {t("settings.passwordUpdateLive")}
           </Badge>
         </div>
       </section>

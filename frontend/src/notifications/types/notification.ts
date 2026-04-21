@@ -19,3 +19,13 @@ export type Notification = {
     createdAt: string;
   };
 };
+
+export type NotificationReadState = "ALL" | "READ" | "UNREAD";
+
+export type NotificationsCatalog = {
+  items: Notification[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};

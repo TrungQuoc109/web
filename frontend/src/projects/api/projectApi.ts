@@ -250,6 +250,13 @@ export const projectApi = {
     return mapProjectDetail(response.data);
   },
 
+  async getActivity(projectId: string): Promise<ProjectActivity[]> {
+    const response = await httpClient.get<BackendProjectActivity[]>(
+      `/projects/${projectId}/activity`
+    );
+    return response.data.map(mapProjectActivity);
+  },
+
   async create(payload: CreateProjectPayload): Promise<Project> {
     const response = await httpClient.post<BackendCreateProjectResponse>(
       "/projects",

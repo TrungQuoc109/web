@@ -39,6 +39,13 @@ export class InvitationService {
     dto: CreateInvitationDto,
   ): Promise<Invitation> {
     await this.permission.ensureCanManageMembers(projectId, currentUser.id);
+    const targetRole = dto.role ?? ProjectRole.MEMBER;
+
+    if (targetRole === ProjectRole.OWNER) {
+      throw new ConflictException(
+        'Project ownership cannot be granted through invitations.',
+      );
+    }
 
     const normalizedEmail = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({
@@ -60,10 +67,31 @@ export class InvitationService {
       }
     }
 
+    const existingPendingInvitation = await this.prisma.invitation.findFirst({
+      where: {
+        projectId,
+        email: normalizedEmail,
+        status: 'PENDING',
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingPendingInvitation) {
+      throw new ConflictException(
+        'An active invitation already exists for this email address.',
+      );
+    }
+
     return this.prisma.invitation.create({
       data: {
         email: normalizedEmail,
         token: randomUUID(),
+        role: targetRole,
         projectId,
         senderId: currentUser.id,
         expiresAt: this.computeExpiry(),
@@ -87,6 +115,75 @@ export class InvitationService {
         email: true,
         token: true,
         status: true,
+        role: true,
+        projectId: true,
+        senderId: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async resendInvitation(
+    projectId: number,
+    invitationId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<InvitationView> {
+    await this.permission.ensureCanManageMembers(projectId, currentUser.id);
+    const invitation = await this.ensureProjectInvitation(projectId, invitationId);
+
+    if (invitation.status === 'ACCEPTED') {
+      throw new ConflictException(
+        'Accepted invitations cannot be resent because the user already joined the project.',
+      );
+    }
+
+    return this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: {
+        token: randomUUID(),
+        status: 'PENDING',
+        senderId: currentUser.id,
+        expiresAt: this.computeExpiry(),
+        createdAt: new Date(),
+      },
+      select: {
+        id: true,
+        email: true,
+        token: true,
+        status: true,
+        role: true,
+        projectId: true,
+        senderId: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async cancelInvitation(
+    projectId: number,
+    invitationId: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<InvitationView> {
+    await this.permission.ensureCanManageMembers(projectId, currentUser.id);
+    const invitation = await this.ensureProjectInvitation(projectId, invitationId);
+
+    if (invitation.status !== 'PENDING') {
+      throw new ConflictException('Only pending invitations can be canceled.');
+    }
+
+    return this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: {
+        status: 'CANCELED',
+      },
+      select: {
+        id: true,
+        email: true,
+        token: true,
+        status: true,
+        role: true,
         projectId: true,
         senderId: true,
         expiresAt: true,
@@ -123,6 +220,7 @@ export class InvitationService {
             where: { id: membership.id },
             data: {
               leftAt: null,
+              role: invitation.role,
             },
             select: projectMemberSelect,
           })
@@ -130,7 +228,7 @@ export class InvitationService {
             data: {
               projectId: invitation.projectId,
               userId: currentUser.id,
-              role: ProjectRole.MEMBER,
+              role: invitation.role,
             },
             select: projectMemberSelect,
           });
@@ -189,6 +287,18 @@ export class InvitationService {
 
     if (invitation.expiresAt < new Date()) {
       throw new ForbiddenException('Invitation has expired.');
+    }
+
+    return invitation;
+  }
+
+  private async ensureProjectInvitation(projectId: number, invitationId: number) {
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { id: invitationId },
+    });
+
+    if (!invitation || invitation.projectId !== projectId) {
+      throw new NotFoundException('Invitation not found.');
     }
 
     return invitation;

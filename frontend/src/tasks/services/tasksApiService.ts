@@ -17,6 +17,15 @@ type TasksApiService = {
     taskId: string;
     assignees: Array<{ userId: string; role: TaskAssignmentRole }>;
   }) => Promise<void>;
+  updateAssignment: (payload: {
+    taskId: string;
+    assignmentId: string;
+    role: TaskAssignmentRole;
+  }) => Promise<void>;
+  removeAssignment: (payload: {
+    taskId: string;
+    assignmentId: string;
+  }) => Promise<void>;
   getReports: (taskId: string) => Promise<TaskReport[]>;
   submitReport: (payload: {
     taskId: string;
@@ -37,6 +46,8 @@ export const tasksApiService: TasksApiService = {
   getComments: tasksApi.getComments,
   getAssignableUsers: tasksApi.getAssignableUsers,
   assignUsers: tasksApi.assignUsers,
+  updateAssignment: tasksApi.updateAssignment,
+  removeAssignment: tasksApi.removeAssignment,
   getReports: tasksApi.getReports,
   submitReport: tasksApi.submitReport,
   reviewReport: tasksApi.reviewReport,

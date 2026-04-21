@@ -1,6 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
+  Languages,
   Loader2,
   LogOut,
   ShieldCheck,
@@ -9,40 +10,42 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useI18n } from "@/i18n/useI18n";
 import { useLogout } from "@/auth/hooks/useLogout";
 import { useAuthStore } from "@/auth/store/authStore";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 
-const accountLinks = [
-  {
-    to: "/settings#profile",
-    label: "Profile",
-    description: "Review your account details and role.",
-    icon: User2,
-  },
-  {
-    to: "/settings",
-    label: "Settings",
-    description: "Open workspace and product settings.",
-    icon: Settings2,
-  },
-  {
-    to: "/settings#security",
-    label: "Security",
-    description: "Session details and password support.",
-    icon: ShieldCheck,
-  },
-] as const;
-
 export function UserAccountDropdown() {
   const currentUser = useAuthStore((state) => state.currentUser);
   const logout = useLogout();
+  const { language, setLanguage, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+
+  const accountLinks = [
+    {
+      to: "/settings#profile",
+      label: t("account.profile"),
+      description: t("account.profileDescription"),
+      icon: User2,
+    },
+    {
+      to: "/settings",
+      label: t("account.settings"),
+      description: t("account.settingsDescription"),
+      icon: Settings2,
+    },
+    {
+      to: "/settings#security",
+      label: t("account.security"),
+      description: t("account.securityDescription"),
+      icon: ShieldCheck,
+    },
+  ] as const;
 
   useEffect(() => {
     if (!open) {
@@ -89,7 +92,7 @@ export function UserAccountDropdown() {
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        aria-label="Open account menu"
+        aria-label={t("account.openMenu")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls="user-account-panel"
@@ -104,7 +107,7 @@ export function UserAccountDropdown() {
 
         <div className="hidden min-w-0 text-left sm:block">
           <p className="truncate text-sm font-medium">
-            {currentUser?.name || "Project user"}
+            {currentUser?.name || t("account.fallbackUser")}
           </p>
           <p className="truncate text-xs text-muted-foreground">
             {currentUser?.email || "user@example.com"}
@@ -122,7 +125,7 @@ export function UserAccountDropdown() {
         id="user-account-panel"
         ref={panelRef}
         role="menu"
-        aria-label="Account menu"
+        aria-label={t("account.menuLabel")}
         aria-hidden={!open}
         tabIndex={-1}
         className={`absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[min(22rem,calc(100vw-2rem))] origin-top-right rounded-[1.5rem] border border-border bg-background/95 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.35)] backdrop-blur transition-all duration-150 ${
@@ -140,7 +143,7 @@ export function UserAccountDropdown() {
             />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">
-                {currentUser?.name || "Project user"}
+                {currentUser?.name || t("account.fallbackUser")}
               </p>
               <p className="truncate text-sm text-muted-foreground">
                 {currentUser?.email || "user@example.com"}
@@ -150,7 +153,7 @@ export function UserAccountDropdown() {
                   {currentUser?.role ?? "MEMBER"}
                 </Badge>
                 <Badge variant="outline" className="px-3 py-1">
-                  Session active
+                  {t("account.sessionActive")}
                 </Badge>
               </div>
             </div>
@@ -158,6 +161,41 @@ export function UserAccountDropdown() {
         </div>
 
         <div className="px-3 py-3">
+          <div className="mb-3 rounded-2xl border border-border bg-secondary/25 px-3 py-3">
+            <div className="flex items-start gap-3">
+              <div className="rounded-2xl border border-border bg-secondary/60 p-2">
+                <Languages className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{t("common.language")}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {t("account.languageDescription")}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <Button
+                type="button"
+                variant={language === "en" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setLanguage("en")}
+              >
+                {t("common.english")}
+              </Button>
+              <Button
+                type="button"
+                variant={language === "vi" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setLanguage("vi")}
+              >
+                {t("common.vietnamese")}
+              </Button>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-1">
             {accountLinks.map((link) => {
               const Icon = link.icon;
@@ -199,7 +237,9 @@ export function UserAccountDropdown() {
               ) : (
                 <LogOut className="size-4" />
               )}
-              <span>{isLoggingOut ? "Signing out..." : "Sign out"}</span>
+              <span>
+                {isLoggingOut ? t("account.signingOut") : t("account.signOut")}
+              </span>
             </Button>
           </div>
         </div>

@@ -13,9 +13,11 @@ export type {
 } from "@/shared/types/workspace";
 
 export type TaskPriorityFilter = "ALL" | TaskPriority;
+export type TaskStatusFilter = "ALL" | TaskStatus;
 
 export type TaskUser = {
   id: string;
+  assignmentId?: string;
   name: string | null;
   email: string;
   assignmentRole?: TaskAssignmentRole;
@@ -50,4 +52,12 @@ export type TaskReport = {
   createdAt: string;
   updatedAt: string;
   author: TaskUser;
+};
+
+export type TasksCatalog = {
+  items: TaskItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };

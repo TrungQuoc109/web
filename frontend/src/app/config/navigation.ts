@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 type NavigationItem = {
-  label: string;
+  labelKey: string;
   to: string;
   icon: typeof LayoutDashboard;
   end?: boolean;
@@ -17,38 +17,38 @@ type NavigationItem = {
 
 export const navigationItems: NavigationItem[] = [
   {
-    label: "Dashboard",
+    labelKey: "nav.dashboard",
     to: "/",
     icon: LayoutDashboard,
     end: true,
   },
   {
-    label: "Projects",
+    labelKey: "nav.projects",
     to: "/projects",
     icon: FolderKanban,
   },
   {
-    label: "Tasks",
+    labelKey: "nav.tasks",
     to: "/tasks",
     icon: SquareCheckBig,
   },
   {
-    label: "Members",
+    labelKey: "nav.members",
     to: "/members",
     icon: Users,
   },
   {
-    label: "Messages",
+    labelKey: "nav.messages",
     to: "/messages",
     icon: MessageSquare,
   },
   {
-    label: "Notifications",
+    labelKey: "nav.notifications",
     to: "/notifications",
     icon: Bell,
   },
   {
-    label: "Settings",
+    labelKey: "nav.settings",
     to: "/settings",
     icon: Settings,
   },

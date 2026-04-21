@@ -1,4 +1,4 @@
-import type { InvitationStatus } from "@/shared/types/workspace";
+import type { InvitationStatus, MemberRole } from "@/shared/types/workspace";
 
 export type ProjectInvitation = {
   id: string;
@@ -7,6 +7,7 @@ export type ProjectInvitation = {
   projectId: string;
   senderId: string;
   status: InvitationStatus;
+  role: MemberRole;
   expiresAt: string;
   createdAt: string;
 };

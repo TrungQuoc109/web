@@ -11,7 +11,7 @@ export function useCreateTaskMutation() {
   return useMutation({
     mutationFn: (payload: CreateTaskPayload) => tasksApi.create(payload),
     onSuccess: (task) => {
-      void queryClient.invalidateQueries({ queryKey: tasksKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.all });
       void queryClient.invalidateQueries({ queryKey: projectsKeys.detail(task.projectId) });
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
 

@@ -25,7 +25,7 @@ export function useAssignTaskUsersMutation() {
       showErrorToast(getApiErrorMessage(error), "Assign task user failed");
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: tasksKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.all });
       void queryClient.invalidateQueries({ queryKey: tasksKeys.comments(variables.taskId) });
       void queryClient.invalidateQueries({ queryKey: projectsKeys.details() });
     },

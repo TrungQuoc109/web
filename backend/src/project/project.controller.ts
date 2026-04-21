@@ -31,6 +31,7 @@ import { ProjectMemberResponseDto } from './dto/project-member-response.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ListProjectCatalogQueryDto } from './dto/list-project-catalog-query.dto';
 import { ListProjectMembersQueryDto } from './dto/list-project-members-query.dto';
+import { ProjectActivityResponseDto } from './dto/project-activity-response.dto';
 import { ProjectResponseDto } from './dto/project-response.dto';
 import { TransferProjectOwnershipDto } from './dto/transfer-project-ownership.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -128,6 +129,28 @@ export class ProjectController {
     @CurrentUser() currentUser: AuthenticatedUser,
   ) {
     return this.projectService.getProjectDetail(projectId, currentUser);
+  }
+
+  @Get(':projectId/activity')
+  @ApiOperation({ summary: 'Lấy timeline hoạt động của dự án' })
+  @ApiParam({
+    name: 'projectId',
+    description: 'ID của dự án',
+    example: 3,
+  })
+  @ApiOkResponse({
+    description: 'Timeline hoạt động gần đây của dự án',
+    type: ProjectActivityResponseDto,
+    isArray: true,
+  })
+  @ApiUnauthorizedResponse({ description: 'Thiếu token xác thực' })
+  @ApiForbiddenResponse({ description: 'Không có quyền xem hoạt động dự án' })
+  @ApiNotFoundResponse({ description: 'Dự án không tồn tại' })
+  getProjectActivity(
+    @Param('projectId', ParseIntPipe) projectId: number,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ) {
+    return this.projectService.getProjectActivity(projectId, currentUser);
   }
 
   @Patch(':projectId')

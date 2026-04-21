@@ -1,5 +1,6 @@
 import { Megaphone, Sparkles } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import { Avatar } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/cn";
@@ -12,6 +13,20 @@ type MessageBubbleProps = {
 };
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  const { language } = useI18n();
+  const ui =
+    language === "vi"
+      ? {
+          unknownSender: "Người gửi không xác định",
+          announcement: "Thông báo",
+          you: "Bạn",
+        }
+      : {
+          unknownSender: "Unknown sender",
+          announcement: "Announcement",
+          you: "You",
+        };
+
   if (message.type === "system") {
     return (
       <div className="flex justify-center">
@@ -60,7 +75,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   : "text-foreground"
               )}
             >
-              {getDisplayName(message.author, "Unknown sender")}
+              {getDisplayName(message.author, ui.unknownSender)}
             </p>
           ) : null}
 
@@ -74,14 +89,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               )}
             >
               <Megaphone />
-              Announcement
+              {ui.announcement}
             </Badge>
           ) : null}
 
           {!isAnnouncement && message.isCurrentUser ? (
             <Badge className="gap-1 border-primary-foreground/25 bg-primary-foreground/10 px-2.5 py-0.5 text-primary-foreground">
               <Sparkles />
-              You
+              {ui.you}
             </Badge>
           ) : null}
 

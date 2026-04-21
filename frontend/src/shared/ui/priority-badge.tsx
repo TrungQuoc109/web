@@ -1,4 +1,5 @@
 import { cn } from "@/shared/lib/cn";
+import { getCurrentLanguage } from "@/i18n/languageStore";
 import { Badge } from "@/shared/ui/badge";
 import type { TaskPriority } from "@/shared/types/workspace";
 
@@ -15,10 +16,25 @@ const priorityStyles: Record<TaskPriority, string> = {
 };
 
 export function PriorityBadge({ priority, className }: PriorityBadgeProps) {
+  const language = getCurrentLanguage();
+  const labels =
+    language === "vi"
+      ? {
+          LOW: "Thấp",
+          MEDIUM: "Trung bình",
+          HIGH: "Cao",
+          URGENT: "Khẩn cấp",
+        }
+      : {
+          LOW: "Low",
+          MEDIUM: "Medium",
+          HIGH: "High",
+          URGENT: "Urgent",
+        };
+
   return (
     <Badge className={cn("px-3 py-1", priorityStyles[priority], className)}>
-      {priority}
+      {labels[priority]}
     </Badge>
   );
 }
-

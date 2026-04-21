@@ -85,8 +85,8 @@ export const router = createBrowserRouter([
       {
         path: "messages",
         lazy: loadRoute(
-          () => import("@/messages/pages/MessagesPage"),
-          "MessagesPage"
+          () => import("@/messages/pages/MessagesWorkspacePage"),
+          "MessagesWorkspacePage"
         ),
       },
       {

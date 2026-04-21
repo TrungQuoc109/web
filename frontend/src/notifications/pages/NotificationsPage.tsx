@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -9,8 +9,9 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import { NotificationItem } from "@/notifications/components/NotificationItem";
-import { useNotifications } from "@/notifications/hooks/useNotifications";
+import { useNotificationsCatalog } from "@/notifications/hooks/useNotificationsCatalog";
 import { useNotificationsUnreadCount } from "@/notifications/hooks/useNotificationsUnreadCount";
 import { getNotificationHref } from "@/notifications/lib/notification-presenters";
 import { notificationsService } from "@/notifications/services/notificationsService";
@@ -30,41 +31,142 @@ type NotificationTypeFilter =
   | Notification["type"];
 
 export function NotificationsPage() {
+  const { language } = useI18n();
+  const ui =
+    language === "vi"
+      ? {
+          workspace: "Không gian làm việc",
+          title: "Thông báo",
+          subtitle:
+            "Xem phân công, thay đổi task, nhắc tên và thông báo tại một trung tâm hoạt động dùng dữ liệu backend thật.",
+          loading:
+            "Đang tải hộp thư thông báo, trạng thái chưa đọc và hoạt động gần đây của workspace.",
+          unavailableTitle: "Không thể tải thông báo",
+          unavailableDescription:
+            "Không thể tải hộp thư thông báo từ backend. Hãy thử lại để khôi phục feed hoạt động.",
+          markAllRead: "Đánh dấu tất cả đã đọc",
+          unread: "chưa đọc",
+          matching: "khớp",
+          unreadLabel: "Chưa đọc",
+          unreadHelp: "Các thông báo vẫn cần bạn chú ý.",
+          matchingResults: "Kết quả khớp",
+          matchingResultsHelp:
+            "Số thông báo trả về theo bộ lọc hiện tại.",
+          currentPage: "Trang hiện tại",
+          currentPageHelp:
+            "Trang hộp thư đang được hiển thị trong feed phân trang.",
+          totalPages: "Tổng số trang",
+          totalPagesHelp:
+            "Các trang mới sẽ tự xuất hiện khi hộp thư tiếp tục tăng.",
+          inbox: "Hộp thư",
+          inboxHelp:
+            "Mở một thông báo để đi thẳng đến dự án, task hoặc cuộc trò chuyện liên quan.",
+          all: "Tất cả",
+          showing: "Đang hiển thị",
+          allTypes: "Tất cả loại",
+          noUnread: "Không có thông báo phù hợp",
+          noUnreadDescription:
+            "Hãy thử bộ lọc khác để hiện ra các hoạt động phù hợp.",
+          noNotifications: "Chưa có thông báo",
+          noNotificationsDescription:
+            "Phân công, nhắc tên và thông báo sẽ xuất hiện ở đây khi workspace hoạt động hơn.",
+          previous: "Trước",
+          next: "Sau",
+          page: "Trang",
+          of: "trên",
+        }
+      : {
+          workspace: "Workspace",
+          title: "Notifications",
+          subtitle:
+            "Review assignments, task changes, mentions, and announcements in one backend-backed activity center.",
+          loading:
+            "Loading your inbox, unread status, and recent workspace activity.",
+          unavailableTitle: "Notifications unavailable",
+          unavailableDescription:
+            "The notification inbox could not be loaded from the backend. Retry to restore your workspace feed.",
+          markAllRead: "Mark all read",
+          unread: "unread",
+          matching: "matching",
+          unreadLabel: "Unread",
+          unreadHelp: "Notifications that still need your attention.",
+          matchingResults: "Matching results",
+          matchingResultsHelp:
+            "Notifications returned by the current filter set.",
+          currentPage: "Current page",
+          currentPageHelp:
+            "The inbox page currently shown in the paginated feed.",
+          totalPages: "Total pages",
+          totalPagesHelp:
+            "More pages appear automatically as the inbox grows.",
+          inbox: "Inbox",
+          inboxHelp:
+            "Open a notification to jump straight to the related project, task, or conversation.",
+          all: "All",
+          showing: "Showing",
+          allTypes: "All types",
+          noUnread: "No unread notifications",
+          noUnreadDescription:
+            "Try another unread or type filter to reveal matching activity.",
+          noNotifications: "No notifications yet",
+          noNotificationsDescription:
+            "Assignments, mentions, and announcements will appear here as your workspace becomes active.",
+          previous: "Previous",
+          next: "Next",
+          page: "Page",
+          of: "of",
+        };
   const [filter, setFilter] = useState<NotificationFilter>("ALL");
   const [typeFilter, setTypeFilter] = useState<NotificationTypeFilter>("ALL");
   const [pendingIds, setPendingIds] = useState<string[]>([]);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
-  const notificationsQuery = useNotifications();
+  const [page, setPage] = useState(1);
+  const notificationsQuery = useNotificationsCatalog({
+    page,
+    pageSize: 20,
+    readState: filter === "UNREAD" ? "UNREAD" : "ALL",
+    type: typeFilter,
+  });
   const unreadCountQuery = useNotificationsUnreadCount();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const notifications = notificationsQuery.data ?? [];
+  const notificationsCatalog = notificationsQuery.data;
+  const notifications = notificationsCatalog?.items ?? [];
   const unreadCount =
     unreadCountQuery.data ??
     notifications.filter((notification) => !notification.isRead).length;
-  const filteredNotifications =
-    filter === "UNREAD"
-      ? notifications.filter((notification) => !notification.isRead)
-      : notifications;
-  const visibleNotifications = filteredNotifications.filter((notification) =>
-    typeFilter === "ALL" ? true : notification.type === typeFilter
-  );
 
   const summary = useMemo(
     () => ({
-      total: notifications.length,
-      unread: notifications.filter((notification) => !notification.isRead).length,
-      read: notifications.filter((notification) => notification.isRead).length,
-      announcements: notifications.filter(
-        (notification) => notification.activity.isAnnouncement
-      ).length,
+      matching: notificationsCatalog?.total ?? 0,
+      unread: unreadCount,
+      currentPage: notificationsCatalog?.page ?? 1,
+      totalPages: notificationsCatalog?.totalPages ?? 1,
     }),
-    [notifications]
+    [notificationsCatalog?.page, notificationsCatalog?.total, notificationsCatalog?.totalPages, unreadCount]
   );
 
+  useEffect(() => {
+    setPage(1);
+  }, [filter, typeFilter]);
+
   function updateCaches(nextNotifications: Notification[]) {
-    queryClient.setQueryData(notificationsKeys.list(), nextNotifications);
+    queryClient.setQueryData(
+      notificationsKeys.catalog({
+        page,
+        pageSize: 20,
+        readState: filter === "UNREAD" ? "UNREAD" : "ALL",
+        type: typeFilter === "ALL" ? undefined : typeFilter,
+      }),
+      (current: typeof notificationsCatalog | undefined) =>
+        current
+          ? {
+              ...current,
+              items: nextNotifications,
+            }
+          : current
+    );
     queryClient.setQueryData(
       notificationsKeys.unreadCount(),
       nextNotifications.filter((notification) => !notification.isRead).length
@@ -73,7 +175,6 @@ export function NotificationsPage() {
 
   async function handleMarkAsRead(notificationId: string) {
     const currentNotifications =
-      queryClient.getQueryData<Notification[]>(notificationsKeys.list()) ??
       notifications;
     const target = currentNotifications.find(
       (notification) => notification.id === notificationId
@@ -112,7 +213,6 @@ export function NotificationsPage() {
 
   async function handleMarkAllAsRead() {
     const currentNotifications =
-      queryClient.getQueryData<Notification[]>(notificationsKeys.list()) ??
       notifications;
     const unreadIds = currentNotifications
       .filter((notification) => !notification.isRead)
@@ -159,7 +259,7 @@ export function NotificationsPage() {
     return (
       <LoadingState
         title="Notifications"
-        description="Loading your inbox, unread status, and recent workspace activity."
+        description={ui.loading}
         bodyClassName="h-[30rem]"
       />
     );
@@ -168,8 +268,8 @@ export function NotificationsPage() {
   if (notificationsQuery.isError) {
     return (
       <ErrorState
-        title="Notifications unavailable"
-        description="The notification inbox could not be loaded from the backend. Retry to restore your workspace feed."
+        title={ui.unavailableTitle}
+        description={ui.unavailableDescription}
         onRetry={() => {
           void notificationsQuery.refetch();
           void unreadCountQuery.refetch();
@@ -183,12 +283,11 @@ export function NotificationsPage() {
       <header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-            Workspace
+            {ui.workspace}
           </p>
-          <h2 className="text-3xl font-semibold tracking-tight">Notifications</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">{ui.title}</h2>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Review assignments, task changes, mentions, and announcements in one
-            backend-backed activity center.
+            {ui.subtitle}
           </p>
         </div>
 
@@ -205,55 +304,55 @@ export function NotificationsPage() {
             ) : (
               <CheckCheck className="size-4" />
             )}
-            Mark all read
+            {ui.markAllRead}
           </Button>
           <Badge variant="secondary" className="px-3 py-1">
-            {unreadCount} unread
+            {unreadCount} {ui.unread}
           </Badge>
           <Badge variant="outline" className="px-3 py-1">
-            {summary.total} total
+            {summary.matching} {ui.matching}
           </Badge>
         </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-4">
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Unread</p>
+          <p className="text-sm text-muted-foreground">{ui.unreadLabel}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">
             {summary.unread}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Notifications that still need your attention.
+            {ui.unreadHelp}
           </p>
         </article>
 
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Read</p>
+          <p className="text-sm text-muted-foreground">{ui.matchingResults}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">
-            {summary.read}
+            {summary.matching}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Activity items already acknowledged in your inbox.
+            {ui.matchingResultsHelp}
           </p>
         </article>
 
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Announcements</p>
+          <p className="text-sm text-muted-foreground">{ui.currentPage}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">
-            {summary.announcements}
+            {summary.currentPage}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            Workspace-wide updates and important system notices.
+            {ui.currentPageHelp}
           </p>
         </article>
 
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-          <p className="text-sm text-muted-foreground">Inbox health</p>
+          <p className="text-sm text-muted-foreground">{ui.totalPages}</p>
           <p className="mt-2 text-3xl font-semibold tracking-tight">
-            {summary.unread === 0 ? "Clear" : "Active"}
+            {summary.totalPages}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            A quick signal showing whether follow-up is needed right now.
+            {ui.totalPagesHelp}
           </p>
         </article>
       </section>
@@ -262,10 +361,9 @@ export function NotificationsPage() {
         <div className="border-b border-border px-5 py-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-lg font-semibold">Inbox</p>
+              <p className="text-lg font-semibold">{ui.inbox}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Open a notification to jump straight to the related project,
-                task, or conversation.
+                {ui.inboxHelp}
               </p>
             </div>
 
@@ -279,7 +377,7 @@ export function NotificationsPage() {
                   onClick={() => setFilter("ALL")}
                 >
                   <Sparkles className="size-4" />
-                  All
+                  {ui.all}
                 </Button>
                 <Button
                   type="button"
@@ -289,12 +387,12 @@ export function NotificationsPage() {
                   onClick={() => setFilter("UNREAD")}
                 >
                   <Filter className="size-4" />
-                  Unread
+                  {ui.unreadLabel}
                 </Button>
               </div>
 
               <Badge variant="outline" className="px-3 py-1">
-                Showing {visibleNotifications.length}
+                {ui.showing} {notifications.length}
               </Badge>
             </div>
           </div>
@@ -309,7 +407,7 @@ export function NotificationsPage() {
                   size="sm"
                   onClick={() => setTypeFilter(type)}
                 >
-                  {type === "ALL" ? "All types" : type.replace("_", " ")}
+                  {type === "ALL" ? ui.allTypes : type.replace("_", " ")}
                 </Button>
               )
             )}
@@ -326,25 +424,25 @@ export function NotificationsPage() {
                 />
               ))}
             </div>
-          ) : visibleNotifications.length === 0 ? (
+          ) : notifications.length === 0 ? (
             <div className="p-6">
               <EmptyState
                 icon={<Bell />}
                 title={
                   filter === "UNREAD" || typeFilter !== "ALL"
-                    ? "No unread notifications"
-                    : "No notifications yet"
+                    ? ui.noUnread
+                    : ui.noNotifications
                 }
                 description={
                   filter === "UNREAD" || typeFilter !== "ALL"
-                    ? "Try another unread or type filter to reveal matching activity."
-                    : "Assignments, mentions, and announcements will appear here as your workspace becomes active."
+                    ? ui.noUnreadDescription
+                    : ui.noNotificationsDescription
                 }
               />
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {visibleNotifications.map((notification) => (
+              {notifications.map((notification) => (
                 <NotificationItem
                   key={notification.id}
                   notification={notification}
@@ -355,6 +453,37 @@ export function NotificationsPage() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="border-t border-border px-5 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {ui.page} {summary.currentPage} {ui.of} {summary.totalPages}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={summary.currentPage <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                {ui.previous}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={summary.currentPage >= summary.totalPages}
+                onClick={() =>
+                  setPage((current) => Math.min(summary.totalPages, current + 1))
+                }
+              >
+                {ui.next}
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
     </section>
