@@ -46,6 +46,9 @@ export type ProjectActivity = {
   id: string;
   title: string;
   description: string;
+  category: "PROJECT" | "MEMBER" | "MESSAGE" | "TASK" | "REPORT" | "INVITATION";
+  actorName: string | null;
+  metadata: Record<string, unknown> | null;
   timestamp: string;
 };
 

@@ -22,6 +22,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { UploadedFileResponseDto } from './dto/uploaded-file-response.dto';
+import { RateLimit } from '../shared/guards/rate-limit.guard';
 
 const { diskStorage } = require('multer');
 
@@ -51,6 +52,7 @@ if (!existsSync(taskReportUploadDirectory)) {
 @Controller('uploads')
 export class UploadsController {
   @Post('task-report-attachments')
+  @RateLimit({ windowMs: 60_000, max: 30, keyPrefix: 'uploads:task-report' })
   @UseInterceptors(
     FilesInterceptor('files', 5, {
       storage: diskStorage({

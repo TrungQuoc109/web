@@ -18,10 +18,6 @@ type AuthState = {
   logout: () => void;
 };
 
-type PersistedAuthState = {
-  accessToken?: string | null;
-} | null;
-
 const emptySession = {
   accessToken: null,
   currentUser: null,
@@ -49,21 +45,11 @@ export const authStore = create<AuthState>()(
     }),
     {
       name: "pm-auth",
-      version: 2,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        accessToken: state.accessToken,
-      }),
-      migrate: (persistedState, _version) => {
-        const state =
-          persistedState && typeof persistedState === "object"
-            ? (persistedState as PersistedAuthState)
-            : null;
-
-        return {
-          accessToken: state?.accessToken ?? null,
-        };
-      },
+      // Intentionally do not persist tokens in localStorage. Refresh uses httpOnly cookie.
+      partialize: () => ({}),
+      migrate: () => ({}),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

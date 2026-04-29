@@ -76,6 +76,7 @@ model User {
   sentInvites      Invitation[]     @relation("Sender")
   messages         Message[]
   notifications    Notification[]   @relation("UserNotifications")
+  sessions         AuthSession[]
 
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
@@ -188,7 +189,8 @@ model TaskReport {
 model Invitation {
   id               Int              @id @default(autoincrement())
   email            String
-  token            String           @unique
+  tokenHash        String           @unique @map("token")
+  tokenPreview     String?
   status           InvitationStatus @default(PENDING)
   role             ProjectRole      @default(MEMBER)
 
@@ -200,6 +202,8 @@ model Invitation {
 
   expiresAt        DateTime
   createdAt        DateTime         @default(now())
+  sentAt           DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   @@index([projectId])
   @@index([email])
@@ -207,6 +211,25 @@ model Invitation {
   @@index([expiresAt])
   @@index([projectId, email, status])
   @@index([projectId, role, status])
+}
+
+model AuthSession {
+  id               Int       @id @default(autoincrement())
+
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String    @unique
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  userAgent        String?
+  ipAddress        String?
+
+  @@index([userId, revokedAt])
+  @@index([userId, expiresAt])
 }
 
 model Message {
@@ -257,4 +280,5 @@ model Notification {
   @@index([recipientId, createdAt])
   @@index([activityId])
   @@index([type])
+  @@unique([recipientId, activityId, type])
 }

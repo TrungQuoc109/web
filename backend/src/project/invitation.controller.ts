@@ -28,6 +28,7 @@ import { InvitationResponseDto } from './dto/invitation-response.dto';
 import { ProjectMemberResponseDto } from './dto/project-member-response.dto';
 import { InvitationService } from './invitation.service';
 import { InvitationView } from './project.types';
+import { RateLimit } from '../shared/guards/rate-limit.guard';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('bearer')
@@ -37,6 +38,7 @@ export class InvitationController {
   constructor(private readonly invitationService: InvitationService) {}
 
   @Get('projects/:projectId/invitations')
+  @RateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'invite:list' })
   @ApiOperation({ summary: 'Lấy danh sách lời mời của dự án' })
   @ApiParam({
     name: 'projectId',
@@ -60,6 +62,7 @@ export class InvitationController {
   }
 
   @Post('projects/:projectId/invitations')
+  @RateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'invite:create' })
   @ApiOperation({ summary: 'Tạo lời mời tham gia dự án' })
   @ApiParam({
     name: 'projectId',
@@ -87,6 +90,7 @@ export class InvitationController {
   }
 
   @Post('projects/:projectId/invitations/:invitationId/resend')
+  @RateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'invite:resend' })
   @ApiOperation({ summary: 'Gửi lại lời mời tham gia dự án' })
   @ApiParam({
     name: 'projectId',
@@ -119,6 +123,7 @@ export class InvitationController {
   }
 
   @Patch('projects/:projectId/invitations/:invitationId/cancel')
+  @RateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'invite:cancel' })
   @ApiOperation({ summary: 'Hủy lời mời tham gia dự án' })
   @ApiParam({
     name: 'projectId',
@@ -151,6 +156,7 @@ export class InvitationController {
   }
 
   @Post('invitations/:token/accept')
+  @RateLimit({ windowMs: 60_000, max: 30, keyPrefix: 'invite:accept' })
   @ApiOperation({ summary: 'Chấp nhận lời mời tham gia dự án' })
   @ApiParam({
     name: 'token',

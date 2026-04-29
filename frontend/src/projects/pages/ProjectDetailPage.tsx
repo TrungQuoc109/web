@@ -36,6 +36,10 @@ import { useCreateTaskMutation } from "@/tasks/hooks/useCreateTaskMutation";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
+import {
+  canManageProject,
+  canTransferProjectOwnership,
+} from "@/shared/lib/workspace-permissions";
 import { StatusBadge } from "@/shared/ui/status-badge";
 
 export function ProjectDetailPage() {
@@ -206,12 +210,11 @@ export function ProjectDetailPage() {
       ) ?? null,
     [currentUser?.id, project?.members]
   );
-  const canManageProject =
-    currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
+  const canManageProjectAccess = canManageProject(currentMember?.role);
   const canCreateTask = currentMember?.role !== "VIEWER";
-  const canInviteMembers = currentMember?.role === "OWNER" || currentMember?.role === "ADMIN";
+  const canInviteMembers = canManageProjectAccess;
   const canDeleteProject = currentMember?.role === "OWNER";
-  const canTransferOwnership = currentMember?.role === "OWNER";
+  const canTransferOwnership = canTransferProjectOwnership(currentMember?.role);
   const canOpenSettings = Boolean(currentMember);
   const projectAsListItem = {
     id: project?.id ?? "",
@@ -644,7 +647,7 @@ export function ProjectDetailPage() {
         open={isManageOpen}
         project={project}
         currentUserId={currentUser?.id ? String(currentUser.id) : null}
-        canManageProject={canManageProject}
+        canManageProject={canManageProjectAccess}
         canDeleteProject={Boolean(canDeleteProject)}
         canTransferOwnership={Boolean(canTransferOwnership)}
         isSaving={updateProject.isPending}

@@ -1,5 +1,5 @@
+import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/shared/lib/cn";
-import { getCurrentLanguage } from "@/i18n/languageStore";
 import { Badge } from "@/shared/ui/badge";
 import type {
   NotificationType,
@@ -30,48 +30,16 @@ const statusStyles: Record<StatusBadgeValue, string> = {
   ANNOUNCEMENT: "bg-violet-100 text-violet-900",
 };
 
-function formatStatusLabel(value: StatusBadgeValue) {
-  const language = getCurrentLanguage();
-  const labels =
-    language === "vi"
-      ? {
-          TODO: "Cần làm",
-          IN_PROGRESS: "Đang làm",
-          IN_REVIEW: "Đang duyệt",
-          DONE: "Hoàn tất",
-          BLOCKED: "Bị chặn",
-          ACTIVE: "Đang hoạt động",
-          PLANNING: "Đang lên kế hoạch",
-          AT_RISK: "Rủi ro",
-          COMPLETED: "Đã hoàn thành",
-          MENTION: "Nhắc tên",
-          ASSIGNED: "Được giao",
-          STATUS_CHANGED: "Đổi trạng thái",
-          ANNOUNCEMENT: "Thông báo",
-        }
-      : {
-          TODO: "To do",
-          IN_PROGRESS: "In progress",
-          IN_REVIEW: "In review",
-          DONE: "Done",
-          BLOCKED: "Blocked",
-          ACTIVE: "Active",
-          PLANNING: "Planning",
-          AT_RISK: "At risk",
-          COMPLETED: "Completed",
-          MENTION: "Mention",
-          ASSIGNED: "Assigned",
-          STATUS_CHANGED: "Status changed",
-          ANNOUNCEMENT: "Announcement",
-        };
-
-  return labels[value];
-}
-
 export function StatusBadge({ value, className }: StatusBadgeProps) {
+  // Must subscribe to language changes so badges re-render on locale switches.
+  const { t } = useI18n();
+  const key = `enums.statusBadge.${value}`;
+  const label = t(key);
+
   return (
     <Badge className={cn("px-3 py-1", statusStyles[value], className)}>
-      {formatStatusLabel(value)}
+      {label === key ? value : label}
     </Badge>
   );
 }
+

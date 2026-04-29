@@ -32,6 +32,7 @@ export function useProjectChatPresence({
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [typingUserIds, setTypingUserIds] = useState<string[]>([]);
   const typingActiveRef = useRef(false);
+  const stopTypingTimeoutRef = useRef<number | null>(null);
   const numericProjectId = useMemo(
     () => (projectId ? Number(projectId) : null),
     [projectId]
@@ -111,6 +112,11 @@ export function useProjectChatPresence({
     const socket = getRealtimeSocket(accessToken);
     const trimmedDraft = draftValue.trim();
 
+    if (stopTypingTimeoutRef.current !== null) {
+      window.clearTimeout(stopTypingTimeoutRef.current);
+      stopTypingTimeoutRef.current = null;
+    }
+
     if (!trimmedDraft) {
       if (typingActiveRef.current) {
         socket.emit("project:typing", {
@@ -131,7 +137,7 @@ export function useProjectChatPresence({
       typingActiveRef.current = true;
     }
 
-    const timeout = window.setTimeout(() => {
+    stopTypingTimeoutRef.current = window.setTimeout(() => {
       socket.emit("project:typing", {
         projectId: numericProjectId,
         isTyping: false,
@@ -140,7 +146,10 @@ export function useProjectChatPresence({
     }, 1500);
 
     return () => {
-      window.clearTimeout(timeout);
+      if (stopTypingTimeoutRef.current !== null) {
+        window.clearTimeout(stopTypingTimeoutRef.current);
+        stopTypingTimeoutRef.current = null;
+      }
     };
   }, [accessToken, draftValue, enabled, numericProjectId]);
 

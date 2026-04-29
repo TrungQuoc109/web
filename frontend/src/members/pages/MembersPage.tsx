@@ -225,7 +225,7 @@ export function MembersPage() {
           joined: "Joined",
           actions: "Actions",
           ownerRoleLocked:
-            "Ownership transfer is not available yet, so owner role stays fixed here.",
+            "Owner role stays fixed here. Use project settings to transfer ownership safely.",
           selfRoleLocked:
             "Use a dedicated self-service flow to change your own project role later.",
           roleSaved: "Role changes are saved directly to the backend.",
@@ -782,7 +782,7 @@ export function MembersPage() {
                     {formatCalendarDate(invitation.expiresAt)}.
                   </p>
                   <p className="mt-2 truncate text-xs text-muted-foreground">
-                    /invite/{invitation.token}
+                    /invite/{invitation.tokenPreview ? `********${invitation.tokenPreview}` : "********"}
                   </p>
                 </div>
 
@@ -815,9 +815,25 @@ export function MembersPage() {
                       resendInvitation.isPending ||
                       cancelInvitation.isPending
                     }
-                    onClick={() =>
-                      void copyInviteLink(invitation.token)
-                    }
+                    onClick={() => {
+                      void (async () => {
+                        const refreshed = await resendInvitation.mutateAsync({
+                          projectId: selectedProjectId,
+                          invitationId: invitation.id,
+                        });
+
+                        if (!refreshed.token) {
+                          useToastStore.getState().push({
+                            title: ui.copyFailed,
+                            description: ui.copyFailedDescription,
+                            variant: "error",
+                          });
+                          return;
+                        }
+
+                        await copyInviteLink(refreshed.token);
+                      })();
+                    }}
                   >
                     <Copy className="size-4" />
                     {ui.copyLink}

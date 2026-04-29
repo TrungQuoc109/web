@@ -292,7 +292,7 @@ export function TaskDetailDrawer({
           submitReportHelp: "Describe what was completed, tested, or ready for review.",
           attachments: "Attachments",
           attachmentsHelp:
-            "Upload screenshots, PDFs, notes, or zip archives before submitting the report.",
+            "Upload supporting files (images, PDFs, or archives) before submitting the report.",
           uploading: "Uploading...",
           uploadFiles: "Upload files",
           externalAttachmentPlaceholder: "Optional external attachment URLs, one per line",
@@ -303,7 +303,7 @@ export function TaskDetailDrawer({
           leadReview: "Lead review",
           leadReviewHelp:
             "Approve when the deliverable is complete, or reject with actionable feedback.",
-          reviewPlaceholder: "Optional approval feedback or required rejection notes",
+          reviewPlaceholder: "Optional approval feedback or required rejection reason",
           reject: "Reject",
           approve: "Approve",
           reportHistory: "Report history",
@@ -318,7 +318,7 @@ export function TaskDetailDrawer({
           commentsHelp: "Recent task discussion and system updates from the backend.",
           addComment: "Add comment",
           commentPlaceholder:
-            "Share an update, ask a question, or leave implementation notes for the team.",
+            "Share an update, ask a question, or leave a short message for the team.",
           sending: "Sending...",
           sendComment: "Send comment",
           commentsLoading: "Loading comments...",
@@ -697,14 +697,15 @@ export function TaskDetailDrawer({
                 >
                   {priorityOptions.map((priority) => (
                     <option key={priority} value={priority}>
-                      {priority}
+                      {ui.priorityLabels[priority]}
                     </option>
                   ))}
                 </select>
                 {!canEditPriority ? (
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Priority updates are not available yet because the backend
-                    does not expose an update endpoint for this field.
+                    {language === "vi"
+                      ? "Bạn không có quyền cập nhật priority của task này trong ngữ cảnh hiện tại."
+                      : "You do not have permission to update this task priority in the current context."}
                   </p>
                 ) : null}
               </div>
@@ -895,7 +896,7 @@ export function TaskDetailDrawer({
                         placeholder={
                           language === "vi"
                             ? "Đã hoàn tất tích hợp API, xác minh socket event và ghi chú nghiệm thu để chờ duyệt."
-                            : "Completed the API integration, verified socket events, and documented the acceptance notes for review."
+                            : "Completed the work, verified behavior, and summarized key results for review."
                         }
                         disabled={isSubmittingReport}
                       />

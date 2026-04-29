@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Megaphone, MessageSquare, Search, Send, Users } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import { MessageBubble } from "@/messages/components/MessageBubble";
 import { useProjectChatCatalog } from "@/messages/hooks/useProjectChatCatalog";
 import { useProjectChatPresence } from "@/messages/hooks/useProjectChatPresence";
@@ -18,6 +19,7 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
 
 export function MessagesPage() {
+  const { t } = useI18n();
   const projectsQuery = useProjects();
   const currentUser = useAuthStore((state) => state.currentUser);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -229,36 +231,36 @@ export function MessagesPage() {
             {selectedProject?.name ?? "Project chat"}
           </h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Shared chat for delivery updates, quick decisions, and project-wide announcements.
+            {t("messages.sharedChatSubtitle")}
           </p>
 
           <div className="mt-6 flex flex-col gap-3">
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-              <p className="text-sm font-medium">Participants</p>
+              <p className="text-sm font-medium">{t("messages.participantsTitle")}</p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {membersQuery.isLoading
-                  ? "Loading the current project roster…"
-                  : `${memberSummary.total} current members in this project room.`}
+                  ? t("messages.rosterLoading")
+                  : t("messages.rosterSummary", { count: memberSummary.total })}
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-              <p className="text-sm font-medium">Posting permissions</p>
+              <p className="text-sm font-medium">{t("messages.postingPermissionsTitle")}</p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {canSendAnnouncements
-                  ? "You can send both normal updates and project announcements."
+                  ? t("messages.postingCanAnnounce")
                   : canSendMessages
-                    ? "You can send normal updates. Announcements are limited to owners and admins."
+                    ? t("messages.postingCanMessage")
                     : membersQuery.isError
-                      ? "Member permissions could not be verified right now, so posting is temporarily disabled."
-                      : "Your current role is view-only in this project room."}
+                      ? t("messages.postingUnavailable")
+                      : t("messages.viewOnlyRole")}
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium">Group members</p>
+                  <p className="text-sm font-medium">{t("messages.groupMembersTitle")}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    See who is currently part of this project chat.
+                    {t("messages.membersSubtitle")}
                   </p>
                 </div>
                 <Badge variant="secondary" className="px-3 py-1">
@@ -268,10 +270,10 @@ export function MessagesPage() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Badge variant="outline" className="px-3 py-1">
-                  {memberSummary.elevated} owners/admins
+                  {memberSummary.elevated} {t("messages.ownersAdminsLabel")}
                 </Badge>
                 <Badge variant="outline" className="px-3 py-1">
-                  {memberSummary.viewers} viewers
+                  {memberSummary.viewers} {t("messages.viewersLabel")}
                 </Badge>
               </div>
 
@@ -281,7 +283,7 @@ export function MessagesPage() {
                   className="h-11 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                   value={memberSearch}
                   onChange={(event) => setMemberSearch(event.target.value)}
-                  placeholder="Search members by name or email"
+                  placeholder={t("messages.memberSearchPlaceholder")}
                   disabled={membersQuery.isLoading || membersQuery.isError}
                 />
               </div>
@@ -289,15 +291,15 @@ export function MessagesPage() {
               <div className="mt-4">
                 {membersQuery.isLoading ? (
                   <div className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-                    Loading project members…
+                    {t("messages.loadingMembers")}
                   </div>
                 ) : membersQuery.isError ? (
                   <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-6">
                     <p className="text-sm font-medium text-foreground">
-                      Member list unavailable
+                      {t("messages.memberListUnavailableTitle")}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      We couldn&apos;t load the current project roster. Retry to restore the chat members list.
+                      {t("messages.memberListUnavailableDescription")}
                     </p>
                     <Button
                       type="button"
@@ -305,16 +307,16 @@ export function MessagesPage() {
                       className="mt-4"
                       onClick={() => void membersQuery.refetch()}
                     >
-                      Retry
+                      {t("common.retry")}
                     </Button>
                   </div>
                 ) : members.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-                    No members found in this project yet.
+                    {t("messages.noMembersYet")}
                   </div>
                 ) : filteredMembers.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-                    No members match the current search.
+                    {t("messages.noMembersMatchSearch")}
                   </div>
                 ) : (
                   <div className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border bg-background">
@@ -359,9 +361,9 @@ export function MessagesPage() {
           <div className="border-b border-border px-5 py-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-lg font-semibold">Project chat</p>
+                <p className="text-lg font-semibold">{t("messages.projectChatTitle")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Scrollable workspace thread with chat bubbles and system updates.
+                  {t("messages.projectChatSubtitle")}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -371,10 +373,10 @@ export function MessagesPage() {
                     className="h-11 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     value={messageSearch}
                     onChange={(event) => setMessageSearch(event.target.value)}
-                    placeholder="Search messages in this project"
+                    placeholder={t("messages.messageSearchPlaceholder")}
                   />
                 </div>
-                <Badge variant="secondary">Live API</Badge>
+                <Badge variant="secondary">{t("messages.liveApiBadge")}</Badge>
               </div>
             </div>
           </div>
@@ -386,8 +388,8 @@ export function MessagesPage() {
             {messages.length === 0 ? (
               <EmptyState
                 icon={<MessageSquare />}
-                title="No messages yet"
-                description="Send the first message to open the conversation in this project room."
+                title={t("messages.noMessagesTitle")}
+                description={t("messages.noMessagesDescription")}
               />
             ) : (
               <div className="flex flex-col gap-4">
@@ -401,7 +403,10 @@ export function MessagesPage() {
           <div className="border-t border-border px-5 py-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-muted-foreground">
-                Page {chatQuery.data?.page ?? 1} of {chatQuery.data?.totalPages ?? 1}
+                {t("messages.pageLabel", {
+                  page: chatQuery.data?.page ?? 1,
+                  total: chatQuery.data?.totalPages ?? 1,
+                })}
               </p>
 
               <div className="flex items-center gap-2">
@@ -412,7 +417,7 @@ export function MessagesPage() {
                   disabled={(chatQuery.data?.page ?? 1) <= 1}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                 >
-                  Previous
+                  {t("messages.previous")}
                 </Button>
                 <Button
                   type="button"
@@ -425,7 +430,7 @@ export function MessagesPage() {
                     )
                   }
                 >
-                  Next
+                  {t("messages.next")}
                 </Button>
               </div>
             </div>
@@ -434,15 +439,15 @@ export function MessagesPage() {
           <div className="border-t border-border px-5 py-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <label className="flex-1">
-                <span className="sr-only">Message</span>
+                <span className="sr-only">{t("messages.messageLabel")}</span>
                 <textarea
                   className="min-h-24 w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   placeholder={
                     canSendMessages
-                      ? "Write a message to the project room..."
-                      : "Viewers cannot send messages in this project room."
+                      ? t("messages.messagePlaceholder")
+                      : t("messages.viewersCannotSend")
                   }
                   disabled={!canSendMessages || sendProjectMessage.isPending}
                 />
@@ -460,16 +465,16 @@ export function MessagesPage() {
                     />
                     <span className="flex items-center gap-2">
                       <Megaphone className="size-4" />
-                      Announcement
+                      {t("messages.announcement")}
                     </span>
                   </label>
                 ) : canSendMessages ? (
                   <div className="rounded-2xl border border-border bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
-                    Announcements are available to project owners and admins.
+                    {t("messages.announcementOnlyAdmins")}
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-border bg-secondary/20 px-3 py-3 text-xs text-muted-foreground">
-                    Your current role is view-only in this project.
+                    {t("messages.viewOnlyRole")}
                   </div>
                 )}
 
@@ -485,14 +490,14 @@ export function MessagesPage() {
                 >
                   <Send />
                   {sendProjectMessage.isPending
-                    ? "Sending..."
+                    ? t("messages.sending")
                     : isAnnouncement
-                      ? "Send announcement"
-                      : "Send"}
+                      ? t("messages.sendAnnouncement")
+                      : t("messages.send")}
                 </Button>
                 {canSendMessages ? (
                   <p className="text-xs leading-5 text-muted-foreground">
-                    Mentions are supported. Use handles like <span className="font-medium">@Noah</span> or <span className="font-medium">@noah.kim</span> to notify teammates in this project.
+                    {t("messages.mentionsHint")}
                   </p>
                 ) : null}
               </div>

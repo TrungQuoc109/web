@@ -27,13 +27,9 @@ export function AuthInitializer({ children }: PropsWithChildren) {
     }
 
     const previousToken = previousTokenRef.current;
-    const tokenChanged =
-      previousToken !== null &&
-      accessToken !== null &&
-      previousToken !== accessToken;
     const sessionCleared = previousToken !== null && accessToken === null;
 
-    if (tokenChanged || sessionCleared) {
+    if (sessionCleared) {
       queryClient.removeQueries({
         predicate: (query) => !isAuthQueryKey(query.queryKey),
       });

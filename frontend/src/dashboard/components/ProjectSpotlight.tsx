@@ -1,6 +1,7 @@
 import { ArrowRight, FolderKanban, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import { useI18n } from "@/i18n/useI18n";
 import type { Project } from "@/projects/types/project";
 import { formatProjectUpdatedAt } from "@/shared/lib/format-date";
 import { Badge } from "@/shared/ui/badge";
@@ -31,6 +32,7 @@ function sortProjects(projects: Project[]) {
 }
 
 export function ProjectSpotlight({ projects }: ProjectSpotlightProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const spotlightProjects = sortProjects(projects).slice(0, 3);
 
@@ -38,8 +40,8 @@ export function ProjectSpotlight({ projects }: ProjectSpotlightProps) {
     return (
       <EmptyState
         icon={<FolderKanban />}
-        title="No projects yet"
-        description="Create a project to start seeing project health, progress, and delivery movement here."
+        title={t("dashboard.cards.projectSpotlight.emptyTitle")}
+        description={t("dashboard.cards.projectSpotlight.emptyDescription")}
       />
     );
   }
@@ -48,9 +50,9 @@ export function ProjectSpotlight({ projects }: ProjectSpotlightProps) {
     <section className="rounded-3xl border border-border bg-background/95 p-6 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h3 className="text-lg font-semibold">Project spotlight</h3>
+          <h3 className="text-lg font-semibold">{t("dashboard.cards.projectSpotlight.title")}</h3>
           <p className="text-sm text-muted-foreground">
-            The projects most worth checking right now.
+            {t("dashboard.cards.projectSpotlight.subtitle")}
           </p>
         </div>
         <Button
@@ -59,7 +61,7 @@ export function ProjectSpotlight({ projects }: ProjectSpotlightProps) {
           className="gap-2"
           onClick={() => navigate("/projects")}
         >
-          View all
+          {t("dashboard.cards.projectSpotlight.viewAll")}
           <ArrowRight className="size-4" />
         </Button>
       </div>
@@ -92,10 +94,16 @@ export function ProjectSpotlight({ projects }: ProjectSpotlightProps) {
             <div className="mt-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Users className="size-4" />
-                <span>{project.memberCount} members</span>
+                <span>
+                  {t("dashboard.cards.projectSpotlight.members", {
+                    count: project.memberCount,
+                  })}
+                </span>
               </div>
               <Badge variant="secondary" className="px-3 py-1">
-                {project.progress}% complete
+                {t("dashboard.cards.projectSpotlight.complete", {
+                  percent: project.progress,
+                })}
               </Badge>
             </div>
 

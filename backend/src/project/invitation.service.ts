@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Invitation, NotificationType, ProjectRole } from '@prisma/client';
+import { NotificationType, ProjectRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { MessageService } from '../message/message.service';
@@ -15,6 +15,7 @@ import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { projectMemberSelect } from './project.constants';
 import { InvitationView, ProjectMemberView } from './project.types';
 import { randomUUID } from 'crypto';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class InvitationService {
@@ -37,7 +38,7 @@ export class InvitationService {
     projectId: number,
     currentUser: AuthenticatedUser,
     dto: CreateInvitationDto,
-  ): Promise<Invitation> {
+  ): Promise<InvitationView> {
     await this.permission.ensureCanManageMembers(projectId, currentUser.id);
     const targetRole = dto.role ?? ProjectRole.MEMBER;
 
@@ -87,16 +88,37 @@ export class InvitationService {
       );
     }
 
-    return this.prisma.invitation.create({
+    const rawToken = randomUUID();
+    const tokenHash = this.hashToken(rawToken);
+
+    const created = await this.prisma.invitation.create({
       data: {
         email: normalizedEmail,
-        token: randomUUID(),
+        tokenHash,
+        tokenPreview: rawToken.slice(-6),
         role: targetRole,
         projectId,
         senderId: currentUser.id,
         expiresAt: this.computeExpiry(),
       },
+      select: {
+        id: true,
+        email: true,
+        tokenPreview: true,
+        status: true,
+        role: true,
+        projectId: true,
+        senderId: true,
+        expiresAt: true,
+        createdAt: true,
+        sentAt: true,
+      },
     });
+
+    return {
+      ...created,
+      token: rawToken,
+    };
   }
 
   async listInvitations(
@@ -109,17 +131,18 @@ export class InvitationService {
       where: {
         projectId,
       },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ sentAt: 'desc' }, { id: 'desc' }],
       select: {
         id: true,
         email: true,
-        token: true,
+        tokenPreview: true,
         status: true,
         role: true,
         projectId: true,
         senderId: true,
         expiresAt: true,
         createdAt: true,
+        sentAt: true,
       },
     });
   }
@@ -138,27 +161,37 @@ export class InvitationService {
       );
     }
 
-    return this.prisma.invitation.update({
+    const rawToken = randomUUID();
+    const tokenHash = this.hashToken(rawToken);
+
+    const updated = await this.prisma.invitation.update({
       where: { id: invitation.id },
       data: {
-        token: randomUUID(),
+        tokenHash,
+        tokenPreview: rawToken.slice(-6),
         status: 'PENDING',
         senderId: currentUser.id,
         expiresAt: this.computeExpiry(),
-        createdAt: new Date(),
+        sentAt: new Date(),
       },
       select: {
         id: true,
         email: true,
-        token: true,
+        tokenPreview: true,
         status: true,
         role: true,
         projectId: true,
         senderId: true,
         expiresAt: true,
         createdAt: true,
+        sentAt: true,
       },
     });
+
+    return {
+      ...updated,
+      token: rawToken,
+    };
   }
 
   async cancelInvitation(
@@ -181,13 +214,14 @@ export class InvitationService {
       select: {
         id: true,
         email: true,
-        token: true,
+        tokenPreview: true,
         status: true,
         role: true,
         projectId: true,
         senderId: true,
         expiresAt: true,
         createdAt: true,
+        sentAt: true,
       },
     });
   }
@@ -274,7 +308,7 @@ export class InvitationService {
 
   private async fetchPendingInvitation(token: string) {
     const invitation = await this.prisma.invitation.findUnique({
-      where: { token },
+      where: { tokenHash: this.hashToken(token) },
     });
 
     if (!invitation) {
@@ -308,5 +342,9 @@ export class InvitationService {
     const now = new Date();
     now.setDate(now.getDate() + this.inviteExpiryDays);
     return now;
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 }

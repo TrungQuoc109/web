@@ -14,6 +14,8 @@ type AuthResponseShape = {
   accessToken?: string;
   access_token?: string;
   token?: string;
+  refreshToken?: string;
+  refresh_token?: string;
   user?: unknown;
   data?: unknown;
 };
@@ -32,6 +34,10 @@ const roles: Role[] = ["ADMIN", "MANAGER", "MEMBER"];
 
 function normalizeAccessToken(data: AuthResponseShape): string | null {
   return data.accessToken ?? data.access_token ?? data.token ?? null;
+}
+
+function normalizeRefreshToken(data: AuthResponseShape): string | null {
+  return data.refreshToken ?? data.refresh_token ?? null;
 }
 
 function normalizeUser(data: unknown): AuthenticatedUser | null {
@@ -78,12 +84,18 @@ export async function login(input: LoginPayload): Promise<LoginResponse> {
     (res.data.data && typeof res.data.data === "object"
       ? normalizeAccessToken(res.data.data as AuthResponseShape)
       : null);
+  const refreshToken =
+    normalizeRefreshToken(res.data) ||
+    (res.data.data && typeof res.data.data === "object"
+      ? normalizeRefreshToken(res.data.data as AuthResponseShape)
+      : null);
   if (!accessToken) {
     throw new Error("Missing access token from /auth/login response");
   }
 
   return {
     accessToken,
+    refreshToken: refreshToken ?? "",
     user: normalizeUser(res.data.user) ?? normalizeUser(res.data.data),
   };
 }

@@ -257,6 +257,18 @@ export function TasksPage() {
     });
   }
 
+  function moveTaskToStatus(taskId: string, status: TaskStatus) {
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    if (!task || task.status === status) {
+      return;
+    }
+
+    updateTaskStatus.mutate({
+      taskId,
+      status,
+    });
+  }
+
   const summary = {
     total: tasksCatalog?.total ?? 0,
     inFlight: tasks.filter((task) =>
@@ -501,6 +513,7 @@ export function TasksPage() {
             tasks={tasks}
             onMoveLeft={(taskId) => moveTask(taskId, -1)}
             onMoveRight={(taskId) => moveTask(taskId, 1)}
+            onMoveToStatus={moveTaskToStatus}
             onOpenTask={setSelectedTaskId}
           />
 

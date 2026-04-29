@@ -4,13 +4,15 @@ import type { ProjectInvitation } from "@/invitations/types/invitation";
 type BackendInvitation = {
   id: number;
   email: string;
-  token: string;
+  token?: string;
+  tokenPreview?: string | null;
   projectId: number;
   senderId: number;
   status: ProjectInvitation["status"];
   role: ProjectInvitation["role"];
   expiresAt: string;
   createdAt: string;
+  sentAt?: string;
 };
 
 function mapInvitation(invitation: BackendInvitation): ProjectInvitation {
@@ -18,12 +20,14 @@ function mapInvitation(invitation: BackendInvitation): ProjectInvitation {
     id: String(invitation.id),
     email: invitation.email,
     token: invitation.token,
+    tokenPreview: invitation.tokenPreview ?? null,
     projectId: String(invitation.projectId),
     senderId: String(invitation.senderId),
     status: invitation.status,
     role: invitation.role,
     expiresAt: invitation.expiresAt,
     createdAt: invitation.createdAt,
+    sentAt: invitation.sentAt,
   };
 }
 

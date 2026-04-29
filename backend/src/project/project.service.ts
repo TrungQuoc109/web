@@ -3,7 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InvitationStatus, ProjectRole, TaskStatus } from '@prisma/client';
+import {
+  InvitationStatus,
+  Prisma,
+  ProjectRole,
+  TaskStatus,
+} from '@prisma/client';
+import { MessageService } from '../message/message.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -31,6 +37,7 @@ export class ProjectService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permission: ProjectPermissionService,
+    private readonly messageService: MessageService,
   ) {}
 
   async createProject(
@@ -240,6 +247,12 @@ export class ProjectService {
             createdAt: true,
             isSystem: true,
             isAnnouncement: true,
+            metadata: true,
+            task: {
+              select: {
+                title: true,
+              },
+            },
             sender: {
               select: {
                 id: true,
@@ -311,6 +324,12 @@ export class ProjectService {
           taskId: true,
           isSystem: true,
           isAnnouncement: true,
+          metadata: true,
+          task: {
+            select: {
+              title: true,
+            },
+          },
           sender: {
             select: {
               email: true,
@@ -371,48 +390,17 @@ export class ProjectService {
       }),
     ]);
 
-    const messageActivities: ProjectActivityView[] = messages.map((message) => {
-      const authorName = message.sender?.name ?? message.sender?.email ?? 'System';
-      const prefix = message.taskId
-        ? 'Task discussion'
-        : message.isAnnouncement
-          ? 'Announcement'
-          : message.isSystem
-            ? 'System update'
-            : 'Project message';
+    const messageActivities = messages.map((message) =>
+      this.buildProjectActivityFromMessage(message),
+    );
 
-      return {
-        id: `activity-message-${message.id}`,
-        title: `${prefix} by ${authorName}`,
-        description: message.content,
-        timestamp: message.createdAt,
-      };
-    });
+    const reportActivities = taskReports.map((report) =>
+      this.buildProjectActivityFromReport(report),
+    );
 
-    const reportActivities: ProjectActivityView[] = taskReports.map((report) => {
-      const authorName = report.author.name ?? report.author.email;
-      return {
-        id: `activity-report-${report.id}`,
-        title: `Task report ${report.status.toLowerCase()} for ${report.task.title}`,
-        description: `${authorName} submitted delivery evidence: ${report.content}`,
-        timestamp: report.createdAt,
-      };
-    });
-
-    const invitationActivities: ProjectActivityView[] = invitations.map((invitation) => {
-      const senderName = invitation.sender.name ?? invitation.sender.email;
-      const statusLabel =
-        invitation.status === InvitationStatus.CANCELED
-          ? 'canceled'
-          : invitation.status.toLowerCase();
-
-      return {
-        id: `activity-invitation-${invitation.id}`,
-        title: `Invitation ${statusLabel}`,
-        description: `${senderName} invited ${invitation.email} as ${invitation.role}.`,
-        timestamp: invitation.createdAt,
-      };
-    });
+    const invitationActivities = invitations.map((invitation) =>
+      this.buildProjectActivityFromInvitation(invitation),
+    );
 
     return [...messageActivities, ...reportActivities, ...invitationActivities]
       .sort((left, right) => right.timestamp.getTime() - left.timestamp.getTime())
@@ -509,6 +497,14 @@ export class ProjectService {
       projectId,
       dto.targetMemberId,
     );
+    const targetUser = await this.prisma.user.findUniqueOrThrow({
+      where: {
+        id: targetMembership.userId,
+      },
+      select: {
+        email: true,
+      },
+    });
 
     if (targetMembership.leftAt) {
       throw new ConflictException('Cannot transfer ownership to an inactive member.');
@@ -532,6 +528,19 @@ export class ProjectService {
           role: ProjectRole.OWNER,
         },
       });
+
+      await this.messageService.createSystemMessage(
+        {
+          projectId,
+          content: `${currentUser.email} transferred project ownership to ${targetUser.email}.`,
+          metadata: {
+            type: 'PROJECT_OWNERSHIP_TRANSFERRED',
+            previousOwnerId: currentUser.id,
+            newOwnerId: targetMembership.userId,
+          },
+        },
+        tx,
+      );
     });
 
     return this.prisma.projectMember.findUniqueOrThrow({
@@ -573,7 +582,7 @@ export class ProjectService {
       }
 
       if (existing) {
-        return tx.projectMember.update({
+        const member = await tx.projectMember.update({
           where: { id: existing.id },
           data: {
             leftAt: null,
@@ -581,9 +590,26 @@ export class ProjectService {
           },
           select: projectMemberSelect,
         });
+
+        await this.messageService.createSystemMessage(
+          {
+            projectId,
+            content: `${currentUser.email} reactivated ${targetUser.email} as ${dto.role}.`,
+            metadata: {
+              type: 'PROJECT_MEMBER_ADDED',
+              memberUserId: targetUser.id,
+              role: dto.role,
+              addedById: currentUser.id,
+              reactivated: true,
+            },
+          },
+          tx,
+        );
+
+        return member;
       }
 
-      return tx.projectMember.create({
+      const member = await tx.projectMember.create({
         data: {
           projectId,
           userId: targetUser.id,
@@ -591,6 +617,23 @@ export class ProjectService {
         },
         select: projectMemberSelect,
       });
+
+      await this.messageService.createSystemMessage(
+        {
+          projectId,
+          content: `${currentUser.email} added ${targetUser.email} to the project as ${dto.role}.`,
+          metadata: {
+            type: 'PROJECT_MEMBER_ADDED',
+            memberUserId: targetUser.id,
+            role: dto.role,
+            addedById: currentUser.id,
+            reactivated: false,
+          },
+        },
+        tx,
+      );
+
+      return member;
     });
   }
 
@@ -664,13 +707,34 @@ export class ProjectService {
       );
     }
 
-    return this.prisma.projectMember.update({
-      where: { id: membership.id },
-      data: {
-        role: dto.role,
-      },
-      select: projectMemberSelect,
+    const updatedMembership = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.projectMember.update({
+        where: { id: membership.id },
+        data: {
+          role: dto.role,
+        },
+        select: projectMemberSelect,
+      });
+
+      await this.messageService.createSystemMessage(
+        {
+          projectId,
+          content: `${currentUser.email} changed ${updated.user.email} to ${dto.role}.`,
+          metadata: {
+            type: 'PROJECT_MEMBER_ROLE_CHANGED',
+            memberUserId: updated.user.id,
+            previousRole: membership.role,
+            nextRole: dto.role,
+            changedById: currentUser.id,
+          },
+        },
+        tx,
+      );
+
+      return updated;
     });
+
+    return updatedMembership;
   }
 
   async removeMember(
@@ -698,12 +762,30 @@ export class ProjectService {
       );
     }
 
-    return this.prisma.projectMember.update({
-      where: { id: membership.id },
-      data: {
-        leftAt: new Date(),
-      },
-      select: projectMemberSelect,
+    return this.prisma.$transaction(async (tx) => {
+      const removedMembership = await tx.projectMember.update({
+        where: { id: membership.id },
+        data: {
+          leftAt: new Date(),
+        },
+        select: projectMemberSelect,
+      });
+
+      await this.messageService.createSystemMessage(
+        {
+          projectId,
+          content: `${currentUser.email} removed ${removedMembership.user.email} from the project.`,
+          metadata: {
+            type: 'PROJECT_MEMBER_REMOVED',
+            memberUserId: removedMembership.user.id,
+            previousRole: membership.role,
+            removedById: currentUser.id,
+          },
+        },
+        tx,
+      );
+
+      return removedMembership;
     });
   }
 
@@ -808,6 +890,10 @@ export class ProjectService {
       createdAt: Date;
       isSystem: boolean;
       isAnnouncement: boolean;
+      metadata: Prisma.JsonValue | null;
+      task: {
+        title: string;
+      } | null;
       sender: {
         id: number;
         email: string;
@@ -815,20 +901,274 @@ export class ProjectService {
       } | null;
     }[],
   ): ProjectActivityView[] {
-    return messages.slice(0, 5).map((message) => {
-      const authorName = message.sender?.name ?? message.sender?.email ?? 'System';
-      const prefix = message.isAnnouncement
-        ? 'Announcement'
-        : message.isSystem
-          ? 'System update'
-          : 'Project message';
+    return messages
+      .slice(0, 5)
+      .map((message) => this.buildProjectActivityFromMessage(message));
+  }
 
-      return {
-        id: `activity-${message.id}`,
-        title: `${prefix} by ${authorName}`,
-        description: message.content,
-        timestamp: message.createdAt,
-      };
-    });
+  private buildProjectActivityFromMessage(message: {
+    id: number;
+    content: string;
+    createdAt: Date;
+    taskId?: number | null;
+    isSystem: boolean;
+    isAnnouncement: boolean;
+    metadata: Prisma.JsonValue | null;
+    task: {
+      title: string;
+    } | null;
+    sender: {
+      email: string;
+      name: string | null;
+    } | null;
+  }): ProjectActivityView {
+    const actorName = this.resolveActorName(message.sender);
+    const metadata = this.toMetadataRecord(message.metadata);
+    const metadataType =
+      typeof metadata?.type === 'string' ? metadata.type : null;
+    const taskTitle = message.task?.title ?? 'this task';
+
+    switch (metadataType) {
+      case 'TASK_CREATED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Task created',
+          description: `${actorName ?? 'A teammate'} created ${taskTitle}.`,
+          category: 'TASK',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      case 'TASK_ASSIGNED': {
+        const assignedCount = Array.isArray(metadata?.assignedUserIds)
+          ? metadata.assignedUserIds.length
+          : null;
+        const assigneeLabel =
+          assignedCount && assignedCount > 1
+            ? `${assignedCount} teammates`
+            : 'a teammate';
+
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Task assignment updated',
+          description: `${actorName ?? 'A teammate'} assigned ${assigneeLabel} to ${taskTitle}.`,
+          category: 'TASK',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      }
+      case 'TASK_STATUS_CHANGED': {
+        const nextStatus =
+          typeof metadata?.status === 'string'
+            ? this.humanizeTaskStatus(metadata.status)
+            : 'a new status';
+
+        return {
+          id: `activity-message-${message.id}`,
+          title: `Task moved to ${nextStatus}`,
+          description: `${actorName ?? 'A teammate'} moved ${taskTitle} to ${nextStatus}.`,
+          category: 'TASK',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      }
+      case 'TASK_REPORT_SUBMITTED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Task report submitted',
+          description: `${actorName ?? 'A teammate'} submitted a delivery report for ${taskTitle}.`,
+          category: 'REPORT',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      case 'TASK_REPORT_APPROVED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Task report approved',
+          description: `${actorName ?? 'A reviewer'} approved the latest report for ${taskTitle}.`,
+          category: 'REPORT',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      case 'TASK_REPORT_REJECTED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Task report rejected',
+          description: `${actorName ?? 'A reviewer'} requested changes on the latest report for ${taskTitle}.`,
+          category: 'REPORT',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      case 'INVITATION_ACCEPTED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Invitation accepted',
+          description: `${actorName ?? 'A teammate'} joined the project.`,
+          category: 'MEMBER',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      case 'PROJECT_MEMBER_ADDED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Project member added',
+          description: message.content,
+          category: 'MEMBER',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      case 'PROJECT_MEMBER_ROLE_CHANGED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Member role updated',
+          description: message.content,
+          category: 'MEMBER',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      case 'PROJECT_MEMBER_REMOVED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Project member removed',
+          description: message.content,
+          category: 'MEMBER',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      case 'PROJECT_OWNERSHIP_TRANSFERRED':
+        return {
+          id: `activity-message-${message.id}`,
+          title: 'Project ownership transferred',
+          description: message.content,
+          category: 'PROJECT',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      default: {
+        const title = message.taskId
+          ? `Task discussion in ${taskTitle}`
+          : message.isAnnouncement
+            ? 'Project announcement'
+            : message.isSystem
+              ? 'Project system update'
+              : 'Project message';
+
+        return {
+          id: `activity-message-${message.id}`,
+          title,
+          description: message.content,
+          category: message.taskId ? 'TASK' : 'MESSAGE',
+          actorName,
+          metadata,
+          timestamp: message.createdAt,
+        };
+      }
+    }
+  }
+
+  private buildProjectActivityFromReport(report: {
+    id: number;
+    content: string;
+    createdAt: Date;
+    status: string;
+    task: {
+      title: string;
+    };
+    author: {
+      email: string;
+      name: string | null;
+    };
+  }): ProjectActivityView {
+    const actorName = this.resolveActorName(report.author);
+    const normalizedStatus =
+      report.status === 'PENDING'
+        ? 'pending review'
+        : report.status.toLowerCase();
+
+    return {
+      id: `activity-report-${report.id}`,
+      title: `Task report ${normalizedStatus}`,
+      description: `${actorName ?? 'A teammate'} shared delivery evidence for ${report.task.title}.`,
+      category: 'REPORT',
+      actorName,
+      metadata: {
+        reportId: report.id,
+        taskTitle: report.task.title,
+        status: report.status,
+      },
+      timestamp: report.createdAt,
+    };
+  }
+
+  private buildProjectActivityFromInvitation(invitation: {
+    id: number;
+    email: string;
+    status: InvitationStatus;
+    role: ProjectRole;
+    createdAt: Date;
+    sender: {
+      email: string;
+      name: string | null;
+    };
+  }): ProjectActivityView {
+    const actorName = this.resolveActorName(invitation.sender);
+    const statusLabel =
+      invitation.status === InvitationStatus.CANCELED
+        ? 'canceled'
+        : invitation.status.toLowerCase();
+
+    return {
+      id: `activity-invitation-${invitation.id}`,
+      title: `Invitation ${statusLabel}`,
+      description: `${actorName ?? 'A teammate'} invited ${invitation.email} as ${invitation.role}.`,
+      category: 'INVITATION',
+      actorName,
+      metadata: {
+        invitationId: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        status: invitation.status,
+      },
+      timestamp: invitation.createdAt,
+    };
+  }
+
+  private toMetadataRecord(metadata: Prisma.JsonValue | null) {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return null;
+    }
+
+    return metadata as Record<string, unknown>;
+  }
+
+  private resolveActorName(actor: { email: string; name: string | null } | null) {
+    return actor?.name ?? actor?.email ?? null;
+  }
+
+  private humanizeTaskStatus(status: string) {
+    switch (status) {
+      case 'TODO':
+        return 'To do';
+      case 'IN_PROGRESS':
+        return 'In progress';
+      case 'IN_REVIEW':
+        return 'In review';
+      case 'DONE':
+        return 'Done';
+      case 'BLOCKED':
+        return 'Blocked';
+      default:
+        return status;
+    }
   }
 }

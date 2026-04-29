@@ -1,9 +1,10 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { Avatar } from "@/shared/ui/avatar";
-import { Button } from "@/shared/ui/button";
+import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/shared/lib/cn";
 import { getDisplayName } from "@/shared/lib/display";
+import { Avatar } from "@/shared/ui/avatar";
+import { Button } from "@/shared/ui/button";
 import { PriorityBadge } from "@/shared/ui/priority-badge";
 import type { TaskItem, TaskStatus } from "@/tasks/types/task";
 
@@ -11,9 +12,12 @@ type TaskCardProps = {
   task: TaskItem;
   canMoveLeft: boolean;
   canMoveRight: boolean;
+  isDragging?: boolean;
   onMoveLeft: (taskId: string) => void;
   onMoveRight: (taskId: string) => void;
   onOpen: (taskId: string) => void;
+  onDragStart?: (taskId: string) => void;
+  onDragEnd?: () => void;
 };
 
 const statusAccent: Record<TaskStatus, string> = {
@@ -28,15 +32,46 @@ export function TaskCard({
   task,
   canMoveLeft,
   canMoveRight,
+  isDragging = false,
   onMoveLeft,
   onMoveRight,
   onOpen,
+  onDragStart,
+  onDragEnd,
 }: TaskCardProps) {
+  const { language } = useI18n();
   const primaryAssignee = task.assignees[0];
+  const ui =
+    language === "vi"
+      ? {
+          unassigned: "Chưa giao",
+          noAssignee: "Chưa có người phụ trách",
+          moreAssignees: (count: number) => `+${count} người phụ trách khác`,
+          moveLeft: `Chuyen ${task.title} sang trái`,
+          moveRight: `Chuyen ${task.title} sang phải`,
+        }
+      : {
+          unassigned: "Unassigned",
+          noAssignee: "No assignee yet",
+          moreAssignees: (count: number) => `+${count} more assignees`,
+          moveLeft: `Move ${task.title} left`,
+          moveRight: `Move ${task.title} right`,
+        };
 
   return (
     <article
-      className="cursor-pointer rounded-2xl border border-border bg-background p-4 shadow-sm transition-transform hover:-translate-y-0.5"
+      className={cn(
+        "cursor-pointer rounded-2xl border border-border bg-background p-4 shadow-sm transition-transform hover:-translate-y-0.5",
+        isDragging && "opacity-60 ring-2 ring-primary/30"
+      )}
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/task-id", task.id);
+        event.dataTransfer.setData("text/task-status", task.status);
+        onDragStart?.(task.id);
+      }}
+      onDragEnd={() => onDragEnd?.()}
       onClick={() => onOpen(task.id)}
     >
       <div className="flex items-start gap-3">
@@ -58,12 +93,12 @@ export function TaskCard({
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">
-                  {getDisplayName(primaryAssignee, "Unassigned")}
+                  {getDisplayName(primaryAssignee, ui.unassigned)}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {task.assignees.length > 1
-                    ? `+${task.assignees.length - 1} more assignees`
-                    : primaryAssignee?.email || "No assignee yet"}
+                    ? ui.moreAssignees(task.assignees.length - 1)
+                    : primaryAssignee?.email || ui.noAssignee}
                 </p>
               </div>
             </div>
@@ -78,7 +113,7 @@ export function TaskCard({
                   event.stopPropagation();
                   onMoveLeft(task.id);
                 }}
-                aria-label={`Move ${task.title} left`}
+                aria-label={ui.moveLeft}
               >
                 <ChevronLeft />
               </Button>
@@ -91,7 +126,7 @@ export function TaskCard({
                   event.stopPropagation();
                   onMoveRight(task.id);
                 }}
-                aria-label={`Move ${task.title} right`}
+                aria-label={ui.moveRight}
               >
                 <ChevronRight />
               </Button>

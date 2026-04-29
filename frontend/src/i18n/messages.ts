@@ -1,3 +1,5 @@
+import enJson from "@/i18n/en.json";
+import viJson from "@/i18n/vi.json";
 import type { AppLanguage } from "@/i18n/languageStore";
 
 type TranslationParams = Record<string, string | number>;
@@ -7,7 +9,7 @@ type TranslationTree = {
   [key: string]: TranslationValue | TranslationTree;
 };
 
-const messages: Record<AppLanguage, TranslationTree> = {
+const legacyMessages: Record<AppLanguage, TranslationTree> = {
   en: {
     nav: {
       dashboard: "Dashboard",
@@ -607,6 +609,38 @@ function resolveValue(
   );
 }
 
+function mergeTranslations(
+  base: TranslationTree,
+  override: TranslationTree
+): TranslationTree {
+  const next: TranslationTree = { ...base };
+
+  Object.entries(override).forEach(([key, value]) => {
+    const current = next[key];
+
+    if (
+      current &&
+      typeof current === "object" &&
+      !Array.isArray(current) &&
+      typeof value === "object" &&
+      !Array.isArray(value)
+    ) {
+      next[key] = mergeTranslations(current as TranslationTree, value as TranslationTree);
+      return;
+    }
+
+    next[key] = value as TranslationValue | TranslationTree;
+  });
+
+  return next;
+}
+
+const messages: Record<AppLanguage, TranslationTree> = {
+  // Legacy messages are the baseline. JSON files are the new source-of-truth overrides.
+  en: mergeTranslations(legacyMessages.en, enJson as TranslationTree),
+  vi: mergeTranslations(legacyMessages.vi, viJson as TranslationTree),
+};
+
 export function translate(
   language: AppLanguage,
   key: string,
@@ -619,7 +653,18 @@ export function translate(
   }
 
   if (typeof value === "string") {
-    return value;
+    if (!params) {
+      return value;
+    }
+
+    return value.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (match, token) => {
+      const replacement = params[token];
+      if (replacement === undefined || replacement === null) {
+        return match;
+      }
+
+      return String(replacement);
+    });
   }
 
   return key;

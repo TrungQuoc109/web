@@ -3,56 +3,73 @@ import { InvitationStatus, ProjectRole } from '@prisma/client';
 
 export class InvitationResponseDto {
   @ApiProperty({
-    description: 'ID lời mời',
+    description: 'Invitation id',
     example: 7,
   })
   id!: number;
 
   @ApiProperty({
-    description: 'Email người được mời',
+    description: 'Invitee email',
     example: 'linh.tran@example.com',
   })
   email!: string;
 
   @ApiProperty({
-    description: 'Chuỗi token xác thực yêu cầu chấp nhận lời mời',
+    description:
+      'Raw invitation token. Returned only on create/resend responses (not included in list responses).',
     example: '6b3f4c2a-9f39-4c6a-8ce0-3b8d53fb8c1e',
+    required: false,
   })
-  token!: string;
+  token?: string;
 
   @ApiProperty({
-    description: 'ID dự án liên quan',
+    description:
+      'Safe token preview (for UI display). This does not grant access to accept the invitation.',
+    example: 'fb8c1e',
+    nullable: true,
+  })
+  tokenPreview!: string | null;
+
+  @ApiProperty({
+    description: 'Project id',
     example: 12,
   })
   projectId!: number;
 
   @ApiProperty({
-    description: 'ID người tạo lời mời',
+    description: 'Invitation sender user id',
     example: 3,
   })
   senderId!: number;
 
   @ApiProperty({
-    description: 'Trạng thái hiện tại của lời mời',
+    description: 'Invitation status',
     example: InvitationStatus.PENDING,
   })
   status!: InvitationStatus;
 
   @ApiProperty({
-    description: 'Vai trò sẽ được áp dụng khi lời mời được chấp nhận',
+    description: 'Role granted upon acceptance',
     example: ProjectRole.MEMBER,
   })
   role!: ProjectRole;
 
   @ApiProperty({
-    description: 'Thời điểm lời mời hết hạn',
+    description: 'Expiration timestamp',
     example: '2026-04-15T00:00:00.000Z',
   })
   expiresAt!: Date;
 
   @ApiProperty({
-    description: 'Thời điểm tạo lời mời',
+    description: 'Creation timestamp',
     example: '2026-04-08T10:00:00.000Z',
   })
   createdAt!: Date;
+
+  @ApiProperty({
+    description: 'Timestamp of the latest token issuance (create/resend)',
+    example: '2026-04-08T10:00:00.000Z',
+  })
+  sentAt!: Date;
 }
+

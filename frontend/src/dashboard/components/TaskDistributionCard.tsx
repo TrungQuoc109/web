@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleDashed, Clock3, Workflow } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import type { TaskStatus } from "@/shared/types/workspace";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/cn";
@@ -11,37 +12,31 @@ type TaskDistributionCardProps = {
 
 const statusConfig: Array<{
   key: TaskStatus;
-  label: string;
   icon: typeof Clock3;
   barClassName: string;
 }> = [
   {
     key: "TODO",
-    label: "To do",
     icon: CircleDashed,
     barClassName: "bg-slate-500/75",
   },
   {
     key: "IN_PROGRESS",
-    label: "In progress",
     icon: Workflow,
     barClassName: "bg-sky-500/80",
   },
   {
     key: "IN_REVIEW",
-    label: "In review",
     icon: Clock3,
     barClassName: "bg-amber-500/80",
   },
   {
     key: "DONE",
-    label: "Done",
     icon: CheckCircle2,
     barClassName: "bg-emerald-500/80",
   },
   {
     key: "BLOCKED",
-    label: "Blocked",
     icon: AlertTriangle,
     barClassName: "bg-rose-500/80",
   },
@@ -51,12 +46,14 @@ export function TaskDistributionCard({
   totalTasks,
   tasksByStatus,
 }: TaskDistributionCardProps) {
+  const { t } = useI18n();
+
   return (
     <section className="rounded-3xl border border-border bg-background/95 p-6 shadow-sm">
       <div className="flex flex-col gap-1">
-        <h3 className="text-lg font-semibold">Delivery flow</h3>
+        <h3 className="text-lg font-semibold">{t("dashboard.cards.taskDistribution.title")}</h3>
         <p className="text-sm text-muted-foreground">
-          Current task spread across the execution pipeline.
+          {t("dashboard.cards.taskDistribution.subtitle")}
         </p>
       </div>
 
@@ -74,9 +71,13 @@ export function TaskDistributionCard({
                     <Icon className="size-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{status.label}</p>
+                    <p className="text-sm font-medium">
+                      {t(`dashboard.cards.taskDistribution.status.${status.key}`)}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {percentage}% of current workload
+                      {t("dashboard.cards.taskDistribution.workloadShare", {
+                        percentage,
+                      })}
                     </p>
                   </div>
                 </div>

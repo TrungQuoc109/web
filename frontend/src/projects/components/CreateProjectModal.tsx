@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import { Button } from "@/shared/ui/button";
 
 type CreateProjectModalProps = {
@@ -26,6 +27,7 @@ export function CreateProjectModal({
   onCreate,
   isPending = false,
 }: CreateProjectModalProps) {
+  const { t } = useI18n();
   const [form, setForm] = useState<FormState>(initialState);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -44,7 +46,7 @@ export function CreateProjectModal({
     const name = form.name.trim();
     const description = form.description.trim();
     if (!name) {
-      setSubmitError("Enter a project name before creating the project.");
+      setSubmitError(t("project.createModal.nameRequired"));
       return;
     }
 
@@ -61,7 +63,7 @@ export function CreateProjectModal({
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "The project could not be created. Please try again."
+          : t("project.createModal.createFailed")
       );
     }
   }
@@ -77,13 +79,13 @@ export function CreateProjectModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-              New project
+              {t("project.createModal.eyebrow")}
             </p>
             <h3 id="create-project-title" className="mt-2 text-2xl font-semibold tracking-tight">
-              Create project
+              {t("project.createModal.title")}
             </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Create a real project in the backend workspace.
+              {t("project.createModal.subtitle")}
             </p>
           </div>
 
@@ -92,7 +94,7 @@ export function CreateProjectModal({
             size="icon"
             variant="ghost"
             onClick={resetAndClose}
-            aria-label="Close modal"
+            aria-label={t("project.createModal.close")}
             disabled={isPending}
           >
             <X />
@@ -101,7 +103,7 @@ export function CreateProjectModal({
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Project name</span>
+            <span className="text-sm font-medium">{t("project.createModal.nameLabel")}</span>
             <input
               className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               value={form.name}
@@ -109,12 +111,12 @@ export function CreateProjectModal({
                 setSubmitError(null);
                 setForm((current) => ({ ...current, name: event.target.value }));
               }}
-              placeholder="Website redesign"
+              placeholder={t("project.createModal.namePlaceholder")}
             />
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Description</span>
+            <span className="text-sm font-medium">{t("project.createModal.descriptionLabel")}</span>
             <textarea
               className="min-h-28 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
               value={form.description}
@@ -125,7 +127,7 @@ export function CreateProjectModal({
                   description: event.target.value,
                 }));
               }}
-              placeholder="Briefly describe the scope, team, or delivery goal."
+              placeholder={t("project.createModal.descriptionPlaceholder")}
             />
           </label>
 
@@ -137,10 +139,10 @@ export function CreateProjectModal({
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={resetAndClose} disabled={isPending}>
-              Cancel
+              {t("project.createModal.cancel")}
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Creating..." : "Create project"}
+              {isPending ? t("project.createModal.creating") : t("project.createModal.create")}
             </Button>
           </div>
         </form>

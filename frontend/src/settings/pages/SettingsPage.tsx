@@ -3,8 +3,10 @@ import {
   Check,
   Languages,
   LogOut,
+  MessageSquare,
   ShieldCheck,
   User2,
+  Users,
   Workflow,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -32,6 +34,48 @@ export function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const connectedModules = [
+    {
+      id: "projects",
+      icon: Workflow,
+      href: "/projects",
+      title: t("settings.connectedModulesList.projects.title"),
+      description: t("settings.connectedModulesList.projects.description"),
+      cta: t("settings.connectedModulesList.projects.cta"),
+    },
+    {
+      id: "tasks",
+      icon: Workflow,
+      href: "/tasks",
+      title: t("settings.connectedModulesList.tasks.title"),
+      description: t("settings.connectedModulesList.tasks.description"),
+      cta: t("settings.connectedModulesList.tasks.cta"),
+    },
+    {
+      id: "messages",
+      icon: MessageSquare,
+      href: "/messages",
+      title: t("settings.connectedModulesList.messages.title"),
+      description: t("settings.connectedModulesList.messages.description"),
+      cta: t("settings.connectedModulesList.messages.cta"),
+    },
+    {
+      id: "members",
+      icon: Users,
+      href: "/members",
+      title: t("settings.connectedModulesList.members.title"),
+      description: t("settings.connectedModulesList.members.description"),
+      cta: t("settings.connectedModulesList.members.cta"),
+    },
+    {
+      id: "notifications",
+      icon: Bell,
+      href: "/notifications",
+      title: t("settings.connectedModulesList.notifications.title"),
+      description: t("settings.connectedModulesList.notifications.description"),
+      cta: t("settings.connectedModulesList.notifications.cta"),
+    },
+  ];
 
   useEffect(() => {
     setName(currentUser?.name ?? "");
@@ -131,7 +175,12 @@ export function SettingsPage() {
         </article>
         <article className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
           <p className="text-sm text-muted-foreground">{t("settings.connectedModules")}</p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight">4+</p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight">
+            {connectedModules.length}
+          </p>
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            {t("settings.connectedModulesCountLabel")}
+          </p>
           <p className="mt-3 text-sm text-muted-foreground">
             {t("settings.connectedModulesHelp")}
           </p>
@@ -237,28 +286,39 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="mt-6 flex flex-col gap-3">
-            <div className="flex items-center justify-between rounded-2xl border border-border bg-secondary/35 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Workflow />
-                <span className="text-sm font-medium">{t("settings.tasksBoard")}</span>
-              </div>
-              <Badge variant="secondary">{t("settings.live")}</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl border border-border bg-secondary/35 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Bell />
-                <span className="text-sm font-medium">{t("settings.notificationUnread")}</span>
-              </div>
-              <Badge variant="secondary">{t("settings.live")}</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl border border-border bg-secondary/35 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <ShieldCheck />
-                <span className="text-sm font-medium">{t("settings.notificationInbox")}</span>
-              </div>
-              <Badge variant="secondary">{t("settings.live")}</Badge>
-            </div>
+          <div className="mt-6 grid gap-3">
+            {connectedModules.map((module) => {
+              const Icon = module.icon;
+
+              return (
+                <div
+                  key={module.id}
+                  className="rounded-2xl border border-border bg-secondary/35 px-4 py-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-2xl border border-border bg-background p-2">
+                        <Icon className="size-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{module.title}</p>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                          {module.description}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">{t("settings.live")}</Badge>
+                  </div>
+
+                  <Link
+                    to={module.href}
+                    className="mt-4 inline-flex text-sm font-medium text-foreground transition-colors hover:text-primary"
+                  >
+                    {module.cta}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">

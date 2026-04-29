@@ -47,12 +47,13 @@ export function CreateTaskModal({
   const { language } = useI18n();
   const [form, setForm] = useState<FormState>(initialState);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
   const ui =
     language === "vi"
       ? {
           section: "Task mới",
           title: "Tạo task",
-          subtitle: "Thêm task thật vào một dự án trong workspace backend đã kết nối.",
+          subtitle: "Thêm task thật vào một dự án trong backend workspace đã kết nối.",
           close: "Đóng hộp thoại",
           project: "Dự án",
           noProjects: "Chưa có dự án nào",
@@ -60,7 +61,7 @@ export function CreateTaskModal({
           titlePlaceholder: "Chuẩn bị checklist demo sprint",
           priority: "Mức ưu tiên",
           description: "Mô tả",
-          descriptionPlaceholder: "Mô tả mục tiêu, ghi chú nghiệm thu hoặc các ràng buộc.",
+          descriptionPlaceholder: "Mô tả mục tiêu, bối cảnh hoặc ràng buộc.",
           missingProject: "Hãy chọn dự án và nhập tiêu đề task trước khi tạo.",
           createFailed: "Không thể tạo task. Vui lòng thử lại.",
           createProjectFirst: "Hãy tạo dự án trước rồi mới thêm task.",
@@ -85,7 +86,7 @@ export function CreateTaskModal({
           titlePlaceholder: "Prepare sprint demo checklist",
           priority: "Priority",
           description: "Description",
-          descriptionPlaceholder: "Outline the delivery goal, acceptance notes, or constraints.",
+          descriptionPlaceholder: "Describe the goal, context, or constraints.",
           missingProject: "Choose a project and enter a task title before creating.",
           createFailed: "The task could not be created. Please try again.",
           createProjectFirst: "Create a project first before adding tasks.",
@@ -136,11 +137,7 @@ export function CreateTaskModal({
       setForm(initialState);
       onClose();
     } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : ui.createFailed
-      );
+      setSubmitError(error instanceof Error ? error.message : ui.createFailed);
     }
   }
 
@@ -159,7 +156,10 @@ export function CreateTaskModal({
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
               {ui.section}
             </p>
-            <h3 id="create-task-title" className="mt-2 text-2xl font-semibold tracking-tight">
+            <h3
+              id="create-task-title"
+              className="mt-2 text-2xl font-semibold tracking-tight"
+            >
               {ui.title}
             </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -187,7 +187,10 @@ export function CreateTaskModal({
               value={effectiveProjectId}
               onChange={(event) => {
                 setSubmitError(null);
-                setForm((current) => ({ ...current, projectId: event.target.value }));
+                setForm((current) => ({
+                  ...current,
+                  projectId: event.target.value,
+                }));
               }}
               disabled={!hasProjects || isPending}
             >
@@ -265,7 +268,12 @@ export function CreateTaskModal({
           ) : null}
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={resetAndClose} disabled={isPending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetAndClose}
+              disabled={isPending}
+            >
               {ui.cancel}
             </Button>
             <Button type="submit" disabled={!hasProjects || isPending}>

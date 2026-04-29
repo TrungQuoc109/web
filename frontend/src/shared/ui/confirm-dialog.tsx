@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import { useI18n } from "@/i18n/useI18n";
 import { Button } from "@/shared/ui/button";
 
 type ConfirmDialogProps = {
@@ -18,14 +19,15 @@ export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   tone = "default",
   isPending = false,
   onClose,
   onConfirm,
 }: ConfirmDialogProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!open) {
@@ -48,6 +50,8 @@ export function ConfirmDialog({
     return null;
   }
 
+  const resolvedConfirmLabel = confirmLabel ?? t("confirmDialog.confirm");
+  const resolvedCancelLabel = cancelLabel ?? t("confirmDialog.cancel");
   const confirmClassName =
     tone === "danger"
       ? "border-destructive/30 text-destructive hover:bg-destructive/10"
@@ -73,7 +77,7 @@ export function ConfirmDialog({
       >
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-            Confirmation
+            {t("confirmDialog.eyebrow")}
           </p>
           <h3 id="confirm-dialog-title" className="text-2xl font-semibold tracking-tight">
             {title}
@@ -88,7 +92,7 @@ export function ConfirmDialog({
             disabled={isPending}
             onClick={onClose}
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </Button>
           <Button
             type="button"
@@ -97,7 +101,7 @@ export function ConfirmDialog({
             disabled={isPending}
             onClick={() => void onConfirm()}
           >
-            {isPending ? "Working..." : confirmLabel}
+            {isPending ? t("common.working") : resolvedConfirmLabel}
           </Button>
         </div>
       </div>

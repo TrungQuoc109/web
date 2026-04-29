@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { authUserSelect } from './auth.constants';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -19,13 +20,25 @@ import {
   LoginResponse,
 } from './auth.types';
 
+type SessionMetadata = {
+  userAgent?: string | null;
+  ipAddress?: string | null;
+};
+
 @Injectable()
 export class AuthService {
+  private readonly refreshSessionDays: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    const parsedDays = Number(
+      configService.get<string>('REFRESH_SESSION_EXPIRY_DAYS') ?? '7',
+    );
+    this.refreshSessionDays = Number.isInteger(parsedDays) ? parsedDays : 7;
+  }
 
   async register(registerDto: RegisterDto): Promise<AuthenticatedUser> {
     const password = await this.hashPassword(registerDto.password);
@@ -48,22 +61,26 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: LoginDto): Promise<LoginResponse> {
+  async login(
+    loginDto: LoginDto,
+    metadata?: SessionMetadata,
+  ): Promise<LoginResponse> {
     const user = await this.validateCredentials(
       loginDto.email,
       loginDto.password,
     );
 
-    const payload: JwtPayload = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    };
+    return this.buildLoginResponse(user, metadata);
+  }
 
-    return {
-      accessToken: await this.jwtService.signAsync(payload),
-      user,
-    };
+  async refreshSession(
+    refreshToken: string,
+    metadata?: SessionMetadata,
+  ): Promise<LoginResponse> {
+    const session = await this.findValidRefreshSession(refreshToken);
+    const user = await this.findAuthenticatedUserById(session.userId);
+
+    return this.rotateSession(session.id, user, metadata);
   }
 
   async findAuthenticatedUserById(userId: number): Promise<AuthenticatedUser> {
@@ -178,6 +195,161 @@ export class AuthService {
       : 12;
 
     return bcrypt.hash(password, saltRounds);
+  }
+
+  private async buildLoginResponse(
+    user: AuthenticatedUser,
+    metadata?: SessionMetadata,
+  ): Promise<LoginResponse> {
+    const payload: JwtPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = await this.signAccessToken(payload);
+    const refreshToken = await this.createRefreshSession(user.id, metadata);
+
+    return {
+      accessToken,
+      refreshToken,
+      user,
+    };
+  }
+
+  private async signAccessToken(payload: JwtPayload): Promise<string> {
+    return this.jwtService.signAsync(payload);
+  }
+
+  private computeSessionExpiry(): Date {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.refreshSessionDays);
+    return expiresAt;
+  }
+
+  private generateOpaqueToken(): string {
+    // 32 bytes ~ 256 bits entropy, URL-safe.
+    return randomBytes(32).toString('base64url');
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async createRefreshSession(
+    userId: number,
+    metadata?: SessionMetadata,
+  ): Promise<string> {
+    const refreshToken = this.generateOpaqueToken();
+    const refreshTokenHash = this.hashToken(refreshToken);
+
+    await this.prisma.authSession.create({
+      data: {
+        userId,
+        refreshTokenHash,
+        expiresAt: this.computeSessionExpiry(),
+        userAgent: metadata?.userAgent ?? null,
+        ipAddress: metadata?.ipAddress ?? null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return refreshToken;
+  }
+
+  private async findValidRefreshSession(refreshToken: string) {
+    const session = await this.prisma.authSession.findUnique({
+      where: {
+        refreshTokenHash: this.hashToken(refreshToken),
+      },
+      select: {
+        id: true,
+        userId: true,
+        revokedAt: true,
+        expiresAt: true,
+      },
+    });
+
+    if (!session || session.revokedAt) {
+      throw new UnauthorizedException('Invalid refresh token.');
+    }
+
+    if (session.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token has expired.');
+    }
+
+    return session;
+  }
+
+  private async rotateSession(
+    sessionId: number,
+    user: AuthenticatedUser,
+    metadata?: SessionMetadata,
+  ): Promise<LoginResponse> {
+    const payload: JwtPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = await this.signAccessToken(payload);
+
+    const refreshToken = await this.prisma.$transaction(async (tx) => {
+      const revoked = await tx.authSession.updateMany({
+        where: {
+          id: sessionId,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: new Date(),
+        },
+      });
+
+      if (revoked.count !== 1) {
+        throw new UnauthorizedException('Invalid refresh token.');
+      }
+
+      const nextToken = this.generateOpaqueToken();
+      await tx.authSession.create({
+        data: {
+          userId: user.id,
+          refreshTokenHash: this.hashToken(nextToken),
+          expiresAt: this.computeSessionExpiry(),
+          userAgent: metadata?.userAgent ?? null,
+          ipAddress: metadata?.ipAddress ?? null,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      return nextToken;
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user,
+    };
+  }
+
+  async revokeRefreshSession(refreshToken: string): Promise<void> {
+    const result = await this.prisma.authSession.updateMany({
+      where: {
+        refreshTokenHash: this.hashToken(refreshToken),
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
+    if (result.count === 0) {
+      // Idempotent: do not leak whether the token existed.
+      return;
+    }
   }
 
   private mapToAuthenticatedUser(user: {

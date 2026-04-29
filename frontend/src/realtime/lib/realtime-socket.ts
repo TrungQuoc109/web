@@ -30,6 +30,11 @@ export function getRealtimeSocket(token: string) {
     },
     transports: ["websocket"],
     autoConnect: true,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1_000,
+    reconnectionDelayMax: 5_000,
+    timeout: 10_000,
   });
 
   return realtimeSocket;

@@ -24,6 +24,9 @@ export const projectDetailMock: Record<string, ProjectDetail> = {
         title: "Checkout redesign moved to review",
         description:
           "The billing experience update is ready for stakeholder review.",
+        category: "TASK",
+        actorName: "Linh Tran",
+        metadata: null,
         timestamp: "14 minutes ago",
       },
       {
@@ -31,6 +34,9 @@ export const projectDetailMock: Record<string, ProjectDetail> = {
         title: "Navigation audit shared",
         description:
           "Usability notes for the workspace sidebar were posted for the team.",
+        category: "MESSAGE",
+        actorName: "Quoc Duong",
+        metadata: null,
         timestamp: "1 hour ago",
       },
       {
@@ -38,6 +44,9 @@ export const projectDetailMock: Record<string, ProjectDetail> = {
         title: "Sprint planning finished",
         description:
           "Scope and owners for the next delivery batch were finalized.",
+        category: "PROJECT",
+        actorName: "Mai Le",
+        metadata: null,
         timestamp: "Yesterday",
       },
     ],

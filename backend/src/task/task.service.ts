@@ -118,14 +118,33 @@ export class TaskService {
   ): Promise<TaskView> {
     await this.taskPermissionService.ensureCanCreateTask(projectId, currentUser.id);
 
-    return this.prisma.task.create({
-      data: {
-        projectId,
-        title: dto.title.trim(),
-        description: dto.description?.trim() || null,
-        priority: dto.priority ?? 'MEDIUM',
-      },
-      select: taskSelect,
+    return this.prisma.$transaction(async (tx) => {
+      const task = await tx.task.create({
+        data: {
+          projectId,
+          title: dto.title.trim(),
+          description: dto.description?.trim() || null,
+          priority: dto.priority ?? 'MEDIUM',
+        },
+        select: taskSelect,
+      });
+
+      await this.messageService.createSystemMessage(
+        {
+          projectId,
+          taskId: task.id,
+          content: `${currentUser.email} created task ${task.title}.`,
+          metadata: {
+            type: 'TASK_CREATED',
+            taskId: task.id,
+            createdById: currentUser.id,
+            priority: task.priority,
+          },
+        },
+        tx,
+      );
+
+      return task;
     });
   }
 

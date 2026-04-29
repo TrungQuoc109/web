@@ -44,7 +44,7 @@ export function DashboardPage() {
   if (overviewQuery.isPending || projectsQuery.isPending) {
     return (
       <LoadingState
-        title="Dashboard"
+        title={t("dashboard.title")}
         description={t("dashboard.loading")}
         statCount={4}
         bodyClassName="h-[340px]"
@@ -90,7 +90,6 @@ export function DashboardPage() {
       <header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-            Workspace
             {t("dashboard.workspace")}
           </p>
           <h2 className="text-3xl font-semibold tracking-tight">{t("dashboard.title")}</h2>
@@ -357,7 +356,7 @@ export function DashboardPage() {
                   </p>
                   <p className="mt-2 text-2xl font-semibold">
                     {overview.analytics.reviewSummary.averageReviewHours === null
-                      ? "n/a"
+                      ? t("common.na")
                       : `${overview.analytics.reviewSummary.averageReviewHours}h`}
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">

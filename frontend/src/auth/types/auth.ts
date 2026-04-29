@@ -32,6 +32,7 @@ export type ChangePasswordPayload = {
 
 export type LoginResponse = {
   accessToken: string;
+  refreshToken: string;
   user?: AuthenticatedUser | null;
 };
 

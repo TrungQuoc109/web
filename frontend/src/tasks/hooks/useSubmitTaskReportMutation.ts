@@ -19,6 +19,17 @@ export function useSubmitTaskReportMutation() {
       void queryClient.invalidateQueries({ queryKey: tasksKeys.comments(report.taskId) });
       void queryClient.invalidateQueries({ queryKey: tasksKeys.all });
       void queryClient.invalidateQueries({ queryKey: projectsKeys.details() });
+      const task = queryClient
+        .getQueriesData<{ items?: Array<{ id: string; projectId: string }> }>({
+          queryKey: tasksKeys.all,
+        })
+        .flatMap(([, data]) => data?.items ?? [])
+        .find((item) => item.id === report.taskId);
+      if (task?.projectId) {
+        void queryClient.invalidateQueries({
+          queryKey: projectsKeys.activity(task.projectId),
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
 
       useToastStore.getState().push({

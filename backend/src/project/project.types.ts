@@ -73,6 +73,9 @@ export interface ProjectActivityView {
   id: string;
   title: string;
   description: string;
+  category: 'PROJECT' | 'MEMBER' | 'MESSAGE' | 'TASK' | 'REPORT' | 'INVITATION';
+  actorName: string | null;
+  metadata: Record<string, unknown> | null;
   timestamp: Date;
 }
 
@@ -88,11 +91,13 @@ export interface ProjectDetailView extends ProjectView {
 export interface InvitationView {
   id: number;
   email: string;
-  token: string;
+  token?: string;
+  tokenPreview: string | null;
   status: InvitationStatus;
   role: ProjectRole;
   projectId: number;
   senderId: number;
   expiresAt: Date;
   createdAt: Date;
+  sentAt: Date;
 }

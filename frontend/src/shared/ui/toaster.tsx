@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/shared/lib/cn";
 import { useToastStore } from "@/shared/lib/toast-store";
 import { Button } from "@/shared/ui/button";
@@ -20,6 +21,7 @@ const variantIcons = {
 export function Toaster() {
   const items = useToastStore((state) => state.items);
   const dismiss = useToastStore((state) => state.dismiss);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -62,7 +64,7 @@ export function Toaster() {
                 size="icon"
                 className="size-8 shrink-0"
                 onClick={() => dismiss(item.id)}
-                aria-label="Dismiss notification"
+                aria-label={t("toaster.dismiss")}
               >
                 <X className="size-4" />
               </Button>

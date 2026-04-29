@@ -1,5 +1,5 @@
+import { useI18n } from "@/i18n/useI18n";
 import { cn } from "@/shared/lib/cn";
-import { getCurrentLanguage } from "@/i18n/languageStore";
 import { Badge } from "@/shared/ui/badge";
 import type { MemberRole } from "@/shared/types/workspace";
 
@@ -16,25 +16,14 @@ const roleStyles: Record<MemberRole, string> = {
 };
 
 export function RoleBadge({ role, className }: RoleBadgeProps) {
-  const language = getCurrentLanguage();
-  const labels =
-    language === "vi"
-      ? {
-          OWNER: "Chủ dự án",
-          ADMIN: "Quản trị",
-          MEMBER: "Thành viên",
-          VIEWER: "Người xem",
-        }
-      : {
-          OWNER: "Owner",
-          ADMIN: "Admin",
-          MEMBER: "Member",
-          VIEWER: "Viewer",
-        };
+  const { t } = useI18n();
+  const key = `enums.memberRole.${role}`;
+  const label = t(key);
 
   return (
     <Badge className={cn("px-3 py-1", roleStyles[role], className)}>
-      {labels[role]}
+      {label === key ? role : label}
     </Badge>
   );
 }
+
