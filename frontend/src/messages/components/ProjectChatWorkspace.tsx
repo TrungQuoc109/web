@@ -6,7 +6,6 @@ import type { ChatMessage } from "@/messages/types/message";
 import type { MessagesWorkspaceCopy } from "@/messages/pages/messagesWorkspacePage.copy";
 import type { Member } from "@/members/types/member";
 import { getDisplayName } from "@/shared/lib/display";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 
@@ -67,7 +66,7 @@ export function ProjectChatWorkspace({
             <p className="text-lg font-semibold">{ui.projectChatTitle}</p>
             <p className="mt-1 text-sm text-muted-foreground">{ui.projectChatHelp}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="relative w-full min-w-[16rem] lg:w-80">
               <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -77,7 +76,9 @@ export function ProjectChatWorkspace({
                 placeholder={ui.searchMessages}
               />
             </div>
-            <Badge variant="secondary">{ui.liveBadge}</Badge>
+            <span className="text-xs font-medium text-muted-foreground">
+              {ui.liveBadge}
+            </span>
           </div>
         </div>
       </div>
@@ -177,7 +178,7 @@ export function ProjectChatWorkspace({
               </p>
             ) : null}
             {canSendMessages ? (
-              <p className="text-xs leading-5 text-muted-foreground">{ui.mentionHelp}</p>
+              <p className="sr-only">{ui.mentionHelp}</p>
             ) : null}
           </div>
         </div>

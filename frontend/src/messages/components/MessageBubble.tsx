@@ -1,4 +1,4 @@
-import { Megaphone, Sparkles } from "lucide-react";
+import { Megaphone } from "lucide-react";
 
 import { useI18n } from "@/i18n/useI18n";
 import { Avatar } from "@/shared/ui/avatar";
@@ -19,12 +19,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       ? {
           unknownSender: "Người gửi không xác định",
           announcement: "Thông báo",
-          you: "Bạn",
         }
       : {
           unknownSender: "Unknown sender",
           announcement: "Announcement",
-          you: "You",
         };
 
   if (message.type === "system") {
@@ -56,7 +54,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
       <div
         className={cn(
-          "max-w-[min(42rem,85vw)] rounded-[1.5rem] border border-border px-4 py-3 shadow-sm",
+          "max-w-[min(42rem,85vw)] rounded-2xl border border-border px-4 py-3 shadow-sm",
           message.isCurrentUser
             ? "bg-primary text-primary-foreground"
             : "bg-background",
@@ -65,7 +63,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             "bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(241,245,249,0.95))]"
         )}
       >
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {message.author ? (
             <p
               className={cn(
@@ -82,25 +80,20 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           {isAnnouncement ? (
             <Badge
               className={cn(
-                "gap-1 px-2.5 py-0.5",
+                "gap-1 px-2 py-0.5",
                 message.isCurrentUser
                   ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground"
                   : "bg-secondary text-secondary-foreground"
               )}
             >
-              <Megaphone />
+              <Megaphone className="size-3.5" />
               {ui.announcement}
             </Badge>
           ) : null}
 
-          {!isAnnouncement && message.isCurrentUser ? (
-            <Badge className="gap-1 border-primary-foreground/25 bg-primary-foreground/10 px-2.5 py-0.5 text-primary-foreground">
-              <Sparkles />
-              {ui.you}
-            </Badge>
-          ) : null}
-
-          <span
+          <time
+            dateTime={message.createdAt}
+            title={`${message.type} - ${message.createdAt}`}
             className={cn(
               "text-xs",
               message.isCurrentUser
@@ -109,7 +102,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             )}
           >
             {formatRelativeDate(message.createdAt)}
-          </span>
+          </time>
         </div>
 
         <p

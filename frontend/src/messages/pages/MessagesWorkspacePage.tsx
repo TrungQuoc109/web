@@ -5,7 +5,6 @@ import { ProjectChatSidebar } from "@/messages/components/ProjectChatSidebar";
 import { ProjectChatWorkspace } from "@/messages/components/ProjectChatWorkspace";
 import { useMessagesWorkspaceController } from "@/messages/hooks/useMessagesWorkspaceController";
 import { getMessagesWorkspaceCopy } from "@/messages/pages/messagesWorkspacePage.copy";
-import { Badge } from "@/shared/ui/badge";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
 import { LoadingState } from "@/shared/ui/loading-state";
@@ -96,7 +95,7 @@ export function MessagesWorkspacePage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
             value={selectedProjectId}
@@ -108,15 +107,10 @@ export function MessagesWorkspacePage() {
               </option>
             ))}
           </select>
-          <Badge variant="secondary" className="px-3 py-1">
-            {summary.total} {ui.messages}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            {summary.announcements} {ui.announcements}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            {summary.unread} {ui.incoming}
-          </Badge>
+          <p className="text-sm text-muted-foreground">
+            {summary.total} {ui.messages} / {summary.announcements}{" "}
+            {ui.announcements} / {summary.unread} {ui.incoming}
+          </p>
         </div>
       </header>
 

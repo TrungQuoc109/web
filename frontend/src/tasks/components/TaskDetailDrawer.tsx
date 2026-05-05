@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   FileText,
@@ -103,6 +103,20 @@ const priorityOptions: TaskPriority[] = [
 ];
 
 const assignmentRoleOptions: TaskAssignmentRole[] = ["CONTRIBUTOR", "LEAD"];
+
+const fieldClass =
+  "h-10 rounded-lg border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring";
+
+const textareaClass =
+  "rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring";
+
+function EmptyPanel({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border bg-secondary/20 px-4 py-5 text-center text-sm text-muted-foreground">
+      {children}
+    </div>
+  );
+}
 
 export function TaskDetailDrawer({
   task,
@@ -552,16 +566,20 @@ export function TaskDetailDrawer({
         aria-hidden="true"
       />
 
-      <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-2xl flex-col border-l border-border bg-background shadow-[0_0_60px_-20px_rgba(15,23,42,0.35)]">
-        <header className="flex items-start justify-between gap-4 border-b border-border px-6 py-6">
+      <aside className="fixed inset-y-0 right-0 z-40 flex w-full max-w-5xl flex-col border-l border-border bg-background shadow-[0_0_60px_-20px_rgba(15,23,42,0.35)]">
+        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               {ui.detail}
             </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-              {currentTask.title}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <h2 className="min-w-0 text-xl font-semibold tracking-tight">
+                {currentTask.title}
+              </h2>
+              <StatusBadge value={currentTask.status} />
+              <PriorityBadge priority={currentTask.priority} />
+            </div>
+            <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
               {getDisplayText(currentTask.description, ui.noDescription)}
             </p>
           </div>
@@ -571,27 +589,24 @@ export function TaskDetailDrawer({
           </Button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          <div className="flex flex-col gap-6">
-            <section className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm md:col-span-2">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+            <section className="grid gap-3 md:grid-cols-2 xl:col-span-2">
+              <div className="rounded-2xl border border-border bg-background/95 p-4 shadow-sm md:col-span-2">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl border border-border bg-secondary/60 p-2">
+                  <div className="rounded-xl border border-border bg-secondary/60 p-2">
                     <PencilLine className="size-4" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">{ui.taskDetails}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {ui.taskDetailsHelp}
-                    </p>
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <label className="flex flex-col gap-2 md:col-span-2">
                     <span className="text-sm font-medium">{ui.taskTitle}</span>
                     <input
-                      className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                      className={fieldClass}
                       value={editTitle}
                       onChange={(event) => {
                         setDetailsError(null);
@@ -604,7 +619,7 @@ export function TaskDetailDrawer({
                   <label className="flex flex-col gap-2 md:col-span-2">
                     <span className="text-sm font-medium">{ui.description}</span>
                     <textarea
-                      className="min-h-24 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                      className={`${textareaClass} min-h-24`}
                       value={editDescription}
                       onChange={(event) => {
                         setDetailsError(null);
@@ -617,7 +632,7 @@ export function TaskDetailDrawer({
                   <label className="flex flex-col gap-2">
                     <span className="text-sm font-medium">{ui.planningPriority}</span>
                     <select
-                      className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                      className={fieldClass}
                       value={editPriority}
                       onChange={(event) =>
                         setEditPriority(event.target.value as TaskPriority)
@@ -644,22 +659,16 @@ export function TaskDetailDrawer({
                 </div>
 
                 {detailsError ? (
-                  <div className="mt-4 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                  <div className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                     {detailsError}
                   </div>
                 ) : null}
               </div>
 
-              <div className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
+              <div className="rounded-2xl border border-border bg-background/95 p-4 shadow-sm">
                 <p className="text-sm font-medium">{ui.status}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {ui.statusHelp}
-                </p>
-                <div className="mt-4">
-                  <StatusBadge value={currentTask.status} />
-                </div>
                 <select
-                  className="mt-4 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                  className={`${fieldClass} mt-3 w-full`}
                   value={currentTask.status}
                   disabled={isStatusUpdating || currentTask.status === "DONE"}
                   onChange={(event) =>
@@ -673,22 +682,16 @@ export function TaskDetailDrawer({
                   ))}
                 </select>
                 {currentTask.status !== "DONE" ? (
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
                     {ui.statusHint}
                   </p>
                 ) : null}
               </div>
 
-              <div className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
+              <div className="rounded-2xl border border-border bg-background/95 p-4 shadow-sm">
                 <p className="text-sm font-medium">{ui.priority}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {ui.priorityHelp}
-                </p>
-                <div className="mt-4">
-                  <PriorityBadge priority={currentTask.priority} />
-                </div>
                 <select
-                  className="mt-4 h-11 w-full rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                  className={`${fieldClass} mt-3 w-full`}
                   value={currentTask.priority}
                   disabled={!canEditPriority}
                   onChange={(event) =>
@@ -711,7 +714,7 @@ export function TaskDetailDrawer({
               </div>
             </section>
 
-            <section className="rounded-3xl border border-destructive/20 bg-destructive/5 p-5">
+            <section className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 xl:col-start-2 xl:row-start-2">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl border border-destructive/20 bg-background p-2 text-destructive">
                   <AlertTriangle className="size-4" />
@@ -724,7 +727,7 @@ export function TaskDetailDrawer({
                 </div>
               </div>
 
-              <div className="mt-4 flex justify-end">
+              <div className="mt-3 flex justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -738,22 +741,19 @@ export function TaskDetailDrawer({
               </div>
             </section>
 
-            <section className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
+            <section className="rounded-2xl border border-border bg-background/95 p-4 shadow-sm xl:col-start-2 xl:row-start-3">
               <div className="flex flex-col gap-1">
-                <h3 className="text-lg font-semibold">{ui.assignees}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {ui.assigneesHelp}
-                </p>
+                <h3 className="text-base font-semibold">{ui.assignees}</h3>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-4 grid gap-3">
                 {currentTask.assignees.length === 0 ? (
                   <Badge variant="outline">{ui.noAssignees}</Badge>
                 ) : (
                   currentTask.assignees.map((user) => (
                     <div
                       key={user.id}
-                      className="flex flex-col gap-3 rounded-2xl border border-border bg-secondary/40 px-3 py-3"
+                      className="flex flex-col gap-3 rounded-xl border border-border bg-secondary/30 px-3 py-3"
                     >
                       <div className="flex items-center gap-3">
                         <Avatar name={user.name} email={user.email} className="size-8" />
@@ -775,7 +775,7 @@ export function TaskDetailDrawer({
                       {user.assignmentId ? (
                         <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
                           <select
-                            className="h-10 rounded-xl border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                            className={fieldClass}
                             value={user.assignmentRole ?? "CONTRIBUTOR"}
                             disabled={isUpdatingAssignment || isRemovingAssignment}
                             onChange={(event) =>
@@ -818,7 +818,7 @@ export function TaskDetailDrawer({
                 <label className="flex flex-col gap-2">
                     <span className="text-sm font-medium">{ui.assignUser}</span>
                   <select
-                    className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                    className={fieldClass}
                     defaultValue=""
                     disabled={isUsersLoading || isAssigningUser}
                     onChange={(event) => {
@@ -840,7 +840,7 @@ export function TaskDetailDrawer({
                 <label className="flex flex-col gap-2">
                     <span className="text-sm font-medium">{ui.role}</span>
                   <select
-                    className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                    className={fieldClass}
                     value={assignmentRole}
                     disabled={isAssigningUser}
                     onChange={(event) =>
@@ -862,25 +862,22 @@ export function TaskDetailDrawer({
               ) : null}
             </section>
 
-            <section className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
+            <section className="rounded-2xl border border-border bg-background/95 p-4 shadow-sm xl:col-start-1 xl:row-span-2 xl:row-start-2">
               <div className="flex flex-col gap-1">
-                <h3 className="text-lg font-semibold">{ui.reports}</h3>
+                <h3 className="text-base font-semibold">{ui.reports}</h3>
                 <p className="text-sm text-muted-foreground">
                   {ui.reportsHelp}
                 </p>
               </div>
 
-              <div className="mt-5 flex flex-col gap-4">
-                <article className="rounded-2xl border border-border bg-secondary/20 p-4">
+              <div className="mt-4 flex flex-col gap-3">
+                <article className="rounded-xl border border-border bg-secondary/15 p-3">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-2xl border border-border bg-background p-2">
+                    <div className="rounded-xl border border-border bg-background p-2">
                       <FileText className="size-4" />
                     </div>
                     <div>
                       <p className="text-sm font-medium">{ui.submitReport}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ui.submitReportHelp}
-                      </p>
                     </div>
                   </div>
 
@@ -900,13 +897,10 @@ export function TaskDetailDrawer({
                         }
                         disabled={isSubmittingReport}
                       />
-                      <div className="rounded-2xl border border-border bg-background p-4">
+                      <div className="rounded-xl border border-border bg-background p-3">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <p className="text-sm font-medium">{ui.attachments}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {ui.attachmentsHelp}
-                            </p>
                           </div>
                           <Button
                             type="button"
@@ -964,15 +958,12 @@ export function TaskDetailDrawer({
                         ) : null}
 
                         <textarea
-                          className="mt-4 min-h-20 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                          className={`${textareaClass} mt-3 min-h-16 w-full`}
                           value={reportAttachments}
                           onChange={(event) => setReportAttachments(event.target.value)}
                           placeholder={ui.externalAttachmentPlaceholder}
                           disabled={isSubmittingReport || uploadReportAttachments.isPending}
                         />
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {ui.attachmentsHint}
-                        </p>
                       </div>
                       {uploadError ? (
                         <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -1002,23 +993,20 @@ export function TaskDetailDrawer({
                   )}
                 </article>
 
-                <article className="rounded-2xl border border-border bg-secondary/20 p-4">
+                <article className="rounded-xl border border-border bg-secondary/15 p-3">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-2xl border border-border bg-background p-2">
+                    <div className="rounded-xl border border-border bg-background p-2">
                       <ShieldCheck className="size-4" />
                     </div>
                     <div>
                       <p className="text-sm font-medium">{ui.leadReview}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {ui.leadReviewHelp}
-                      </p>
                     </div>
                   </div>
 
                   {canReviewReports ? (
                     <>
                       <textarea
-                        className="mt-4 min-h-24 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                        className={`${textareaClass} mt-3 min-h-20`}
                         value={reviewNotes}
                         onChange={(event) => {
                           setReviewError(null);
@@ -1037,7 +1025,7 @@ export function TaskDetailDrawer({
                         {pendingReports.map((report) => (
                           <div
                             key={report.id}
-                            className="flex w-full flex-col gap-3 rounded-2xl border border-border bg-background p-4"
+                            className="flex w-full flex-col gap-3 rounded-xl border border-border bg-background p-3"
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div>
@@ -1087,25 +1075,21 @@ export function TaskDetailDrawer({
                   )}
                 </article>
 
-                <div className="rounded-2xl border border-border bg-secondary/15 p-4">
+                <div className="rounded-xl border border-border bg-secondary/10 p-3">
                   <div className="flex items-center gap-3">
                     <UserPlus2 className="size-4" />
                     <p className="text-sm font-medium">{ui.reportHistory}</p>
                   </div>
                   <div className="mt-4 flex flex-col gap-3">
                     {isReportsLoading ? (
-                      <div className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-                        {ui.loadingReports}
-                      </div>
+                      <EmptyPanel>{ui.loadingReports}</EmptyPanel>
                     ) : reports.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-                        {ui.noReports}
-                      </div>
+                      <EmptyPanel>{ui.noReports}</EmptyPanel>
                     ) : (
                       reports.map((report) => (
                         <article
                           key={report.id}
-                          className="rounded-2xl border border-border bg-background p-4"
+                          className="rounded-xl border border-border bg-background p-3"
                         >
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -1158,19 +1142,16 @@ export function TaskDetailDrawer({
               </div>
             </section>
 
-            <section className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
+            <section className="rounded-2xl border border-border bg-background/95 p-4 shadow-sm xl:col-span-2">
               <div className="flex flex-col gap-1">
-                <h3 className="text-lg font-semibold">{ui.comments}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {ui.commentsHelp}
-                </p>
+                <h3 className="text-base font-semibold">{ui.comments}</h3>
               </div>
 
-              <div className="mt-5 rounded-2xl border border-border bg-secondary/15 p-4">
+              <div className="mt-4 rounded-xl border border-border bg-secondary/10 p-3">
                 <label className="flex flex-col gap-3">
                   <span className="text-sm font-medium">{ui.addComment}</span>
                   <textarea
-                    className="min-h-24 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                    className={`${textareaClass} min-h-20`}
                     value={commentDraft}
                     onChange={(event) => {
                       setCommentError(null);
@@ -1195,25 +1176,18 @@ export function TaskDetailDrawer({
                     {isSendingComment ? ui.sending : ui.sendComment}
                   </Button>
                 </div>
-                <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                  {ui.mentionHelp}
-                </p>
               </div>
 
-              <div className="mt-5 flex flex-col gap-4">
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {isCommentsLoading ? (
-                  <div className="rounded-2xl border border-dashed border-border bg-secondary/35 px-4 py-8 text-center text-sm text-muted-foreground">
-                    {ui.commentsLoading}
-                  </div>
+                  <EmptyPanel>{ui.commentsLoading}</EmptyPanel>
                 ) : task.comments.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border bg-secondary/35 px-4 py-8 text-center text-sm text-muted-foreground">
-                    {ui.noComments}
-                  </div>
+                  <EmptyPanel>{ui.noComments}</EmptyPanel>
                 ) : (
                   task.comments.map((comment) => (
                     <article
                       key={comment.id}
-                      className="rounded-2xl border border-border bg-secondary/25 p-4"
+                      className="rounded-xl border border-border bg-secondary/15 p-3"
                     >
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm font-medium">
