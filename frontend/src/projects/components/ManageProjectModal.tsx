@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { AlertTriangle, ArrowRightLeft, LogOut, PencilLine, Trash2, X } from "lucide-react";
 
+import { useI18n } from "@/i18n/useI18n";
 import type { ProjectDetail } from "@/projects/types/project";
 import { Button } from "@/shared/ui/button";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
@@ -47,6 +48,7 @@ export function ManageProjectModal({
   onLeaveProject,
   onTransferOwnership,
 }: ManageProjectModalProps) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -80,7 +82,7 @@ export function ManageProjectModal({
     const trimmedName = name.trim();
 
     if (trimmedName.length < 3) {
-      setFormError("Project name must be at least 3 characters.");
+      setFormError(t("project.manageModal.errors.nameMin"));
       return;
     }
 
@@ -95,7 +97,7 @@ export function ManageProjectModal({
 
   async function handleDelete() {
     if (deleteConfirm.trim() !== currentProject.name) {
-      setFormError("Type the project name exactly before deleting it.");
+      setFormError(t("project.manageModal.errors.deleteConfirmMismatch"));
       return;
     }
 
@@ -105,7 +107,7 @@ export function ManageProjectModal({
 
   async function handleTransferOwnership() {
     if (!transferTargetId) {
-      setFormError("Select a member before transferring ownership.");
+      setFormError(t("project.manageModal.errors.transferTargetRequired"));
       return;
     }
 
@@ -132,13 +134,13 @@ export function ManageProjectModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-              Project settings
+              {t("project.manageModal.eyebrow")}
             </p>
             <h3 id="manage-project-title" className="mt-2 text-2xl font-semibold tracking-tight">
-              Manage project
+              {t("project.manageModal.title")}
             </h3>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Update the project details or remove the project if the workspace is no longer needed.
+              {t("project.manageModal.subtitle")}
             </p>
           </div>
 
@@ -147,7 +149,7 @@ export function ManageProjectModal({
             size="icon"
             variant="ghost"
             onClick={onClose}
-            aria-label="Close modal"
+            aria-label={t("project.manageModal.close")}
             disabled={isSaving || isDeleting}
           >
             <X />
@@ -162,16 +164,16 @@ export function ManageProjectModal({
                   <PencilLine className="size-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Project details</p>
+                  <p className="text-sm font-medium">{t("project.manageModal.details.title")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Keep the name and description aligned with the current scope of the work.
+                    {t("project.manageModal.details.subtitle")}
                   </p>
                 </div>
               </div>
 
               <div className="mt-5 flex flex-col gap-4">
                 <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium">Project name</span>
+                  <span className="text-sm font-medium">{t("project.manageModal.details.nameLabel")}</span>
                   <input
                     className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     value={name}
@@ -184,7 +186,7 @@ export function ManageProjectModal({
                 </label>
 
                 <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium">Description</span>
+                  <span className="text-sm font-medium">{t("project.manageModal.details.descriptionLabel")}</span>
                   <textarea
                     className="min-h-28 rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     value={description}
@@ -199,9 +201,9 @@ export function ManageProjectModal({
             </section>
           ) : (
             <section className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-              <p className="text-sm font-medium">Project access</p>
+              <p className="text-sm font-medium">{t("project.manageModal.access.title")}</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                You can review this workspace and choose whether to stay in it, but project-wide settings remain restricted to owners and admins.
+                {t("project.manageModal.access.subtitle")}
               </p>
             </section>
           )}
@@ -213,16 +215,16 @@ export function ManageProjectModal({
                   <ArrowRightLeft className="size-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Transfer ownership</p>
+                  <p className="text-sm font-medium">{t("project.manageModal.transfer.title")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Promote another active member to owner before you leave the project.
+                    {t("project.manageModal.transfer.subtitle")}
                   </p>
                 </div>
               </div>
 
               <div className="mt-5 flex flex-col gap-4">
                 <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium">New owner</span>
+                  <span className="text-sm font-medium">{t("project.manageModal.transfer.targetLabel")}</span>
                   <select
                     className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     value={transferTargetId}
@@ -232,7 +234,7 @@ export function ManageProjectModal({
                     }}
                     disabled={isSaving || isDeleting || isLeaving || isTransferring}
                   >
-                    <option value="">Select member</option>
+                    <option value="">{t("project.manageModal.transfer.targetPlaceholder")}</option>
                     {transferTargets.map((member) => (
                       <option key={member.id} value={member.id}>
                         {member.name ?? member.email} ({member.email})
@@ -254,7 +256,9 @@ export function ManageProjectModal({
                     }
                     onClick={() => void handleTransferOwnership()}
                   >
-                    {isTransferring ? "Transferring..." : "Transfer ownership"}
+                    {isTransferring
+                      ? t("project.manageModal.transfer.transferring")
+                      : t("project.manageModal.transfer.confirm")}
                   </Button>
                 </div>
               </div>
@@ -267,9 +271,9 @@ export function ManageProjectModal({
                 <LogOut className="size-4" />
               </div>
               <div>
-                <p className="text-sm font-medium">Leave project</p>
+                <p className="text-sm font-medium">{t("project.manageModal.leave.title")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Leave this workspace while keeping the project active for the rest of the team.
+                  {t("project.manageModal.leave.subtitle")}
                 </p>
               </div>
             </div>
@@ -281,7 +285,9 @@ export function ManageProjectModal({
                 disabled={isSaving || isDeleting || isLeaving || isTransferring}
                 onClick={() => setIsLeaveConfirmOpen(true)}
               >
-                {isLeaving ? "Leaving..." : "Leave project"}
+                {isLeaving
+                  ? t("project.manageModal.leave.leaving")
+                  : t("project.manageModal.leave.confirm")}
               </Button>
             </div>
           </section>
@@ -293,9 +299,11 @@ export function ManageProjectModal({
                 <AlertTriangle className="size-4" />
               </div>
               <div>
-                <p className="text-sm font-medium text-destructive">Danger zone</p>
+                <p className="text-sm font-medium text-destructive">
+                  {t("project.manageModal.danger.title")}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Deleting a project permanently removes its tasks, messages, invitations, and memberships.
+                  {t("project.manageModal.danger.subtitle")}
                 </p>
               </div>
             </div>
@@ -303,7 +311,9 @@ export function ManageProjectModal({
             <div className="mt-5 flex flex-col gap-4">
               <label className="flex flex-col gap-2">
                 <span className="text-sm font-medium">
-                  Type <span className="font-semibold">{currentProject.name}</span> to confirm deletion
+                  {t("project.manageModal.danger.deleteConfirmLabel", {
+                    name: currentProject.name,
+                  })}
                 </span>
                 <input
                   className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -335,7 +345,9 @@ export function ManageProjectModal({
                 onClick={() => void handleDelete()}
               >
                 <Trash2 className="size-4" />
-                {isDeleting ? "Deleting..." : "Delete project"}
+                {isDeleting
+                  ? t("project.manageModal.danger.deleting")
+                  : t("project.manageModal.danger.delete")}
               </Button>
             ) : (
               <div />
@@ -348,14 +360,16 @@ export function ManageProjectModal({
                 onClick={onClose}
                 disabled={isSaving || isDeleting || isLeaving || isTransferring}
               >
-                Cancel
+                {t("project.manageModal.actions.cancel")}
               </Button>
               {canManageProject ? (
                 <Button
                   type="submit"
                   disabled={isSaving || isDeleting || isLeaving || isTransferring}
                 >
-                  {isSaving ? "Saving..." : "Save changes"}
+                  {isSaving
+                    ? t("project.manageModal.actions.saving")
+                    : t("project.manageModal.actions.save")}
                 </Button>
               ) : null}
             </div>
@@ -365,9 +379,11 @@ export function ManageProjectModal({
 
       <ConfirmDialog
         open={isLeaveConfirmOpen}
-        title="Leave project"
-        description={`Leave "${currentProject.name}"? You will lose access to this project's tasks, messages, and members until someone adds you again.`}
-        confirmLabel="Leave project"
+        title={t("project.manageModal.leaveConfirm.title")}
+        description={t("project.manageModal.leaveConfirm.description", {
+          name: currentProject.name,
+        })}
+        confirmLabel={t("project.manageModal.leaveConfirm.confirm")}
         tone="danger"
         isPending={isLeaving}
         onClose={() => setIsLeaveConfirmOpen(false)}

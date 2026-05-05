@@ -59,6 +59,20 @@ export const messagesKeys = {
 export const tasksKeys = {
   all: ["tasks"] as const,
   board: () => [...tasksKeys.all, "board"] as const,
+  project: (
+    projectId?: string,
+    filters?: {
+      search?: string;
+      status?: string;
+      priority?: string;
+      assigneeId?: string;
+      page?: number;
+      pageSize?: number;
+    }
+  ) =>
+    filters
+      ? [...tasksKeys.all, "project", projectId, filters] as const
+      : [...tasksKeys.all, "project", projectId] as const,
   catalog: (filters?: {
     search?: string;
     projectId?: string;

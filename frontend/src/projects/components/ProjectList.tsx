@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { useI18n } from "@/i18n/useI18n";
 import type { Project } from "@/projects/types/project";
 
 import { ProjectCard } from "@/projects/components/ProjectCard";
@@ -14,12 +15,14 @@ type ProjectListProps = {
 };
 
 export function ProjectList({ projects, view }: ProjectListProps) {
+  const { t } = useI18n();
+
   if (projects.length === 0) {
     return (
       <EmptyState
         icon={null}
-        title="No projects found"
-        description="Adjust the current search or filter, or create a new project to get your workspace started."
+        title={t("projects.list.emptyTitle")}
+        description={t("projects.list.emptyDescription")}
       />
     );
   }
@@ -31,11 +34,11 @@ export function ProjectList({ projects, view }: ProjectListProps) {
           <table className="min-w-full text-left text-sm">
             <thead className="bg-secondary/60 text-muted-foreground">
               <tr>
-                <th className="px-6 py-4 font-medium">Project</th>
-                <th className="px-6 py-4 font-medium">Members</th>
-                <th className="px-6 py-4 font-medium">Progress</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Updated</th>
+                <th className="px-6 py-4 font-medium">{t("projects.list.table.project")}</th>
+                <th className="px-6 py-4 font-medium">{t("projects.list.table.members")}</th>
+                <th className="px-6 py-4 font-medium">{t("projects.list.table.progress")}</th>
+                <th className="px-6 py-4 font-medium">{t("projects.list.table.status")}</th>
+                <th className="px-6 py-4 font-medium">{t("projects.list.table.updated")}</th>
               </tr>
             </thead>
             <tbody>
@@ -50,7 +53,7 @@ export function ProjectList({ projects, view }: ProjectListProps) {
                         {project.name}
                       </Link>
                       <p className="max-w-md text-muted-foreground">
-                        {getDisplayText(project.description, "No description yet.")}
+                        {getDisplayText(project.description, t("projects.list.noDescription"))}
                       </p>
                     </div>
                   </td>
@@ -66,7 +69,9 @@ export function ProjectList({ projects, view }: ProjectListProps) {
                         />
                       </div>
                       <span className="text-muted-foreground">
-                        {project.progress}% complete
+                        {t("projects.list.progressComplete", {
+                          percent: project.progress,
+                        })}
                       </span>
                     </div>
                   </td>

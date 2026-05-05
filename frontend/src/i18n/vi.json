@@ -1,251 +1,399 @@
 {
-  "common": {
-    "na": "không có",
-    "weekdayShort": {
-      "mon": "T2",
-      "tue": "T3",
-      "wed": "T4",
-      "thu": "T5",
-      "fri": "T6",
-      "sat": "T7",
-      "sun": "CN"
-    },
-    "retry": "Thử lại",
-    "working": "Đang xử lý..."
-  },
-  "confirmDialog": {
-    "eyebrow": "Xác nhận",
-    "confirm": "Xác nhận",
-    "cancel": "Hủy"
-  },
   "toaster": {
     "dismiss": "Đóng thông báo"
   },
-  "activity": {
-    "title": "Hoạt động gần đây",
-    "subtitle": "Cập nhật mới nhất trong workspace.",
-    "emptyTitle": "Chưa có hoạt động nào",
-    "emptyDescription": "Khi bạn tạo dự án, task hoặc gửi tin nhắn, các cập nhật sẽ hiện ở đây.",
-    "category": {
-      "PROJECT": "Dự án",
-      "MEMBER": "Thành viên",
-      "MESSAGE": "Tin nhắn",
-      "TASK": "Công việc",
-      "REPORT": "Báo cáo",
-      "INVITATION": "Lời mời"
-    }
-  },
   "toast": {
-    "profileUpdatedTitle": "Đã cập nhật hồ sơ",
-    "profileUpdatedDescription": "Thông tin tài khoản đã được lưu.",
-    "profileUpdateFailedTitle": "Cập nhật hồ sơ thất bại",
-    "invitationCreatedTitle": "Đã tạo lời mời",
-    "invitationCreatedDescription": "{{email}} có thể tham gia dự án với vai trò {{role}}.",
-    "createInvitationFailedTitle": "Tạo lời mời thất bại",
-    "taskCreatedTitle": "Đã tạo task",
-    "taskCreatedDescription": "Task mới đã xuất hiện trên bảng công việc.",
-    "createTaskFailedTitle": "Tạo task thất bại",
-    "sessionExpiredTitle": "Phiên đã hết hạn",
-    "sessionExpiredDescription": "Vui lòng đăng nhập lại để tiếp tục.",
-    "networkErrorTitle": "Lỗi mạng",
-    "memberAddedTitle": "Đã thêm thành viên",
-    "memberAddedDescription": "Đã thêm {{email}} vào dự án.",
-    "memberRoleUpdatedTitle": "Đã cập nhật vai trò",
     "memberRoleUpdatedDescription": "{{email}} hiện là {{role}}.",
-    "ownershipTransferredTitle": "Đã chuyển quyền owner",
+    "taskCreatedTitle": "Đã tạo task",
+    "profileUpdatedTitle": "Đã cập nhật hồ sơ",
+    "invitationCreatedTitle": "Đã tạo lời mời",
+    "memberAddedDescription": "Đã thêm {{email}} vào dự án.",
+    "taskCreatedDescription": "Task mới đã xuất hiện trên bảng công việc.",
+    "memberAddedTitle": "Đã thêm thành viên",
+    "assignTaskUserFailedTitle": "Giao task thất bại",
+    "profileUpdatedDescription": "Thông tin tài khoản đã được lưu.",
+    "createInvitationFailedTitle": "Tạo lời mời thất bại",
+    "profileUpdateFailedTitle": "Cập nhật hồ sơ thất bại",
+    "sessionExpiredTitle": "Phiên đã hết hạn",
+    "memberRoleUpdatedTitle": "Đã cập nhật vai trò",
+    "createTaskFailedTitle": "Tạo task thất bại",
+    "sessionExpiredDescription": "Vui lòng đăng nhập lại để tiếp tục.",
     "ownershipTransferredDescription": "Owner của dự án đã được cập nhật.",
+    "networkErrorTitle": "Lỗi mạng",
     "removeMemberFailedTitle": "Gỡ thành viên thất bại",
-    "assignTaskUserFailedTitle": "Giao task thất bại"
+    "ownershipTransferredTitle": "Đã chuyển quyền owner",
+    "invitationCreatedDescription": "{{email}} có thể tham gia dự án với vai trò {{role}}.",
+    "notificationUpdateFailedTitle": "Cập nhật thông báo thất bại",
+    "notificationBulkUpdateFailedTitle": "Đánh dấu hàng loạt thất bại",
+    "taskUpdatedTitle": "Đã cập nhật task",
+    "taskUpdatedDescription": "Thông tin task đã được lưu.",
+    "updateTaskFailedTitle": "Cập nhật task thất bại"
   },
-  "project": {
-    "createModal": {
-      "eyebrow": "Dự án mới",
-      "title": "Tạo dự án",
-      "subtitle": "Tạo dự án thật trong backend workspace.",
-      "close": "Đóng hộp thoại",
-      "nameLabel": "Tên dự án",
-      "namePlaceholder": "Thiết kế lại website",
-      "descriptionLabel": "Mô tả",
-      "descriptionPlaceholder": "Mô tả ngắn phạm vi, nhóm hoặc mục tiêu.",
-      "nameRequired": "Vui lòng nhập tên dự án trước khi tạo.",
-      "createFailed": "Không thể tạo dự án. Vui lòng thử lại.",
-      "cancel": "Hủy",
-      "creating": "Đang tạo...",
-      "create": "Tạo dự án"
-    }
-  },
-  "messages": {
-    "sharedChatSubtitle": "Kênh chat chung cho cập nhật và thông báo của dự án.",
-    "participantsTitle": "Người tham gia",
-    "rosterLoading": "Đang tải danh sách thành viên dự án...",
-    "rosterSummary": "Có {{count}} thành viên trong phòng dự án này.",
-    "postingPermissionsTitle": "Quyền đăng bài",
-    "postingCanAnnounce": "Bạn có thể gửi tin nhắn và thông báo dự án.",
-    "postingCanMessage": "Bạn có thể gửi tin nhắn. Thông báo chỉ dành cho Owner và Admin.",
-    "postingUnavailable": "Chưa thể xác minh quyền của thành viên, nên tạm thời không thể đăng bài.",
-    "groupMembersTitle": "Thành viên",
-    "membersTitle": "Thành viên dự án",
-    "membersSubtitle": "Xem ai đang tham gia phòng chat của dự án này.",
-    "ownersAdminsLabel": "owner/admin",
-    "viewersLabel": "viewer",
-    "loadingMembers": "Đang tải danh sách thành viên...",
-    "memberListUnavailableTitle": "Không tải được danh sách thành viên",
-    "memberListUnavailableDescription": "Không thể tải danh sách thành viên dự án. Thử lại để khôi phục danh sách.",
-    "noMembersYet": "Dự án này chưa có thành viên nào.",
-    "noMembersMatchSearch": "Không có thành viên nào khớp với từ khóa tìm kiếm.",
-    "projectChatTitle": "Chat dự án",
-    "projectChatSubtitle": "Luồng chat cuộn với chat bubble và các cập nhật hệ thống.",
-    "liveApiBadge": "API thật",
-    "messageLabel": "Tin nhắn",
-    "memberSearchPlaceholder": "Tìm thành viên theo tên hoặc email",
-    "messageSearchPlaceholder": "Tìm tin nhắn trong dự án",
-    "noMessagesTitle": "Chưa có tin nhắn",
-    "noMessagesDescription": "Gửi tin nhắn đầu tiên để bắt đầu trao đổi trong phòng dự án này.",
-    "pageLabel": "Trang {{page}} / {{total}}",
-    "previous": "Trước",
-    "next": "Sau",
-    "messagePlaceholder": "Viết tin nhắn vào phòng dự án...",
-    "viewersCannotSend": "Vai trò Viewer không thể gửi tin nhắn trong phòng dự án này.",
-    "announcement": "Thông báo",
-    "announcementOnlyAdmins": "Thông báo chỉ dành cho Owner và Admin.",
-    "viewOnlyRole": "Bạn đang ở chế độ chỉ xem trong dự án này.",
-    "sending": "Đang gửi...",
-    "sendAnnouncement": "Gửi thông báo",
-    "send": "Gửi",
-    "mentionsHint": "Có hỗ trợ @mention để thông báo cho đồng đội."
-  },
-  "settings": {
-    "connectedModulesCountLabel": "kết nối đang hoạt động",
-    "connectedModulesList": {
-      "projects": {
-        "title": "Dự án",
-        "description": "Danh sách dự án, chi tiết dự án, chuyển owner và activity feed đã nối với backend.",
-        "cta": "Mở dự án"
-      },
-      "tasks": {
-        "title": "Công việc",
-        "description": "Task board, cập nhật ưu tiên, assignee, report và comment đều đồng bộ realtime.",
-        "cta": "Mở task"
-      },
-      "messages": {
-        "title": "Tin nhắn",
-        "description": "Project chat hỗ trợ presence, typing status, announcement và lịch sử phân trang.",
-        "cta": "Mở tin nhắn"
-      },
-      "members": {
-        "title": "Thành viên",
-        "description": "Vai trò thành viên, invitation và flow chuyển owner đều có sẵn trong workspace dự án.",
-        "cta": "Mở thành viên"
-      },
-      "notifications": {
-        "title": "Thông báo",
-        "description": "Bộ đếm chưa đọc và inbox được làm mới tự động sau các hoạt động dự án và task.",
-        "cta": "Mở thông báo"
-      }
-    }
-  },
-  "dashboard": {
-    "cards": {
-      "taskDistribution": {
-        "title": "Luồng công việc",
-        "subtitle": "Phân bổ task hiện tại theo các trạng thái thực thi.",
-        "workloadShare": "Chiếm {{percentage}}% khối lượng hiện tại",
-        "status": {
-          "TODO": "Cần làm",
-          "IN_PROGRESS": "Đang làm",
-          "IN_REVIEW": "Đang duyệt",
-          "DONE": "Hoàn tất",
-          "BLOCKED": "Bị chặn"
-        }
-      },
-      "deliveryTrend": {
-        "title": "Nhịp độ giao việc",
-        "subtitle": "Tổng quan 7 ngày: task mới, task hoàn tất và báo cáo đã duyệt.",
-        "legend": {
-          "created": "Tạo mới",
-          "completed": "Hoàn tất",
-          "reviewed": "Đã duyệt"
-        },
-        "badgeCreated": "{{count}} tạo mới",
-        "badgeCompleted": "{{count}} hoàn tất",
-        "badgeReports": "{{count}} báo cáo",
-        "daySummary": "{{done}} xong / {{reviewed}} đã duyệt",
-        "tiles": {
-          "newTasks": "Task mới",
-          "completed": "Hoàn tất",
-          "reportsFiled": "Báo cáo",
-          "chatActivity": "Tin nhắn"
-        }
-      },
-      "reviewHealth": {
-        "title": "Sức khỏe review",
-        "subtitle": "Chất lượng duyệt và thời gian xử lý báo cáo trong workspace.",
-        "approvalRate": "Tỷ lệ duyệt",
-        "avgReviewTime": "TG duyệt TB",
-        "pendingNow": "Đang chờ",
-        "na": "không có",
-        "status": {
-          "pending": "Đang chờ",
-          "approved": "Đã duyệt",
-          "rejected": "Từ chối"
-        }
-      },
-      "workloadHealth": {
-        "title": "Rủi ro và tải công việc",
-        "subtitle": "Sức khỏe theo dự án và áp lực task theo mức ưu tiên.",
-        "health": {
-          "ACTIVE": "Đang chạy",
-          "AT_RISK": "Rủi ro",
-          "PLANNING": "Lên kế hoạch",
-          "COMPLETED": "Hoàn tất"
-        },
-        "priorityMix": "Phân bổ ưu tiên",
-        "tasksCount": "{{count}} task",
-        "priority": {
-          "URGENT": "Khẩn cấp",
-          "HIGH": "Cao",
-          "MEDIUM": "Trung bình",
-          "LOW": "Thấp"
-        }
-      },
-      "projectSpotlight": {
-        "emptyTitle": "Chưa có dự án nào",
-        "emptyDescription": "Hãy tạo dự án để theo dõi sức khỏe dự án, tiến độ và biến động giao việc tại đây.",
-        "title": "Dự án nổi bật",
-        "subtitle": "Những dự án đáng xem nhất lúc này.",
-        "viewAll": "Xem tất cả",
-        "members": "{{count}} thành viên",
-        "complete": "Hoàn thành {{percent}}%"
-      }
+  "notifications": {
+    "page": {
+      "workspace": "Không gian làm việc",
+      "loading": "Đang tải hộp thư thông báo, trạng thái chưa đọc và hoạt động gần đây...",
+      "unreadShort": "chưa đọc",
+      "matchingShort": "khớp",
+      "unreadLabel": "Chưa đọc",
+      "unreadHelp": "Các thông báo vẫn cần bạn chú ý.",
+      "matchingResults": "Kết quả khớp",
+      "matchingResultsHelp": "Thông báo trả về theo bộ lọc hiện tại.",
+      "currentPage": "Trang hiện tại",
+      "currentPageHelp": "Trang hộp thư đang hiển thị trong feed phân trang.",
+      "totalPages": "Tổng số trang",
+      "totalPagesHelp": "Sẽ có thêm trang khi hộp thư tiếp tục tăng.",
+      "inbox": "Hộp thư",
+      "inboxHelp": "Mở một thông báo để đi thẳng tới dự án, task hoặc cuộc trò chuyện liên quan.",
+      "all": "Tất cả",
+      "showing": "Đang hiển thị",
+      "allTypes": "Tất cả loại",
+      "noUnreadTitle": "Không có thông báo phù hợp",
+      "noUnreadDescription": "Thử đổi bộ lọc chưa đọc hoặc loại thông báo để xem kết quả.",
+      "page": "Trang",
+      "of": "của",
+      "previous": "Trước",
+      "next": "Sau"
     }
   },
   "enums": {
     "taskPriority": {
       "LOW": "Thấp",
       "MEDIUM": "Trung bình",
-      "HIGH": "Cao",
-      "URGENT": "Khẩn cấp"
+      "URGENT": "Khẩn cấp",
+      "HIGH": "Cao"
     },
     "memberRole": {
-      "OWNER": "Chủ dự án",
       "ADMIN": "Quản trị",
       "MEMBER": "Thành viên",
+      "OWNER": "Chủ dự án",
       "VIEWER": "Người xem"
     },
     "statusBadge": {
-      "TODO": "Cần làm",
-      "IN_PROGRESS": "Đang làm",
-      "IN_REVIEW": "Đang duyệt",
-      "DONE": "Hoàn tất",
       "BLOCKED": "Bị chặn",
-      "ACTIVE": "Đang hoạt động",
-      "PLANNING": "Đang lên kế hoạch",
+      "ANNOUNCEMENT": "Thông báo",
+      "IN_REVIEW": "Đang duyệt",
+      "STATUS_CHANGED": "Đổi trạng thái",
+      "DONE": "Hoàn tất",
+      "ASSIGNED": "Được giao",
+      "IN_PROGRESS": "Đang làm",
+      "TODO": "Cần làm",
       "AT_RISK": "Rủi ro",
       "COMPLETED": "Đã hoàn thành",
+      "PLANNING": "Đang lên kế hoạch",
+      "ACTIVE": "Đang hoạt động",
       "MENTION": "Nhắc tên",
-      "ASSIGNED": "Được giao",
-      "STATUS_CHANGED": "Đổi trạng thái",
-      "ANNOUNCEMENT": "Thông báo"
+      "PRIORITY_CHANGED": "Đổi ưu tiên"
     }
+  },
+  "settings": {
+    "connectedModulesCountLabel": "kết nối đang hoạt động",
+    "connectedModulesList": {
+      "projects": {
+        "cta": "Mở dự án",
+        "title": "Dự án",
+        "description": "Danh sách dự án, chi tiết dự án, chuyển owner và activity feed đã nối với backend."
+      },
+      "messages": {
+        "cta": "Mở tin nhắn",
+        "title": "Tin nhắn",
+        "description": "Project chat hỗ trợ presence, typing status, announcement và lịch sử phân trang."
+      },
+      "tasks": {
+        "cta": "Mở task",
+        "title": "Công việc",
+        "description": "Task board, cập nhật ưu tiên, assignee, report và comment đều đồng bộ realtime."
+      },
+      "members": {
+        "cta": "Mở thành viên",
+        "title": "Thành viên",
+        "description": "Vai trò thành viên, invitation và flow chuyển owner đều có sẵn trong workspace dự án."
+      },
+      "notifications": {
+        "cta": "Mở thông báo",
+        "title": "Thông báo",
+        "description": "Bộ đếm chưa đọc và inbox được làm mới tự động sau các hoạt động dự án và task."
+      }
+    }
+  },
+  "project": {
+    "createModal": {
+      "descriptionLabel": "Mô tả",
+      "descriptionPlaceholder": "Mô tả ngắn phạm vi, nhóm hoặc mục tiêu.",
+      "cancel": "Hủy",
+      "eyebrow": "Dự án mới",
+      "namePlaceholder": "Thiết kế lại website",
+      "title": "Tạo dự án",
+      "nameRequired": "Vui lòng nhập tên dự án trước khi tạo.",
+      "create": "Tạo dự án",
+      "createFailed": "Không thể tạo dự án. Vui lòng thử lại.",
+      "close": "Đóng hộp thoại",
+      "creating": "Đang tạo...",
+      "subtitle": "Tạo dự án thật trong backend workspace.",
+      "nameLabel": "Tên dự án"
+    },
+    "manageModal": {
+      "eyebrow": "Cài đặt dự án",
+      "title": "Quản lý dự án",
+      "subtitle": "Cập nhật thông tin dự án, chuyển quyền owner hoặc rời khỏi workspace.",
+      "close": "Đóng hộp thoại",
+      "errors": {
+        "nameMin": "Tên dự án phải có ít nhất 3 ký tự.",
+        "deleteConfirmMismatch": "Hãy nhập đúng tên dự án trước khi xóa.",
+        "transferTargetRequired": "Chọn một thành viên trước khi chuyển quyền owner."
+      },
+      "details": {
+        "title": "Thông tin dự án",
+        "subtitle": "Giữ tên và mô tả bám sát phạm vi công việc hiện tại.",
+        "nameLabel": "Tên dự án",
+        "descriptionLabel": "Mô tả"
+      },
+      "access": {
+        "title": "Quyền truy cập dự án",
+        "subtitle": "Bạn có thể xem workspace và lựa chọn ở lại, nhưng các cài đặt dự án chỉ dành cho owner và admin."
+      },
+      "transfer": {
+        "title": "Chuyển quyền owner",
+        "subtitle": "Chọn một thành viên đang hoạt động làm owner trước khi bạn rời dự án.",
+        "targetLabel": "Owner mới",
+        "targetPlaceholder": "Chọn thành viên",
+        "transferring": "Đang chuyển...",
+        "confirm": "Chuyển quyền owner"
+      },
+      "leave": {
+        "title": "Rời dự án",
+        "subtitle": "Rời workspace này nhưng vẫn giữ dự án hoạt động cho các thành viên còn lại.",
+        "leaving": "Đang rời...",
+        "confirm": "Rời dự án"
+      },
+      "danger": {
+        "title": "Khu vực nguy hiểm",
+        "subtitle": "Xóa dự án sẽ xóa vĩnh viễn task, tin nhắn, lời mời và thành viên dự án.",
+        "deleteConfirmLabel": "Nhập \"{{name}}\" để xác nhận xóa",
+        "deleting": "Đang xóa...",
+        "delete": "Xóa dự án"
+      },
+      "actions": {
+        "cancel": "Hủy",
+        "saving": "Đang lưu...",
+        "save": "Lưu thay đổi"
+      },
+      "leaveConfirm": {
+        "title": "Rời dự án",
+        "description": "Rời \"{{name}}\"? Bạn sẽ mất quyền truy cập task, tin nhắn và thành viên của dự án cho đến khi được mời lại.",
+        "confirm": "Rời dự án"
+      }
+    }
+  },
+  "projects": {
+    "page": {
+      "workspace": "Không gian làm việc",
+      "subtitle": "Duyệt dự án, tìm kiếm nhanh và tạo dự án mới trực tiếp từ backend.",
+      "loading": "Đang tải thẻ dự án, bộ lọc danh sách và tổng quan workspace...",
+      "unavailableTitle": "Không tải được dự án",
+      "unavailableDescription": "Không thể tải danh sách dự án từ backend. Vui lòng thử lại.",
+      "createProject": "Tạo dự án",
+      "stats": {
+        "allProjects": "Tất cả dự án",
+        "allProjectsHelp": "Tổng số dự án hiện có trong workspace.",
+        "activeDelivery": "Đang hoạt động",
+        "activeDeliveryHelp": "Các dự án đang trong giai đoạn thực thi và phối hợp.",
+        "atRisk": "Rủi ro",
+        "atRiskHelp": "Các dự án có thể cần chú ý, gỡ chặn hoặc xem lại tiến độ."
+      },
+      "search": "Tìm dự án",
+      "searchLabel": "Tìm kiếm",
+      "allStatuses": "Tất cả trạng thái",
+      "view": {
+        "cards": "Thẻ",
+        "table": "Bảng"
+      },
+      "visible": "hiển thị",
+      "filter": "Lọc",
+      "showing": "Đang hiển thị",
+      "page": "Trang",
+      "of": "của",
+      "previous": "Trước",
+      "next": "Sau",
+      "noProjectsTitle": "Chưa có dự án nào",
+      "noProjectsDescription": "Tạo dự án đầu tiên để bắt đầu quản lý task, thành viên và giao việc."
+    },
+    "list": {
+      "emptyTitle": "Không tìm thấy dự án",
+      "emptyDescription": "Hãy điều chỉnh tìm kiếm hoặc bộ lọc hiện tại, hoặc tạo dự án mới để bắt đầu workspace.",
+      "noDescription": "Chưa có mô tả.",
+      "progressComplete": "Hoàn thành {{percent}}%",
+      "table": {
+        "project": "Dự án",
+        "members": "Thành viên",
+        "progress": "Tiến độ",
+        "status": "Trạng thái",
+        "updated": "Cập nhật"
+      }
+    }
+  },
+  "confirmDialog": {
+    "confirm": "Xác nhận",
+    "cancel": "Hủy",
+    "eyebrow": "Xác nhận"
+  },
+  "activity": {
+    "title": "Hoạt động gần đây",
+    "category": {
+      "MESSAGE": "Tin nhắn",
+      "INVITATION": "Lời mời",
+      "PROJECT": "Dự án",
+      "REPORT": "Báo cáo",
+      "TASK": "Công việc",
+      "MEMBER": "Thành viên"
+    },
+    "emptyTitle": "Chưa có hoạt động nào",
+    "subtitle": "Cập nhật mới nhất trong workspace.",
+    "emptyDescription": "Khi bạn tạo dự án, task hoặc gửi tin nhắn, các cập nhật sẽ hiện ở đây."
+  },
+  "dashboard": {
+    "cards": {
+      "reviewHealth": {
+        "avgReviewTime": "TG duyệt TB",
+        "subtitle": "Chất lượng duyệt và thời gian xử lý báo cáo trong workspace.",
+        "pendingNow": "Đang chờ",
+        "status": {
+          "approved": "Đã duyệt",
+          "pending": "Đang chờ",
+          "rejected": "Từ chối"
+        },
+        "title": "Sức khỏe review",
+        "approvalRate": "Tỷ lệ duyệt",
+        "na": "không có"
+      },
+      "workloadHealth": {
+        "subtitle": "Sức khỏe theo dự án và áp lực task theo mức ưu tiên.",
+        "priorityMix": "Phân bổ ưu tiên",
+        "health": {
+          "COMPLETED": "Hoàn tất",
+          "ACTIVE": "Đang chạy",
+          "PLANNING": "Lên kế hoạch",
+          "AT_RISK": "Rủi ro"
+        },
+        "title": "Rủi ro và tải công việc",
+        "priority": {
+          "LOW": "Thấp",
+          "URGENT": "Khẩn cấp",
+          "MEDIUM": "Trung bình",
+          "HIGH": "Cao"
+        },
+        "tasksCount": "{{count}} task"
+      },
+      "deliveryTrend": {
+        "subtitle": "Tổng quan 7 ngày: task mới, task hoàn tất và báo cáo đã duyệt.",
+        "tiles": {
+          "newTasks": "Task mới",
+          "chatActivity": "Tin nhắn",
+          "completed": "Hoàn tất",
+          "reportsFiled": "Báo cáo"
+        },
+        "title": "Nhịp độ giao việc",
+        "badgeReports": "{{count}} báo cáo",
+        "daySummary": "{{done}} xong / {{reviewed}} đã duyệt",
+        "badgeCompleted": "{{count}} hoàn tất",
+        "legend": {
+          "created": "Tạo mới",
+          "completed": "Hoàn tất",
+          "reviewed": "Đã duyệt"
+        },
+        "badgeCreated": "{{count}} tạo mới"
+      },
+      "taskDistribution": {
+        "title": "Luồng công việc",
+        "workloadShare": "Chiếm {{percentage}}% khối lượng hiện tại",
+        "status": {
+          "DONE": "Hoàn tất",
+          "TODO": "Cần làm",
+          "BLOCKED": "Bị chặn",
+          "IN_REVIEW": "Đang duyệt",
+          "IN_PROGRESS": "Đang làm"
+        },
+        "subtitle": "Phân bổ task hiện tại theo các trạng thái thực thi."
+      },
+      "projectSpotlight": {
+        "viewAll": "Xem tất cả",
+        "members": "{{count}} thành viên",
+        "emptyTitle": "Chưa có dự án nào",
+        "emptyDescription": "Hãy tạo dự án để theo dõi sức khỏe dự án, tiến độ và biến động giao việc tại đây.",
+        "subtitle": "Những dự án đáng xem nhất lúc này.",
+        "title": "Dự án nổi bật",
+        "complete": "Hoàn thành {{percent}}%"
+      }
+    }
+  },
+  "common": {
+    "na": "không có",
+    "updated": "Cập nhật",
+    "weekdayShort": {
+      "mon": "T2",
+      "wed": "T4",
+      "sat": "T7",
+      "thu": "T5",
+      "tue": "T3",
+      "sun": "CN",
+      "fri": "T6"
+    },
+    "retry": "Thử lại",
+    "working": "Đang xử lý..."
+  },
+  "messages": {
+    "projectChatSubtitle": "Luồng chat cuộn với chat bubble và các cập nhật hệ thống.",
+    "noProjectsTitle": "Chưa có dự án nào",
+    "noProjectsDescription": "Tạo dự án để bắt đầu chat và phối hợp với team.",
+    "chatUnavailableTitle": "Không tải được chat",
+    "chatUnavailableDescription": "Không thể tải cuộc trò chuyện lúc này. Thử lại để khôi phục.",
+    "activeRoomLabel": "Phòng đang xem",
+    "announcementOnlyAdmins": "Thông báo chỉ dành cho Owner và Admin.",
+    "memberSearchPlaceholder": "Tìm thành viên theo tên hoặc email",
+    "noMessagesDescription": "Gửi tin nhắn đầu tiên để bắt đầu trao đổi trong phòng dự án này.",
+    "projectChatTitle": "Chat dự án",
+    "viewersLabel": "viewer",
+    "ownersAdminsLabel": "owner/admin",
+    "announcement": "Thông báo",
+    "liveApiBadge": "API thật",
+    "rosterSummary": "Có {{count}} thành viên trong phòng dự án này.",
+    "postingCanAnnounce": "Bạn có thể gửi tin nhắn và thông báo dự án.",
+    "membersSubtitle": "Xem ai đang tham gia phòng chat của dự án này.",
+    "memberListUnavailableTitle": "Không tải được danh sách thành viên",
+    "loadingMembers": "Đang tải danh sách thành viên...",
+    "sharedChatSubtitle": "Kênh chat chung cho cập nhật và thông báo của dự án.",
+    "postingCanMessage": "Bạn có thể gửi tin nhắn. Thông báo chỉ dành cho Owner và Admin.",
+    "messageSearchPlaceholder": "Tìm tin nhắn trong dự án",
+    "participantsTitle": "Người tham gia",
+    "participantsSummary": "{{total}} thành viên, {{online}} online",
+    "postingUnavailable": "Chưa thể xác minh quyền của thành viên, nên tạm thời không thể đăng bài.",
+    "messagesLabel": "tin nhắn",
+    "announcementsLabel": "thông báo",
+    "incomingLabel": "chưa đọc",
+    "page": "Trang",
+    "of": "của",
+    "pageLabel": "Trang {{page}} / {{total}}",
+    "sending": "Đang gửi...",
+    "next": "Sau",
+    "noMembersMatchSearch": "Không có thành viên nào khớp với từ khóa tìm kiếm.",
+    "groupMembersTitle": "Thành viên",
+    "viewOnlyRole": "Bạn đang ở chế độ chỉ xem trong dự án này.",
+    "messagePlaceholder": "Viết tin nhắn vào phòng dự án...",
+    "memberListUnavailableDescription": "Không thể tải danh sách thành viên dự án. Thử lại để khôi phục danh sách.",
+    "postingPermissionsTitle": "Quyền đăng bài",
+    "noMembersYet": "Dự án này chưa có thành viên nào.",
+    "send": "Gửi",
+    "sendAnnouncement": "Gửi thông báo",
+    "messageLabel": "Tin nhắn",
+    "mentionsHint": "Có hỗ trợ @mention để thông báo cho đồng đội.",
+    "rosterLoading": "Đang tải danh sách thành viên dự án...",
+    "viewersCannotSend": "Vai trò Viewer không thể gửi tin nhắn trong phòng dự án này.",
+    "onlineLabel": "online",
+    "youLabel": "Bạn",
+    "previous": "Trước",
+    "membersTitle": "Thành viên dự án",
+    "noMessagesTitle": "Chưa có tin nhắn",
+    "typingSingular": "đang nhập...",
+    "typingPlural": "đang nhập..."
   }
 }

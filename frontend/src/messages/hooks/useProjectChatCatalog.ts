@@ -4,7 +4,7 @@ import { messagesApi } from "@/messages/api/messagesApi";
 import type { ChatMessagesCatalog } from "@/messages/types/message";
 import { messagesKeys } from "@/shared/lib/query-keys";
 
-type UseProjectChatCatalogInput = {
+export type UseProjectChatCatalogInput = {
   projectId?: string;
   search?: string;
   page?: number;

@@ -1,6 +1,7 @@
 {
   "common": {
     "na": "n/a",
+    "updated": "Updated",
     "retry": "Retry",
     "working": "Working...",
     "weekdayShort": {
@@ -45,6 +46,9 @@
     "taskCreatedTitle": "Task created",
     "taskCreatedDescription": "The new task is now available in the task board.",
     "createTaskFailedTitle": "Create task failed",
+    "taskUpdatedTitle": "Task updated",
+    "taskUpdatedDescription": "The task details were saved successfully.",
+    "updateTaskFailedTitle": "Update task failed",
     "sessionExpiredTitle": "Session expired",
     "sessionExpiredDescription": "Please sign in again to continue.",
     "networkErrorTitle": "Network error",
@@ -55,7 +59,36 @@
     "ownershipTransferredTitle": "Ownership transferred",
     "ownershipTransferredDescription": "The project owner has been updated successfully.",
     "removeMemberFailedTitle": "Remove member failed",
-    "assignTaskUserFailedTitle": "Assign user failed"
+    "assignTaskUserFailedTitle": "Assign user failed",
+    "notificationUpdateFailedTitle": "Notification update failed",
+    "notificationBulkUpdateFailedTitle": "Bulk notification update failed"
+  },
+  "notifications": {
+    "page": {
+      "workspace": "Workspace",
+      "loading": "Loading your inbox, unread status, and recent workspace activity.",
+      "unreadShort": "unread",
+      "matchingShort": "matching",
+      "unreadLabel": "Unread",
+      "unreadHelp": "Notifications that still need your attention.",
+      "matchingResults": "Matching results",
+      "matchingResultsHelp": "Notifications returned by the current filter set.",
+      "currentPage": "Current page",
+      "currentPageHelp": "The inbox page currently shown in the paginated feed.",
+      "totalPages": "Total pages",
+      "totalPagesHelp": "More pages appear automatically as the inbox grows.",
+      "inbox": "Inbox",
+      "inboxHelp": "Open a notification to jump straight to the related project, task, or conversation.",
+      "all": "All",
+      "showing": "Showing",
+      "allTypes": "All types",
+      "noUnreadTitle": "No notifications match",
+      "noUnreadDescription": "Try another unread or type filter to reveal matching activity.",
+      "page": "Page",
+      "of": "of",
+      "previous": "Previous",
+      "next": "Next"
+    }
   },
   "project": {
     "createModal": {
@@ -72,13 +105,118 @@
       "cancel": "Cancel",
       "creating": "Creating...",
       "create": "Create project"
+    },
+    "manageModal": {
+      "eyebrow": "Project settings",
+      "title": "Manage project",
+      "subtitle": "Update the project details, transfer ownership, or leave the workspace.",
+      "close": "Close modal",
+      "errors": {
+        "nameMin": "Project name must be at least 3 characters.",
+        "deleteConfirmMismatch": "Type the project name exactly before deleting it.",
+        "transferTargetRequired": "Select a member before transferring ownership."
+      },
+      "details": {
+        "title": "Project details",
+        "subtitle": "Keep the name and description aligned with the current scope of the work.",
+        "nameLabel": "Project name",
+        "descriptionLabel": "Description"
+      },
+      "access": {
+        "title": "Project access",
+        "subtitle": "You can review this workspace and choose whether to stay in it, but project-wide settings remain restricted to owners and admins."
+      },
+      "transfer": {
+        "title": "Transfer ownership",
+        "subtitle": "Promote another active member to owner before you leave the project.",
+        "targetLabel": "New owner",
+        "targetPlaceholder": "Select member",
+        "transferring": "Transferring...",
+        "confirm": "Transfer ownership"
+      },
+      "leave": {
+        "title": "Leave project",
+        "subtitle": "Leave this workspace while keeping the project active for the rest of the team.",
+        "leaving": "Leaving...",
+        "confirm": "Leave project"
+      },
+      "danger": {
+        "title": "Danger zone",
+        "subtitle": "Deleting a project permanently removes its tasks, messages, invitations, and memberships.",
+        "deleteConfirmLabel": "Type \"{{name}}\" to confirm deletion",
+        "deleting": "Deleting...",
+        "delete": "Delete project"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "saving": "Saving...",
+        "save": "Save changes"
+      },
+      "leaveConfirm": {
+        "title": "Leave project",
+        "description": "Leave \"{{name}}\"? You will lose access to this project's tasks, messages, and members until someone adds you again.",
+        "confirm": "Leave project"
+      }
+    }
+  },
+  "projects": {
+    "page": {
+      "workspace": "Workspace",
+      "subtitle": "Browse active delivery work, search quickly, and create new projects directly from the connected backend.",
+      "loading": "Loading project cards, list filters, and workspace overview.",
+      "unavailableTitle": "Projects unavailable",
+      "unavailableDescription": "The project list could not be loaded from the backend. Retry to restore the workspace.",
+      "createProject": "Create project",
+      "stats": {
+        "allProjects": "All projects",
+        "allProjectsHelp": "Total projects currently visible in this workspace.",
+        "activeDelivery": "Active delivery",
+        "activeDeliveryHelp": "Projects currently in active execution and coordination.",
+        "atRisk": "At risk",
+        "atRiskHelp": "Projects that may need attention, unblockers, or timeline review."
+      },
+      "search": "Search projects",
+      "allStatuses": "All statuses",
+      "view": {
+        "cards": "Cards",
+        "table": "Table"
+      },
+      "visible": "visible",
+      "filter": "Filter",
+      "searchLabel": "Search",
+      "page": "Page",
+      "of": "of",
+      "noProjectsTitle": "No projects yet",
+      "noProjectsDescription": "Create your first project to start organizing work, people, and progress in one place.",
+      "showing": "Showing",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "list": {
+      "emptyTitle": "No projects found",
+      "emptyDescription": "Adjust the current search or filter, or create a new project to get your workspace started.",
+      "noDescription": "No description yet.",
+      "progressComplete": "{{percent}}% complete",
+      "table": {
+        "project": "Project",
+        "members": "Members",
+        "progress": "Progress",
+        "status": "Status",
+        "updated": "Updated"
+      }
     }
   },
   "messages": {
     "sharedChatSubtitle": "Shared chat for delivery updates, quick decisions, and project-wide announcements.",
+    "noProjectsTitle": "No projects yet",
+    "noProjectsDescription": "Create a project to start chatting and coordinating with your team.",
+    "chatUnavailableTitle": "Chat unavailable",
+    "chatUnavailableDescription": "The conversation could not be loaded right now. Retry to restore messages.",
+    "activeRoomLabel": "Active room",
     "participantsTitle": "Participants",
     "rosterLoading": "Loading the current project roster...",
     "rosterSummary": "{{count}} current members in this project room.",
+    "participantsSummary": "{{total}} members, {{online}} online",
     "postingPermissionsTitle": "Posting permissions",
     "postingCanAnnounce": "You can send messages and project announcements.",
     "postingCanMessage": "You can send messages. Announcements are limited to owners and admins.",
@@ -88,6 +226,8 @@
     "membersSubtitle": "See who is currently part of this project chat.",
     "ownersAdminsLabel": "owners/admins",
     "viewersLabel": "viewers",
+    "onlineLabel": "online",
+    "youLabel": "You",
     "loadingMembers": "Loading project members...",
     "memberListUnavailableTitle": "Member list unavailable",
     "memberListUnavailableDescription": "We couldn't load the current project roster. Retry to restore the chat members list.",
@@ -101,6 +241,11 @@
     "messageSearchPlaceholder": "Search messages in this project",
     "noMessagesTitle": "No messages yet",
     "noMessagesDescription": "Send the first message to open the conversation in this project room.",
+    "messagesLabel": "messages",
+    "announcementsLabel": "announcements",
+    "incomingLabel": "unread",
+    "page": "Page",
+    "of": "of",
     "pageLabel": "Page {{page}} of {{total}}",
     "previous": "Previous",
     "next": "Next",
@@ -112,7 +257,9 @@
     "sending": "Sending...",
     "sendAnnouncement": "Send announcement",
     "send": "Send",
-    "mentionsHint": "Mentions are supported with @handles."
+    "mentionsHint": "Mentions are supported with @handles.",
+    "typingSingular": "is typing...",
+    "typingPlural": "are typing..."
   },
   "settings": {
     "connectedModulesCountLabel": "live integrations",
@@ -245,6 +392,7 @@
       "MENTION": "Mention",
       "ASSIGNED": "Assigned",
       "STATUS_CHANGED": "Status changed",
+      "PRIORITY_CHANGED": "Priority changed",
       "ANNOUNCEMENT": "Announcement"
     }
   }

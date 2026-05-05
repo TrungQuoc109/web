@@ -24,6 +24,10 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { EmptyState } from "@/shared/ui/empty-state";
 import { ErrorState } from "@/shared/ui/error-state";
+import {
+  FilterDropdownChip,
+  type FilterDropdownOption,
+} from "@/shared/ui/filter-dropdown-chip";
 import { LoadingState } from "@/shared/ui/loading-state";
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog";
 import { useToastStore } from "@/shared/lib/toast-store";
@@ -277,6 +281,23 @@ export function MembersPage() {
             CANCELED: "Canceled",
           } as Record<ProjectInvitation["status"], string>,
         };
+  const resetLabel = language === "vi" ? "Đặt lại" : "Reset";
+  const memberRoleFilterOptions: FilterDropdownOption[] = memberFilterOptions.map((role) => ({
+    value: role,
+    label: role === "ALL" ? ui.allRoles : ui.roleLabels[role],
+  }));
+  const memberRoleFilterLabel =
+    memberRoleFilter === "ALL" ? ui.allRoles : ui.roleLabels[memberRoleFilter];
+  const inviteStatusFilterOptions: FilterDropdownOption[] = invitationStatusOptions.map(
+    (status) => ({
+      value: status,
+      label: status === "ALL" ? ui.allStatuses : ui.invitationStatuses[status],
+    })
+  );
+  const inviteStatusFilterLabel =
+    inviteStatusFilter === "ALL"
+      ? ui.allStatuses
+      : ui.invitationStatuses[inviteStatusFilter];
 
   useEffect(() => {
     if (!selectedProjectId && projectsQuery.data?.length) {
@@ -330,6 +351,10 @@ export function MembersPage() {
     viewers: allMembers.filter((member) => member.role === "VIEWER").length,
     pendingInvites: invitations.filter((invitation) => invitation.status === "PENDING").length,
   };
+  const hasActiveMemberFilters =
+    Boolean(deferredMemberSearch.trim()) || memberRoleFilter !== "ALL";
+  const hasActiveInvitationFilters =
+    Boolean(inviteSearch.trim()) || inviteStatusFilter !== "ALL";
 
   async function copyInviteLink(token: string) {
     const invitationUrl = `${window.location.origin}/invite/${token}`;
@@ -478,9 +503,9 @@ export function MembersPage() {
         </article>
       </section>
 
-      <section className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="relative w-full xl:max-w-md">
+        <section className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="relative w-full xl:max-w-md">
             <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               className="h-11 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -488,43 +513,42 @@ export function MembersPage() {
               onChange={(event) => setMemberSearch(event.target.value)}
               placeholder={ui.searchMembers}
             />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <FilterDropdownChip
+                label={ui.filter}
+                value={memberRoleFilter}
+                currentLabel={memberRoleFilterLabel}
+                options={memberRoleFilterOptions}
+                onChange={(value) => setMemberRoleFilter(value as "ALL" | MemberRole)}
+                active={memberRoleFilter !== "ALL"}
+              />
+              <Badge variant="secondary" className="px-3 py-1">
+                {members.length} {ui.visible}
+              </Badge>
+              {hasActiveMemberFilters ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setMemberSearch("");
+                    setMemberRoleFilter("ALL");
+                  }}
+                >
+                  {resetLabel}
+                </Button>
+              ) : null}
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <select
-              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-              value={memberRoleFilter}
-              onChange={(event) =>
-                setMemberRoleFilter(event.target.value as "ALL" | MemberRole)
-              }
-            >
-              {memberFilterOptions.map((role) => (
-                <option key={role} value={role}>
-                  {role === "ALL" ? ui.allRoles : ui.roleLabels[role]}
-                </option>
-              ))}
-            </select>
-
-            <Badge variant="secondary" className="px-3 py-1">
-              {members.length} {ui.visible}
-            </Badge>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              {ui.page} {memberPage} {ui.of} {totalMemberPages}
+            </p>
           </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="px-3 py-1">
-            {ui.filter}: {memberRoleFilter === "ALL" ? ui.allRoles : memberRoleFilter}
-          </Badge>
-          {deferredMemberSearch.trim() ? (
-            <Badge variant="outline" className="px-3 py-1">
-              {ui.search}: {deferredMemberSearch.trim()}
-            </Badge>
-          ) : null}
-          <Badge variant="outline" className="px-3 py-1">
-            {ui.page} {memberPage} {ui.of} {totalMemberPages}
-          </Badge>
-        </div>
-      </section>
+        </section>
 
       {members.length === 0 ? (
         <EmptyState
@@ -694,26 +718,33 @@ export function MembersPage() {
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <select
-                className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+            <div className="flex flex-wrap items-center gap-3">
+              <FilterDropdownChip
+                label={ui.filter}
                 value={inviteStatusFilter}
-                onChange={(event) =>
-                  setInviteStatusFilter(
-                    event.target.value as "ALL" | ProjectInvitation["status"]
-                  )
+                currentLabel={inviteStatusFilterLabel}
+                options={inviteStatusFilterOptions}
+                onChange={(value) =>
+                  setInviteStatusFilter(value as "ALL" | ProjectInvitation["status"])
                 }
-              >
-                {invitationStatusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {status === "ALL" ? ui.allStatuses : ui.invitationStatuses[status]}
-                  </option>
-                ))}
-              </select>
-
+                active={inviteStatusFilter !== "ALL"}
+              />
               <Badge variant="secondary" className="px-3 py-1">
                 {filteredInvitations.length} {ui.visible}
               </Badge>
+              {hasActiveInvitationFilters ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setInviteSearch("");
+                    setInviteStatusFilter("ALL");
+                  }}
+                >
+                  {resetLabel}
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>

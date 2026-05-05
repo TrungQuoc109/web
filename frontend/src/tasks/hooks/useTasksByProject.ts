@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { tasksApi } from "@/tasks/api/tasksApi";
-import type { TasksCatalog, TaskStatusFilter, TaskPriorityFilter } from "@/tasks/types/task";
 import { tasksKeys } from "@/shared/lib/query-keys";
+import type { TasksCatalog, TaskPriorityFilter, TaskStatusFilter } from "@/tasks/types/task";
 
-export type UseTasksCatalogFilters = {
+type UseTasksByProjectFilters = {
   search?: string;
-  projectId?: string;
   status?: TaskStatusFilter;
   priority?: TaskPriorityFilter;
   assigneeId?: string;
@@ -14,13 +13,16 @@ export type UseTasksCatalogFilters = {
   pageSize?: number;
 };
 
-export function useTasksCatalog(filters: UseTasksCatalogFilters) {
+export function useTasksByProject(
+  projectId?: string,
+  filters: UseTasksByProjectFilters = {}
+) {
   return useQuery<TasksCatalog>({
-    queryKey: tasksKeys.catalog(filters),
+    queryKey: tasksKeys.project(projectId, filters),
     queryFn: () =>
       tasksApi.listCatalog({
+        projectId: projectId!,
         search: filters.search?.trim() || undefined,
-        projectId: filters.projectId || undefined,
         status: filters.status && filters.status !== "ALL" ? filters.status : undefined,
         priority:
           filters.priority && filters.priority !== "ALL"
@@ -30,6 +32,8 @@ export function useTasksCatalog(filters: UseTasksCatalogFilters) {
         page: filters.page ?? 1,
         pageSize: filters.pageSize ?? 24,
       }),
+    enabled: Boolean(projectId),
     staleTime: 30_000,
   });
 }
+

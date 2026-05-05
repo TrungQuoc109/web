@@ -1,9 +1,11 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { LayoutGrid, Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { useI18n } from "@/i18n/useI18n";
+import type { FilterDropdownOption } from "@/shared/ui/filter-dropdown-chip";
 import { Board, boardColumns } from "@/tasks/components/Board";
 import { CreateTaskModal } from "@/tasks/components/CreateTaskModal";
+import { TaskFilters } from "@/tasks/components/TaskFilters";
 import { TaskDetailDrawer } from "@/tasks/components/TaskDetailDrawer";
 import { useAssignableUsers } from "@/tasks/hooks/useAssignableUsers";
 import { useAssignTaskUsersMutation } from "@/tasks/hooks/useAssignTaskUsersMutation";
@@ -24,8 +26,10 @@ import type {
   TaskPriorityFilter,
   TaskStatus,
   TaskStatusFilter,
+  TaskUser,
 } from "@/tasks/types/task";
 import { useProjects } from "@/projects/hooks/useProjects";
+import type { Project } from "@/projects/types/project";
 import { useAuthStore } from "@/auth/store/authStore";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -36,14 +40,61 @@ import { useToastStore } from "@/shared/lib/toast-store";
 
 const statusOrder: TaskStatus[] = boardColumns.map((column) => column.key);
 
-export function TasksPage() {
+type TasksPageProps = {
+  forcedProjectId?: string;
+  projectName?: string;
+  contextMode?: "workspace" | "tasks" | "board";
+};
+
+function getProjectFilterLabel(
+  projects: Project[],
+  value: string,
+  fallbacks: { allProjects: string; selectedProject: string }
+) {
+  if (value === "ALL") {
+    return fallbacks.allProjects;
+  }
+
+  return (
+    projects.find((project) => project.id === value)?.name ??
+    fallbacks.selectedProject
+  );
+}
+
+function getAssigneeFilterLabel(
+  assigneeFilter: string,
+  users: TaskUser[],
+  fallbacks: {
+    anyone: string;
+    assignedToMe: string;
+    selectedTeammate: string;
+  }
+) {
+  if (assigneeFilter === "ALL") {
+    return fallbacks.anyone;
+  }
+
+  if (assigneeFilter === "ME") {
+    return fallbacks.assignedToMe;
+  }
+
+  const matchedUser = users.find((user) => user.id === assigneeFilter);
+
+  return (
+    matchedUser?.name ??
+    matchedUser?.email ??
+    fallbacks.selectedTeammate
+  );
+}
+
+export function TasksPage({ forcedProjectId }: TasksPageProps = {}) {
   const { language } = useI18n();
   const projectsQuery = useProjects();
   const currentUser = useAuthStore((state) => state.currentUser);
   const [search, setSearch] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<TaskPriorityFilter>("ALL");
   const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>("ALL");
-  const [projectFilter, setProjectFilter] = useState<string>("ALL");
+  const [projectFilter, setProjectFilter] = useState<string>(forcedProjectId ?? "ALL");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("ALL");
   const [page, setPage] = useState(1);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -88,6 +139,7 @@ export function TasksPage() {
           selectedTeammate: "Đồng đội đã chọn",
           selectedProject: "Dự án đã chọn",
           search: "Tìm kiếm",
+          resetFilters: "Äáº·t láº¡i",
           page: "Trang",
           of: "trên",
           noTasksTitle: "Chưa có task nào",
@@ -148,6 +200,7 @@ export function TasksPage() {
           selectedTeammate: "Selected teammate",
           selectedProject: "Selected project",
           search: "Search",
+          resetFilters: "Reset",
           page: "Page",
           of: "of",
           noTasksTitle: "No tasks yet",
@@ -185,8 +238,10 @@ export function TasksPage() {
   const sendTaskMessage = useSendTaskMessageMutation();
   const projects = projectsQuery.data ?? [];
   const deferredSearch = useDeferredValue(search);
+  const canSelectProject = !forcedProjectId;
+  const effectiveProjectFilter = forcedProjectId ?? projectFilter;
   const selectedProjectFilterId =
-    projectFilter !== "ALL" ? projectFilter : undefined;
+    effectiveProjectFilter !== "ALL" ? effectiveProjectFilter : undefined;
   const taskCatalogQuery = useTasksCatalog({
     search: deferredSearch,
     projectId: selectedProjectFilterId,
@@ -234,14 +289,98 @@ export function TasksPage() {
   const filterMemberOptions = filterMembersQuery.data ?? [];
 
   useEffect(() => {
-    setPage(1);
-  }, [deferredSearch, priorityFilter, projectFilter, statusFilter, assigneeFilter]);
+    if (forcedProjectId) {
+      setProjectFilter(forcedProjectId);
+    }
+  }, [forcedProjectId]);
 
   useEffect(() => {
-    if (projectFilter === "ALL" && assigneeFilter !== "ALL" && assigneeFilter !== "ME") {
+    setPage(1);
+  }, [assigneeFilter, deferredSearch, effectiveProjectFilter, priorityFilter, statusFilter]);
+
+  useEffect(() => {
+    if (
+      effectiveProjectFilter === "ALL" &&
+      assigneeFilter !== "ALL" &&
+      assigneeFilter !== "ME"
+    ) {
       setAssigneeFilter("ALL");
     }
-  }, [assigneeFilter, projectFilter]);
+  }, [assigneeFilter, effectiveProjectFilter]);
+
+  const projectFilterOptions = useMemo<FilterDropdownOption[]>(
+    () => [
+      { value: "ALL", label: ui.allProjects },
+      ...projects.map((project) => ({
+        value: project.id,
+        label: project.name,
+      })),
+    ],
+    [projects, ui.allProjects]
+  );
+  const statusFilterOptions = useMemo<FilterDropdownOption[]>(
+    () => [
+      { value: "ALL", label: ui.allStatuses },
+      ...statusOrder.map((status) => ({
+        value: status,
+        label: ui.statuses[status],
+      })),
+    ],
+    [ui.allStatuses, ui.statuses]
+  );
+  const priorityFilterOptions = useMemo<FilterDropdownOption[]>(
+    () => [
+      { value: "ALL", label: ui.allPriorities },
+      { value: "LOW", label: ui.priorities.LOW },
+      { value: "MEDIUM", label: ui.priorities.MEDIUM },
+      { value: "HIGH", label: ui.priorities.HIGH },
+      { value: "URGENT", label: ui.priorities.URGENT },
+    ],
+    [ui.allPriorities, ui.priorities]
+  );
+  const assigneeFilterOptions = useMemo<FilterDropdownOption[]>(
+    () => [
+      { value: "ALL", label: ui.anyone },
+      { value: "ME", label: ui.assignedToMe },
+      ...(selectedProjectFilterId
+        ? filterMemberOptions.map((user) => ({
+            value: user.id,
+            label: user.name ?? user.email,
+          }))
+        : []),
+    ],
+    [
+      filterMemberOptions,
+      selectedProjectFilterId,
+      ui.anyone,
+      ui.assignedToMe,
+    ]
+  );
+  const projectFilterLabel = getProjectFilterLabel(projects, effectiveProjectFilter, {
+    allProjects: ui.allProjects,
+    selectedProject: ui.selectedProject,
+  });
+  const assigneeFilterLabel = getAssigneeFilterLabel(assigneeFilter, filterMemberOptions, {
+    anyone: ui.anyone,
+    assignedToMe: ui.assignedToMe,
+    selectedTeammate: ui.selectedTeammate,
+  });
+  const hasActiveFilters =
+    Boolean(search.trim()) ||
+    (canSelectProject && effectiveProjectFilter !== "ALL") ||
+    statusFilter !== "ALL" ||
+    priorityFilter !== "ALL" ||
+    assigneeFilter !== "ALL";
+
+  function resetFilters() {
+    setSearch("");
+    if (canSelectProject) {
+      setProjectFilter("ALL");
+    }
+    setStatusFilter("ALL");
+    setPriorityFilter("ALL");
+    setAssigneeFilter("ALL");
+  }
 
   function moveTask(taskId: string, direction: -1 | 1) {
     const task = tasks.find((candidate) => candidate.id === taskId);
@@ -376,119 +515,61 @@ export function TasksPage() {
         </article>
       </section>
 
-      <section className="rounded-3xl border border-border bg-background/95 p-5 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="relative w-full xl:max-w-md">
-            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              className="h-11 w-full rounded-xl border border-input bg-background pl-11 pr-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={ui.searchPlaceholder}
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <select
-              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-              value={projectFilter}
-              onChange={(event) => setProjectFilter(event.target.value)}
-            >
-              <option value="ALL">{ui.allProjects}</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as TaskStatusFilter)
+      <TaskFilters
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={ui.searchPlaceholder}
+        projectFilter={
+          canSelectProject
+            ? {
+                label: ui.project,
+                value: effectiveProjectFilter,
+                currentLabel: projectFilterLabel,
+                options: projectFilterOptions,
+                onChange: setProjectFilter,
+                defaultValue: "ALL",
               }
-            >
-              <option value="ALL">{ui.allStatuses}</option>
-              {statusOrder.map((status) => (
-                <option key={status} value={status}>
-                  {ui.statuses[status]}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-              value={priorityFilter}
-              onChange={(event) =>
-                setPriorityFilter(event.target.value as TaskPriorityFilter)
-              }
-            >
-              <option value="ALL">{ui.allPriorities}</option>
-              <option value="LOW">{ui.priorities.LOW}</option>
-              <option value="MEDIUM">{ui.priorities.MEDIUM}</option>
-              <option value="HIGH">{ui.priorities.HIGH}</option>
-              <option value="URGENT">{ui.priorities.URGENT}</option>
-            </select>
-
-            <select
-              className="h-11 rounded-xl border border-input bg-background px-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
-              value={assigneeFilter}
-              onChange={(event) => setAssigneeFilter(event.target.value)}
-            >
-              <option value="ALL">{ui.allAssignees}</option>
-              <option value="ME">{ui.assignedToMe}</option>
-              {projectFilter !== "ALL"
-                ? filterMemberOptions.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name ?? user.email}
-                    </option>
-                  ))
-                : null}
-            </select>
-
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
-              <LayoutGrid className="size-4" />
-              {ui.kanbanView}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="px-3 py-1">
-            {tasks.length} {ui.visibleOnPage}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            {ui.project}: {projectFilter === "ALL"
-              ? ui.allProjects
-              : projects.find((project) => project.id === projectFilter)?.name ??
-                ui.selectedProject}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            {ui.status}: {statusFilter === "ALL" ? ui.allStatuses : ui.statuses[statusFilter]}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            {ui.priority}: {priorityFilter === "ALL" ? ui.allPriorities : ui.priorities[priorityFilter]}
-          </Badge>
-          <Badge variant="outline" className="px-3 py-1">
-            {ui.assignee}: {assigneeFilter === "ALL"
-              ? ui.anyone
-              : assigneeFilter === "ME"
-                ? ui.assignedToMe
-                : filterMemberOptions.find((user) => user.id === assigneeFilter)?.name ??
-                  filterMemberOptions.find((user) => user.id === assigneeFilter)?.email ??
-                  ui.selectedTeammate}
-          </Badge>
-          {search ? (
-            <Badge variant="outline" className="px-3 py-1">
-              {ui.search}: {deferredSearch}
-            </Badge>
-          ) : null}
-          <Badge variant="outline" className="px-3 py-1">
-            {ui.page} {tasksCatalog?.page ?? 1} {ui.of} {tasksCatalog?.totalPages ?? 1}
-          </Badge>
-        </div>
-      </section>
+            : undefined
+        }
+        statusFilter={{
+          label: ui.status,
+          value: statusFilter,
+          currentLabel:
+            statusFilter === "ALL" ? ui.allStatuses : ui.statuses[statusFilter],
+          options: statusFilterOptions,
+          onChange: (value) => setStatusFilter(value as TaskStatusFilter),
+          defaultValue: "ALL",
+        }}
+        priorityFilter={{
+          label: ui.priority,
+          value: priorityFilter,
+          currentLabel:
+            priorityFilter === "ALL"
+              ? ui.allPriorities
+              : ui.priorities[priorityFilter],
+          options: priorityFilterOptions,
+          onChange: (value) => setPriorityFilter(value as TaskPriorityFilter),
+          defaultValue: "ALL",
+        }}
+        assigneeFilter={{
+          label: ui.assignee,
+          value: assigneeFilter,
+          currentLabel: assigneeFilterLabel,
+          options: assigneeFilterOptions,
+          onChange: setAssigneeFilter,
+          defaultValue: "ALL",
+        }}
+        visibleCount={tasks.length}
+        visibleLabel={ui.visibleOnPage}
+        viewLabel={ui.kanbanView}
+        page={tasksCatalog?.page ?? 1}
+        totalPages={tasksCatalog?.totalPages ?? 1}
+        pageLabel={ui.page}
+        ofLabel={ui.of}
+        resetLabel={ui.resetFilters}
+        showReset={hasActiveFilters}
+        onReset={resetFilters}
+      />
 
       {summary.total === 0 ? (
         <EmptyState

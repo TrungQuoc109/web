@@ -5,6 +5,7 @@ import type { TaskItem } from "@/tasks/types/task";
 import { getApiErrorMessage } from "@/shared/api/getApiErrorMessage";
 import { dashboardKeys, projectsKeys, tasksKeys } from "@/shared/lib/query-keys";
 import { useToastStore } from "@/shared/lib/toast-store";
+import { getCurrentTranslation } from "@/i18n/useI18n";
 
 type UpdateTaskInput = {
   taskId: string;
@@ -37,14 +38,14 @@ export function useUpdateTaskMutation() {
       void queryClient.invalidateQueries({ queryKey: dashboardKeys.overview() });
 
       useToastStore.getState().push({
-        title: "Task updated",
-        description: "The task details were saved successfully.",
+        title: getCurrentTranslation("toast.taskUpdatedTitle"),
+        description: getCurrentTranslation("toast.taskUpdatedDescription"),
         variant: "success",
       });
     },
     onError: (error) => {
       useToastStore.getState().push({
-        title: "Update task failed",
+        title: getCurrentTranslation("toast.updateTaskFailedTitle"),
         description: getApiErrorMessage(error),
         variant: "error",
       });

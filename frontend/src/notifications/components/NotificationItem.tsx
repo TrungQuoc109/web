@@ -4,6 +4,7 @@ import {
   BellRing,
   CheckCheck,
   ClipboardCheck,
+  Flag,
   Megaphone,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ const iconMap: Record<NotificationType, typeof AtSign> = {
   MENTION: AtSign,
   ASSIGNED: ClipboardCheck,
   STATUS_CHANGED: BellRing,
+  PRIORITY_CHANGED: Flag,
   ANNOUNCEMENT: Megaphone,
 };
 
@@ -105,7 +107,7 @@ export function NotificationItem({
 
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
                 <span>{sourceLabel}</span>
-                <span className="text-border">•</span>
+                <span className="text-border" aria-hidden="true">|</span>
                 <span>{getNotificationMeta(notification)}</span>
               </div>
 

@@ -58,6 +58,7 @@ enum NotificationType {
   MENTION
   ASSIGNED
   STATUS_CHANGED
+  PRIORITY_CHANGED
   ANNOUNCEMENT
 }
 
@@ -72,6 +73,7 @@ model User {
   memberships      ProjectMember[]  @relation("UserToMember")
   invitedMembers   ProjectMember[]  @relation("InvitedMembers")
   assignedTasks    TaskAssignment[]
+  createdTaskAssignments TaskAssignment[] @relation("TaskAssignmentsCreatedBy")
   taskReports      TaskReport[]
   sentInvites      Invitation[]     @relation("Sender")
   messages         Message[]
@@ -157,11 +159,13 @@ model TaskAssignment {
   task             Task               @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   assignedById     Int?
+  assignedBy       User?              @relation("TaskAssignmentsCreatedBy", fields: [assignedById], references: [id], onDelete: SetNull)
   assignedAt       DateTime           @default(now())
 
   @@unique([userId, taskId])
   @@index([taskId, role])
   @@index([userId])
+  @@index([assignedById])
   @@index([assignedAt])
 }
 

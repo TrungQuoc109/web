@@ -289,18 +289,60 @@ export class TaskService {
     currentUser: AuthenticatedUser,
     dto: UpdateTaskDto,
   ): Promise<TaskView> {
-    await this.taskPermissionService.ensureCanManageTask(taskId, currentUser.id);
+    const { task: existingTask } =
+      await this.taskPermissionService.ensureCanManageTask(
+        taskId,
+        currentUser.id,
+      );
 
-    return this.prisma.task.update({
-      where: { id: taskId },
-      data: {
-        ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
-        ...(dto.description !== undefined
-          ? { description: dto.description.trim() || null }
-          : {}),
-        ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
-      },
-      select: taskSelect,
+    const nextTitle = dto.title !== undefined ? dto.title.trim() : undefined;
+    const nextDescription =
+      dto.description !== undefined ? dto.description.trim() || null : undefined;
+    const nextPriority = dto.priority !== undefined ? dto.priority : undefined;
+
+    return this.prisma.$transaction(async (tx) => {
+      const task = await tx.task.update({
+        where: { id: taskId },
+        data: {
+          ...(nextTitle !== undefined ? { title: nextTitle } : {}),
+          ...(nextDescription !== undefined ? { description: nextDescription } : {}),
+          ...(nextPriority !== undefined ? { priority: nextPriority } : {}),
+        },
+        select: taskSelect,
+      });
+
+      if (nextPriority !== undefined && existingTask.priority !== nextPriority) {
+        const activity = await this.messageService.createSystemMessage(
+          {
+            projectId: task.projectId,
+            taskId,
+            content: `${currentUser.email} changed task priority to ${nextPriority}.`,
+            metadata: {
+              type: 'TASK_PRIORITY_CHANGED',
+              taskId,
+              previousPriority: existingTask.priority,
+              priority: nextPriority,
+              changedById: currentUser.id,
+            },
+          },
+          tx,
+        );
+
+        const recipients = task.assignments
+          .map((assignment) => assignment.user.id)
+          .filter((userId) => userId !== currentUser.id);
+
+        await this.notificationService.createNotifications(
+          {
+            activityId: activity.id,
+            type: NotificationType.PRIORITY_CHANGED,
+            recipientIds: recipients,
+          },
+          tx,
+        );
+      }
+
+      return task;
     });
   }
 

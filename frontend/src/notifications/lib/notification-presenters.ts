@@ -10,6 +10,10 @@ export function getNotificationTitle(notification: Notification) {
     return getCurrentTranslation("notifications.taskStatusUpdated");
   }
 
+  if (notification.type === "PRIORITY_CHANGED") {
+    return getCurrentTranslation("notifications.taskPriorityUpdated");
+  }
+
   if (notification.type === "MENTION") {
     return getCurrentTranslation("notifications.mentioned");
   }

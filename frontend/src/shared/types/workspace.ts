@@ -21,6 +21,7 @@ export type NotificationType =
   | "MENTION"
   | "ASSIGNED"
   | "STATUS_CHANGED"
+  | "PRIORITY_CHANGED"
   | "ANNOUNCEMENT";
 
 export type InvitationStatus =

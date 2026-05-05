@@ -124,7 +124,7 @@ export function ProjectChatSidebar({
                   {ui.memberListUnavailableDescription}
                 </p>
                 <Button type="button" variant="outline" className="mt-4" onClick={onRetryMembers}>
-                  Retry
+                  {ui.retry}
                 </Button>
               </div>
             ) : members.length === 0 ? (
