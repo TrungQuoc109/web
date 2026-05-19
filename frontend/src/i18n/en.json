@@ -1,0 +1,399 @@
+{
+  "common": {
+    "na": "n/a",
+    "updated": "Updated",
+    "retry": "Retry",
+    "working": "Working...",
+    "weekdayShort": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "confirmDialog": {
+    "eyebrow": "Confirmation",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "toaster": {
+    "dismiss": "Dismiss notification"
+  },
+  "activity": {
+    "title": "Recent activity",
+    "subtitle": "Latest workspace updates.",
+    "emptyTitle": "No recent activity yet",
+    "emptyDescription": "As your team creates projects, tasks, and messages, updates will appear here.",
+    "category": {
+      "PROJECT": "Project",
+      "MEMBER": "Member",
+      "MESSAGE": "Message",
+      "TASK": "Task",
+      "REPORT": "Report",
+      "INVITATION": "Invitation"
+    }
+  },
+  "toast": {
+    "profileUpdatedTitle": "Profile updated",
+    "profileUpdatedDescription": "Your account details were saved successfully.",
+    "profileUpdateFailedTitle": "Profile update failed",
+    "invitationCreatedTitle": "Invitation created",
+    "invitationCreatedDescription": "{{email}} can now join the project as {{role}}.",
+    "createInvitationFailedTitle": "Create invitation failed",
+    "taskCreatedTitle": "Task created",
+    "taskCreatedDescription": "The new task is now available in the task board.",
+    "createTaskFailedTitle": "Create task failed",
+    "taskUpdatedTitle": "Task updated",
+    "taskUpdatedDescription": "The task details were saved successfully.",
+    "updateTaskFailedTitle": "Update task failed",
+    "sessionExpiredTitle": "Session expired",
+    "sessionExpiredDescription": "Please sign in again to continue.",
+    "networkErrorTitle": "Network error",
+    "memberAddedTitle": "Member added",
+    "memberAddedDescription": "{{email}} was added to the project.",
+    "memberRoleUpdatedTitle": "Member role updated",
+    "memberRoleUpdatedDescription": "{{email}} is now {{role}}.",
+    "ownershipTransferredTitle": "Ownership transferred",
+    "ownershipTransferredDescription": "The project owner has been updated successfully.",
+    "removeMemberFailedTitle": "Remove member failed",
+    "assignTaskUserFailedTitle": "Assign user failed",
+    "notificationUpdateFailedTitle": "Notification update failed",
+    "notificationBulkUpdateFailedTitle": "Bulk notification update failed"
+  },
+  "notifications": {
+    "page": {
+      "workspace": "Workspace",
+      "loading": "Loading your inbox, unread status, and recent workspace activity.",
+      "unreadShort": "unread",
+      "matchingShort": "matching",
+      "unreadLabel": "Unread",
+      "unreadHelp": "Notifications that still need your attention.",
+      "matchingResults": "Matching results",
+      "matchingResultsHelp": "Notifications returned by the current filter set.",
+      "currentPage": "Current page",
+      "currentPageHelp": "The inbox page currently shown in the paginated feed.",
+      "totalPages": "Total pages",
+      "totalPagesHelp": "More pages appear automatically as the inbox grows.",
+      "inbox": "Inbox",
+      "inboxHelp": "Open a notification to jump straight to the related project, task, or conversation.",
+      "all": "All",
+      "showing": "Showing",
+      "allTypes": "All types",
+      "noUnreadTitle": "No notifications match",
+      "noUnreadDescription": "Try another unread or type filter to reveal matching activity.",
+      "page": "Page",
+      "of": "of",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "project": {
+    "createModal": {
+      "eyebrow": "New project",
+      "title": "Create project",
+      "subtitle": "Create a real project in the backend workspace.",
+      "close": "Close modal",
+      "nameLabel": "Project name",
+      "namePlaceholder": "Website redesign",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the scope, team, or goal.",
+      "nameRequired": "Enter a project name before creating the project.",
+      "createFailed": "The project could not be created. Please try again.",
+      "cancel": "Cancel",
+      "creating": "Creating...",
+      "create": "Create project"
+    },
+    "manageModal": {
+      "eyebrow": "Project settings",
+      "title": "Manage project",
+      "subtitle": "Update the project details, transfer ownership, or leave the workspace.",
+      "close": "Close modal",
+      "errors": {
+        "nameMin": "Project name must be at least 3 characters.",
+        "deleteConfirmMismatch": "Type the project name exactly before deleting it.",
+        "transferTargetRequired": "Select a member before transferring ownership."
+      },
+      "details": {
+        "title": "Project details",
+        "subtitle": "Keep the name and description aligned with the current scope of the work.",
+        "nameLabel": "Project name",
+        "descriptionLabel": "Description"
+      },
+      "access": {
+        "title": "Project access",
+        "subtitle": "You can review this workspace and choose whether to stay in it, but project-wide settings remain restricted to owners and admins."
+      },
+      "transfer": {
+        "title": "Transfer ownership",
+        "subtitle": "Promote another active member to owner before you leave the project.",
+        "targetLabel": "New owner",
+        "targetPlaceholder": "Select member",
+        "transferring": "Transferring...",
+        "confirm": "Transfer ownership"
+      },
+      "leave": {
+        "title": "Leave project",
+        "subtitle": "Leave this workspace while keeping the project active for the rest of the team.",
+        "leaving": "Leaving...",
+        "confirm": "Leave project"
+      },
+      "danger": {
+        "title": "Danger zone",
+        "subtitle": "Deleting a project permanently removes its tasks, messages, invitations, and memberships.",
+        "deleteConfirmLabel": "Type \"{{name}}\" to confirm deletion",
+        "deleting": "Deleting...",
+        "delete": "Delete project"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "saving": "Saving...",
+        "save": "Save changes"
+      },
+      "leaveConfirm": {
+        "title": "Leave project",
+        "description": "Leave \"{{name}}\"? You will lose access to this project's tasks, messages, and members until someone adds you again.",
+        "confirm": "Leave project"
+      }
+    }
+  },
+  "projects": {
+    "page": {
+      "workspace": "Workspace",
+      "subtitle": "Browse active delivery work, search quickly, and create new projects directly from the connected backend.",
+      "loading": "Loading project cards, list filters, and workspace overview.",
+      "unavailableTitle": "Projects unavailable",
+      "unavailableDescription": "The project list could not be loaded from the backend. Retry to restore the workspace.",
+      "createProject": "Create project",
+      "stats": {
+        "allProjects": "All projects",
+        "allProjectsHelp": "Total projects currently visible in this workspace.",
+        "activeDelivery": "Active delivery",
+        "activeDeliveryHelp": "Projects currently in active execution and coordination.",
+        "atRisk": "At risk",
+        "atRiskHelp": "Projects that may need attention, unblockers, or timeline review."
+      },
+      "search": "Search projects",
+      "allStatuses": "All statuses",
+      "view": {
+        "cards": "Cards",
+        "table": "Table"
+      },
+      "visible": "visible",
+      "filter": "Filter",
+      "searchLabel": "Search",
+      "page": "Page",
+      "of": "of",
+      "noProjectsTitle": "No projects yet",
+      "noProjectsDescription": "Create your first project to start organizing work, people, and progress in one place.",
+      "showing": "Showing",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "list": {
+      "emptyTitle": "No projects found",
+      "emptyDescription": "Adjust the current search or filter, or create a new project to get your workspace started.",
+      "noDescription": "No description yet.",
+      "progressComplete": "{{percent}}% complete",
+      "table": {
+        "project": "Project",
+        "members": "Members",
+        "progress": "Progress",
+        "status": "Status",
+        "updated": "Updated"
+      }
+    }
+  },
+  "messages": {
+    "sharedChatSubtitle": "Shared chat for delivery updates, quick decisions, and project-wide announcements.",
+    "noProjectsTitle": "No projects yet",
+    "noProjectsDescription": "Create a project to start chatting and coordinating with your team.",
+    "chatUnavailableTitle": "Chat unavailable",
+    "chatUnavailableDescription": "The conversation could not be loaded right now. Retry to restore messages.",
+    "activeRoomLabel": "Active room",
+    "participantsTitle": "Participants",
+    "rosterLoading": "Loading the current project roster...",
+    "rosterSummary": "{{count}} current members in this project room.",
+    "participantsSummary": "{{total}} members, {{online}} online",
+    "postingPermissionsTitle": "Posting permissions",
+    "postingCanAnnounce": "You can send messages and project announcements.",
+    "postingCanMessage": "You can send messages. Announcements are limited to owners and admins.",
+    "postingUnavailable": "Member permissions could not be verified right now, so posting is temporarily disabled.",
+    "groupMembersTitle": "Group members",
+    "membersTitle": "Project members",
+    "membersSubtitle": "See who is currently part of this project chat.",
+    "ownersAdminsLabel": "owners/admins",
+    "viewersLabel": "viewers",
+    "onlineLabel": "online",
+    "youLabel": "You",
+    "loadingMembers": "Loading project members...",
+    "memberListUnavailableTitle": "Member list unavailable",
+    "memberListUnavailableDescription": "We couldn't load the current project roster. Retry to restore the chat members list.",
+    "noMembersYet": "No members found in this project yet.",
+    "noMembersMatchSearch": "No members match the current search.",
+    "projectChatTitle": "Project chat",
+    "projectChatSubtitle": "Scrollable workspace thread with chat bubbles and system updates.",
+    "liveApiBadge": "Live API",
+    "messageLabel": "Message",
+    "memberSearchPlaceholder": "Search members by name or email",
+    "messageSearchPlaceholder": "Search messages in this project",
+    "noMessagesTitle": "No messages yet",
+    "noMessagesDescription": "Send the first message to open the conversation in this project room.",
+    "messagesLabel": "messages",
+    "announcementsLabel": "announcements",
+    "incomingLabel": "unread",
+    "page": "Page",
+    "of": "of",
+    "pageLabel": "Page {{page}} of {{total}}",
+    "previous": "Previous",
+    "next": "Next",
+    "messagePlaceholder": "Write a message to the project room...",
+    "viewersCannotSend": "Viewers cannot send messages in this project room.",
+    "announcement": "Announcement",
+    "announcementOnlyAdmins": "Announcements are available to project owners and admins.",
+    "viewOnlyRole": "Your current role is view-only in this project.",
+    "sending": "Sending...",
+    "sendAnnouncement": "Send announcement",
+    "send": "Send",
+    "mentionsHint": "Mentions are supported with @handles.",
+    "typingSingular": "is typing...",
+    "typingPlural": "are typing..."
+  },
+  "settings": {
+    "connectedModulesCountLabel": "live integrations",
+    "connectedModulesList": {
+      "projects": {
+        "title": "Projects",
+        "description": "Project catalog, detail, ownership transfer, and activity feed are connected to the backend.",
+        "cta": "Open projects"
+      },
+      "tasks": {
+        "title": "Tasks",
+        "description": "Task board, priority updates, assignees, reports, and comments are synchronized with realtime updates.",
+        "cta": "Open tasks"
+      },
+      "messages": {
+        "title": "Messages",
+        "description": "Project chat supports presence, typing status, announcements, and paginated message history.",
+        "cta": "Open messages"
+      },
+      "members": {
+        "title": "Members",
+        "description": "Member roles, invitations, and ownership transfer flows are available from the project workspace.",
+        "cta": "Open members"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Unread counters and inbox updates refresh automatically after project and task activity.",
+        "cta": "Open notifications"
+      }
+    }
+  },
+  "dashboard": {
+    "cards": {
+      "taskDistribution": {
+        "title": "Delivery flow",
+        "subtitle": "Current task spread across the execution pipeline.",
+        "workloadShare": "{{percentage}}% of current workload",
+        "status": {
+          "TODO": "To do",
+          "IN_PROGRESS": "In progress",
+          "IN_REVIEW": "In review",
+          "DONE": "Done",
+          "BLOCKED": "Blocked"
+        }
+      },
+      "deliveryTrend": {
+        "title": "Delivery momentum",
+        "subtitle": "A seven-day read on incoming work, completed tasks, and reviewed reports.",
+        "legend": {
+          "created": "Created",
+          "completed": "Completed",
+          "reviewed": "Reviewed"
+        },
+        "badgeCreated": "{{count}} created",
+        "badgeCompleted": "{{count}} completed",
+        "badgeReports": "{{count}} reports",
+        "daySummary": "{{done}} done / {{reviewed}} reviewed",
+        "tiles": {
+          "newTasks": "New tasks",
+          "completed": "Completed",
+          "reportsFiled": "Reports filed",
+          "chatActivity": "Chat activity"
+        }
+      },
+      "reviewHealth": {
+        "title": "Review health",
+        "subtitle": "Approval quality and turnaround for task reports across the workspace.",
+        "approvalRate": "Approval rate",
+        "avgReviewTime": "Avg review time",
+        "pendingNow": "Pending now",
+        "na": "n/a",
+        "status": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        }
+      },
+      "workloadHealth": {
+        "title": "Project risk and workload",
+        "subtitle": "Derived health by project plus current task pressure by priority.",
+        "health": {
+          "ACTIVE": "Active",
+          "AT_RISK": "At risk",
+          "PLANNING": "Planning",
+          "COMPLETED": "Completed"
+        },
+        "priorityMix": "Priority mix",
+        "tasksCount": "{{count}} tasks",
+        "priority": {
+          "URGENT": "Urgent",
+          "HIGH": "High",
+          "MEDIUM": "Medium",
+          "LOW": "Low"
+        }
+      },
+      "projectSpotlight": {
+        "emptyTitle": "No projects yet",
+        "emptyDescription": "Create a project to start seeing project health, progress, and delivery movement here.",
+        "title": "Project spotlight",
+        "subtitle": "The projects most worth checking right now.",
+        "viewAll": "View all",
+        "members": "{{count}} members",
+        "complete": "{{percent}}% complete"
+      }
+    }
+  },
+  "enums": {
+    "taskPriority": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    },
+    "memberRole": {
+      "OWNER": "Owner",
+      "ADMIN": "Admin",
+      "MEMBER": "Member",
+      "VIEWER": "Viewer"
+    },
+    "statusBadge": {
+      "TODO": "To do",
+      "IN_PROGRESS": "In progress",
+      "IN_REVIEW": "In review",
+      "DONE": "Done",
+      "BLOCKED": "Blocked",
+      "ACTIVE": "Active",
+      "PLANNING": "Planning",
+      "AT_RISK": "At risk",
+      "COMPLETED": "Completed",
+      "MENTION": "Mention",
+      "ASSIGNED": "Assigned",
+      "STATUS_CHANGED": "Status changed",
+      "PRIORITY_CHANGED": "Priority changed",
+      "ANNOUNCEMENT": "Announcement"
+    }
+  }
+}
