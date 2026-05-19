@@ -198,42 +198,6 @@ export class TaskPermissionService {
           'Task must be in IN_REVIEW before a report can be approved.',
         );
       }
-
-      const contributorAssignments = await this.prisma.taskAssignment.findMany({
-        where: {
-          taskId: task.id,
-          role: TaskAssignmentRole.CONTRIBUTOR,
-        },
-        select: {
-          userId: true,
-        },
-      });
-
-      const reports = await this.prisma.taskReport.findMany({
-        where: {
-          taskId: task.id,
-          status: {
-            in: [ReportStatus.PENDING, ReportStatus.APPROVED],
-          },
-          authorId: {
-            in: contributorAssignments.map((assignment) => assignment.userId),
-          },
-        },
-        select: {
-          authorId: true,
-        },
-      });
-
-      const reportedUserIds = new Set(reports.map((item) => item.authorId));
-      const missingReport = contributorAssignments.some(
-        (assignmentItem) => !reportedUserIds.has(assignmentItem.userId),
-      );
-
-      if (missingReport) {
-        throw new ConflictException(
-          'All contributors must submit a report before approval can complete the task.',
-        );
-      }
     }
 
     return { report, task, assignment };

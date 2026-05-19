@@ -2,7 +2,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { NotificationType, ReportStatus, TaskStatus } from '@prisma/client';
+import { NotificationType, ReportStatus, TaskStatus, TaskAssignmentRole } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { MessageService } from '../message/message.service';
 import { NotificationService } from '../notification/notification.service';
@@ -143,13 +143,38 @@ export class TaskReportService {
         select: taskReportSelect,
       });
 
+      let allApproved = false;
+
       if (dto.status === ReportStatus.APPROVED) {
-        await tx.task.update({
-          where: { id: task.id },
-          data: {
-            status: TaskStatus.DONE,
+        const contributorAssignments = await tx.taskAssignment.findMany({
+          where: {
+            taskId: task.id,
+            role: TaskAssignmentRole.CONTRIBUTOR,
           },
+          select: { userId: true },
         });
+
+        const approvedReports = await tx.taskReport.findMany({
+          where: {
+            taskId: task.id,
+            status: ReportStatus.APPROVED,
+          },
+          select: { authorId: true },
+        });
+
+        const approvedUserIds = new Set(approvedReports.map(r => r.authorId));
+        approvedUserIds.add(updatedReport.authorId);
+
+        allApproved = contributorAssignments.every(c => approvedUserIds.has(c.userId));
+
+        if (allApproved) {
+          await tx.task.update({
+            where: { id: task.id },
+            data: {
+              status: TaskStatus.DONE,
+            },
+          });
+        }
       }
 
       const activity = await this.messageService.createSystemMessage(
@@ -158,7 +183,9 @@ export class TaskReportService {
           taskId: task.id,
           content:
             dto.status === ReportStatus.APPROVED
-              ? `${currentUser.email} approved a task report and completed the task.`
+              ? (allApproved 
+                  ? `${currentUser.email} approved a task report and completed the task.`
+                  : `${currentUser.email} approved a task report.`)
               : `${currentUser.email} rejected a task report.`,
           metadata: {
             type:

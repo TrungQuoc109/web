@@ -556,6 +556,12 @@ export class ProjectService {
   ): Promise<ProjectMemberView> {
     await this.permission.ensureCanManageMembers(projectId, currentUser.id);
 
+    if (dto.role === ProjectRole.OWNER) {
+      throw new ConflictException(
+        'Project ownership cannot be granted through adding a member.',
+      );
+    }
+
     const normalizedEmail = dto.email.trim().toLowerCase();
     const targetUser = await this.prisma.user.findUnique({
       where: {
