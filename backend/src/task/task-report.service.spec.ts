@@ -1,9 +1,9 @@
-import { NotificationType, ReportStatus, TaskStatus } from '@prisma/client';
-import { MessageService } from '../message/message.service';
-import { NotificationService } from '../notification/notification.service';
+import { ReportStatus, TaskStatus } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { TaskReportService } from './task-report.service';
 import { TaskPermissionService } from './task-permission.service';
+import { MessageEventNames, TaskReportReviewedEvent } from '../message/events/message.events';
 
 describe('TaskReportService', () => {
   const prisma = {
@@ -12,12 +12,9 @@ describe('TaskReportService', () => {
   const taskPermissionService = {
     ensureLeadCanReviewReport: jest.fn(),
   } as unknown as TaskPermissionService;
-  const messageService = {
-    createSystemMessage: jest.fn(),
-  } as unknown as MessageService;
-  const notificationService = {
-    createNotifications: jest.fn(),
-  } as unknown as NotificationService;
+  const eventEmitter = {
+    emit: jest.fn(),
+  } as unknown as EventEmitter2;
 
   let service: TaskReportService;
 
@@ -26,8 +23,7 @@ describe('TaskReportService', () => {
     service = new TaskReportService(
       prisma,
       taskPermissionService,
-      messageService,
-      notificationService,
+      eventEmitter,
     );
   });
 
@@ -47,6 +43,14 @@ describe('TaskReportService', () => {
           status: ReportStatus.APPROVED,
           authorId: 9,
         }),
+        findMany: jest.fn().mockResolvedValue([
+          { authorId: 9 },
+        ]),
+      },
+      taskAssignment: {
+        findMany: jest.fn().mockResolvedValue([
+          { userId: 9 },
+        ]),
       },
       task: {
         update: jest.fn(),
@@ -60,12 +64,6 @@ describe('TaskReportService', () => {
           projectId: 5,
         },
       },
-    );
-    (messageService.createSystemMessage as jest.Mock).mockResolvedValue({
-      id: 101,
-    });
-    (notificationService.createNotifications as jest.Mock).mockResolvedValue(
-      undefined,
     );
     (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
       callback(tx),
@@ -83,13 +81,16 @@ describe('TaskReportService', () => {
         status: TaskStatus.DONE,
       },
     });
-    expect(notificationService.createNotifications).toHaveBeenCalledWith(
-      {
-        activityId: 101,
-        type: NotificationType.ANNOUNCEMENT,
-        recipientIds: [9],
-      },
-      tx,
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MessageEventNames.TASK_REPORT_REVIEWED,
+      new TaskReportReviewedEvent(
+        5,
+        18,
+        31,
+        ReportStatus.APPROVED,
+        true,
+        'linh.tran@projecthub.dev',
+      ),
     );
   });
 });

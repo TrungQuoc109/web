@@ -9,7 +9,7 @@ import {
   ProjectRole,
   TaskStatus,
 } from '@prisma/client';
-import { MessageService } from '../message/message.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -31,13 +31,21 @@ import {
 } from './project.types';
 import { ProjectPermissionService } from './project-permission.service';
 import { AuthenticatedUser } from '../auth/auth.types';
+import {
+  MessageEventNames,
+  ProjectOwnershipTransferredEvent,
+  ProjectMemberReactivatedEvent,
+  ProjectMemberAddedEvent,
+  ProjectMemberRoleChangedEvent,
+  ProjectMemberRemovedEvent,
+} from '../message/events/message.events';
 
 @Injectable()
 export class ProjectService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permission: ProjectPermissionService,
-    private readonly messageService: MessageService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createProject(
@@ -92,91 +100,134 @@ export class ProjectService {
         description: true,
         createdAt: true,
         updatedAt: true,
-        members: {
-          where: {
-            leftAt: null,
-          },
+        _count: {
           select: {
-            id: true,
-          },
-        },
-        tasks: {
-          select: {
-            status: true,
+            members: {
+              where: {
+                leftAt: null,
+              },
+            },
           },
         },
       },
     });
 
-    return projects.map((project) => this.mapProjectListItem(project));
+    const projectIds = projects.map((p) => p.id);
+    const statsMap = await this.getProjectsTaskStats(projectIds);
+
+    return projects.map((project) => {
+      const stats = statsMap.get(project.id) || { total: 0, completed: 0, blocked: 0 };
+      return this.mapProjectListItem(project, stats);
+    });
   }
 
   async listProjectCatalog(
     currentUser: AuthenticatedUser,
     query: ListProjectCatalogQueryDto,
   ): Promise<ProjectCatalogView> {
-    const projects = await this.prisma.project.findMany({
-      where: {
-        members: {
-          some: {
-            userId: currentUser.id,
-            leftAt: null,
+    // 1. Dịch chuyển các trạng thái ảo (PLANNING, COMPLETED, AT_RISK, ACTIVE) sang database-level queries
+    let statusFilter: Prisma.ProjectWhereInput = {};
+    if (query.status) {
+      if (query.status === 'PLANNING') {
+        // Dự án đang lập kế hoạch: không có task nào
+        statusFilter = { tasks: { none: {} } };
+      } else if (query.status === 'COMPLETED') {
+        // Dự án đã hoàn thành: có ít nhất 1 task và toàn bộ task có trạng thái DONE
+        statusFilter = {
+          tasks: {
+            some: {},
+            every: { status: 'DONE' },
           },
+        };
+      } else if (query.status === 'AT_RISK') {
+        // Dự án gặp rủi ro: có ít nhất 1 task bị BLOCKED
+        statusFilter = {
+          tasks: {
+            some: { status: 'BLOCKED' },
+          },
+        };
+      } else if (query.status === 'ACTIVE') {
+        // Dự án đang hoạt động: có task chưa hoàn thành và không có tệp nào bị BLOCKED
+        statusFilter = {
+          tasks: {
+            some: { status: { not: 'DONE' } },
+            none: { status: 'BLOCKED' },
+          },
+        };
+      }
+    }
+
+    const where: Prisma.ProjectWhereInput = {
+      members: {
+        some: {
+          userId: currentUser.id,
+          leftAt: null,
         },
-        ...(query.search?.trim()
-          ? {
-              OR: [
-                {
-                  name: {
-                    contains: query.search.trim(),
-                    mode: 'insensitive',
-                  },
+      },
+      ...(query.search?.trim()
+        ? {
+            OR: [
+              {
+                name: {
+                  contains: query.search.trim(),
+                  mode: 'insensitive',
                 },
-                {
-                  description: {
-                    contains: query.search.trim(),
-                    mode: 'insensitive',
-                  },
+              },
+              {
+                description: {
+                  contains: query.search.trim(),
+                  mode: 'insensitive',
                 },
-              ],
-            }
-          : {}),
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        createdAt: true,
-        updatedAt: true,
-        members: {
-          where: {
-            leftAt: null,
-          },
-          select: {
-            id: true,
+              },
+            ],
+          }
+        : {}),
+      ...statusFilter,
+    };
+
+    // 2. Chạy đồng thời truy vấn lấy dữ liệu phân trang và đếm tổng số bản ghi bằng $transaction
+    const [projects, total] = await this.prisma.$transaction([
+      this.prisma.project.findMany({
+        where,
+        orderBy: {
+          updatedAt: 'desc',
+        },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              members: {
+                where: {
+                  leftAt: null,
+                },
+              },
+            },
           },
         },
-        tasks: {
-          select: {
-            status: true,
-          },
-        },
-      },
+      }),
+      this.prisma.project.count({ where }),
+    ]);
+
+    const projectIds = projects.map((p) => p.id);
+    const statsMap = await this.getProjectsTaskStats(projectIds);
+
+    // 3. Ánh xạ các item tương ứng mà không cần thực hiện filter/slice ở bộ nhớ RAM nữa
+    const catalogItems = projects.map((project) => {
+      const stats = statsMap.get(project.id) || { total: 0, completed: 0, blocked: 0 };
+      return this.mapProjectCatalogItem(project, stats);
     });
 
-    const catalogItems = projects
-      .map((project) => this.mapProjectCatalogItem(project))
-      .filter((project) => (query.status ? project.status === query.status : true));
-    const total = catalogItems.length;
     const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
     const page = Math.min(query.page, totalPages);
-    const start = (page - 1) * query.pageSize;
 
     return {
-      items: catalogItems.slice(start, start + query.pageSize),
+      items: catalogItems,
       total,
       page,
       pageSize: query.pageSize,
@@ -528,20 +579,18 @@ export class ProjectService {
           role: ProjectRole.OWNER,
         },
       });
-
-      await this.messageService.createSystemMessage(
-        {
-          projectId,
-          content: `${currentUser.email} transferred project ownership to ${targetUser.email}.`,
-          metadata: {
-            type: 'PROJECT_OWNERSHIP_TRANSFERRED',
-            previousOwnerId: currentUser.id,
-            newOwnerId: targetMembership.userId,
-          },
-        },
-        tx,
-      );
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.PROJECT_OWNERSHIP_TRANSFERRED,
+      new ProjectOwnershipTransferredEvent(
+        projectId,
+        currentUser.id,
+        targetMembership.userId,
+        currentUser.email,
+        targetUser.email,
+      ),
+    );
 
     return this.prisma.projectMember.findUniqueOrThrow({
       where: { id: targetMembership.id },
@@ -573,7 +622,7 @@ export class ProjectService {
       throw new NotFoundException('User not found.');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const { member, isReactivated } = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.projectMember.findUnique({
         where: {
           userId_projectId: {
@@ -597,22 +646,7 @@ export class ProjectService {
           select: projectMemberSelect,
         });
 
-        await this.messageService.createSystemMessage(
-          {
-            projectId,
-            content: `${currentUser.email} reactivated ${targetUser.email} as ${dto.role}.`,
-            metadata: {
-              type: 'PROJECT_MEMBER_ADDED',
-              memberUserId: targetUser.id,
-              role: dto.role,
-              addedById: currentUser.id,
-              reactivated: true,
-            },
-          },
-          tx,
-        );
-
-        return member;
+        return { member, isReactivated: true };
       }
 
       const member = await tx.projectMember.create({
@@ -624,23 +658,36 @@ export class ProjectService {
         select: projectMemberSelect,
       });
 
-      await this.messageService.createSystemMessage(
-        {
-          projectId,
-          content: `${currentUser.email} added ${targetUser.email} to the project as ${dto.role}.`,
-          metadata: {
-            type: 'PROJECT_MEMBER_ADDED',
-            memberUserId: targetUser.id,
-            role: dto.role,
-            addedById: currentUser.id,
-            reactivated: false,
-          },
-        },
-        tx,
-      );
-
-      return member;
+      return { member, isReactivated: false };
     });
+
+    if (isReactivated) {
+      this.eventEmitter.emit(
+        MessageEventNames.PROJECT_MEMBER_REACTIVATED,
+        new ProjectMemberReactivatedEvent(
+          projectId,
+          targetUser.id,
+          dto.role,
+          currentUser.id,
+          currentUser.email,
+          targetUser.email,
+        ),
+      );
+    } else {
+      this.eventEmitter.emit(
+        MessageEventNames.PROJECT_MEMBER_ADDED,
+        new ProjectMemberAddedEvent(
+          projectId,
+          targetUser.id,
+          dto.role,
+          currentUser.id,
+          currentUser.email,
+          targetUser.email,
+        ),
+      );
+    }
+
+    return member;
   }
 
   async listMembers(
@@ -722,23 +769,21 @@ export class ProjectService {
         select: projectMemberSelect,
       });
 
-      await this.messageService.createSystemMessage(
-        {
-          projectId,
-          content: `${currentUser.email} changed ${updated.user.email} to ${dto.role}.`,
-          metadata: {
-            type: 'PROJECT_MEMBER_ROLE_CHANGED',
-            memberUserId: updated.user.id,
-            previousRole: membership.role,
-            nextRole: dto.role,
-            changedById: currentUser.id,
-          },
-        },
-        tx,
-      );
-
       return updated;
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.PROJECT_MEMBER_ROLE_CHANGED,
+      new ProjectMemberRoleChangedEvent(
+        projectId,
+        updatedMembership.user.id,
+        membership.role,
+        dto.role,
+        currentUser.id,
+        currentUser.email,
+        updatedMembership.user.email,
+      ),
+    );
 
     return updatedMembership;
   }
@@ -768,8 +813,8 @@ export class ProjectService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const removedMembership = await tx.projectMember.update({
+    const removedMembership = await this.prisma.$transaction(async (tx) => {
+      const removed = await tx.projectMember.update({
         where: { id: membership.id },
         data: {
           leftAt: new Date(),
@@ -777,22 +822,22 @@ export class ProjectService {
         select: projectMemberSelect,
       });
 
-      await this.messageService.createSystemMessage(
-        {
-          projectId,
-          content: `${currentUser.email} removed ${removedMembership.user.email} from the project.`,
-          metadata: {
-            type: 'PROJECT_MEMBER_REMOVED',
-            memberUserId: removedMembership.user.id,
-            previousRole: membership.role,
-            removedById: currentUser.id,
-          },
-        },
-        tx,
-      );
-
-      return removedMembership;
+      return removed;
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.PROJECT_MEMBER_REMOVED,
+      new ProjectMemberRemovedEvent(
+        projectId,
+        removedMembership.user.id,
+        membership.role,
+        currentUser.id,
+        currentUser.email,
+        removedMembership.user.email,
+      ),
+    );
+
+    return removedMembership;
   }
 
   private buildTaskStatusSummary(taskStatuses: TaskStatus[]) {
@@ -838,46 +883,85 @@ export class ProjectService {
     return Math.round((completedTaskCount / totalTasks) * 100);
   }
 
-  private mapProjectListItem(project: {
-    id: number;
-    name: string;
-    description: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    members: { id: number }[];
-    tasks: { status: TaskStatus }[];
-  }): ProjectListItemView {
-    const totalTasks = project.tasks.length;
-    const completedTaskCount = project.tasks.filter(
-      (task) => task.status === TaskStatus.DONE,
-    ).length;
-    const blockedTaskCount = project.tasks.filter(
-      (task) => task.status === TaskStatus.BLOCKED,
-    ).length;
+  private async getProjectsTaskStats(
+    projectIds: number[],
+  ): Promise<Map<number, { total: number; completed: number; blocked: number }>> {
+    const statsMap = new Map<number, { total: number; completed: number; blocked: number }>();
+    if (projectIds.length === 0) {
+      return statsMap;
+    }
 
+    const taskStats = await this.prisma.task.groupBy({
+      by: ['projectId', 'status'],
+      where: {
+        projectId: { in: projectIds },
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    for (const stat of taskStats) {
+      const projectId = stat.projectId;
+      const status = stat.status;
+      const count = stat._count.id;
+
+      if (!statsMap.has(projectId)) {
+        statsMap.set(projectId, { total: 0, completed: 0, blocked: 0 });
+      }
+
+      const projectStat = statsMap.get(projectId)!;
+      projectStat.total += count;
+      if (status === TaskStatus.DONE) {
+        projectStat.completed += count;
+      } else if (status === TaskStatus.BLOCKED) {
+        projectStat.blocked += count;
+      }
+    }
+
+    return statsMap;
+  }
+
+  private mapProjectListItem(
+    project: {
+      id: number;
+      name: string;
+      description: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+      _count: {
+        members: number;
+      };
+    },
+    taskStats: { total: number; completed: number; blocked: number },
+  ): ProjectListItemView {
     return {
       id: project.id,
       name: project.name,
       description: project.description,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
-      memberCount: project.members.length,
-      totalTasks,
-      completedTaskCount,
-      blockedTaskCount,
+      memberCount: project._count.members,
+      totalTasks: taskStats.total,
+      completedTaskCount: taskStats.completed,
+      blockedTaskCount: taskStats.blocked,
     };
   }
 
-  private mapProjectCatalogItem(project: {
-    id: number;
-    name: string;
-    description: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    members: { id: number }[];
-    tasks: { status: TaskStatus }[];
-  }): ProjectCatalogItemView {
-    const summary = this.mapProjectListItem(project);
+  private mapProjectCatalogItem(
+    project: {
+      id: number;
+      name: string;
+      description: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+      _count: {
+        members: number;
+      };
+    },
+    taskStats: { total: number; completed: number; blocked: number },
+  ): ProjectCatalogItemView {
+    const summary = this.mapProjectListItem(project, taskStats);
 
     return {
       ...summary,

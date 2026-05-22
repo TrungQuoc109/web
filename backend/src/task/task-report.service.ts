@@ -2,24 +2,27 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { NotificationType, ReportStatus, TaskStatus, TaskAssignmentRole } from '@prisma/client';
+import { ReportStatus, TaskStatus, TaskAssignmentRole } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthenticatedUser } from '../auth/auth.types';
-import { MessageService } from '../message/message.service';
-import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewTaskReportDto } from './dto/review-task-report.dto';
 import { SubmitTaskReportDto } from './dto/submit-task-report.dto';
 import { taskReportSelect } from './task-report.constants';
 import { TaskReportView } from './task-report.types';
 import { TaskPermissionService } from './task-permission.service';
+import {
+  MessageEventNames,
+  TaskReportSubmittedEvent,
+  TaskReportReviewedEvent,
+} from '../message/events/message.events';
 
 @Injectable()
 export class TaskReportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly taskPermissionService: TaskPermissionService,
-    private readonly messageService: MessageService,
-    private readonly notificationService: NotificationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async listReports(
@@ -66,55 +69,28 @@ export class TaskReportService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const report = await tx.taskReport.create({
-        data: {
-          taskId,
-          authorId: currentUser.id,
-          content: dto.content.trim(),
-          attachments: dto.attachments ?? [],
-        },
-        select: taskReportSelect,
-      });
-
-      const activity = await this.messageService.createSystemMessage(
-        {
-          projectId: task.projectId,
-          taskId,
-          content: `${currentUser.email} submitted a task report.`,
-          metadata: {
-            type: 'TASK_REPORT_SUBMITTED',
-            taskId,
-            reportId: report.id,
-            authorId: currentUser.id,
-          },
-        },
-        tx,
-      );
-
-      const recipients = await tx.taskAssignment.findMany({
-        where: {
-          taskId,
-          userId: {
-            not: currentUser.id,
-          },
-        },
-        select: {
-          userId: true,
-        },
-      });
-
-      await this.notificationService.createNotifications(
-        {
-          activityId: activity.id,
-          type: NotificationType.ANNOUNCEMENT,
-          recipientIds: recipients.map((recipient) => recipient.userId),
-        },
-        tx,
-      );
-
-      return report;
+    const report = await this.prisma.taskReport.create({
+      data: {
+        taskId,
+        authorId: currentUser.id,
+        content: dto.content.trim(),
+        attachments: dto.attachments ?? [],
+      },
+      select: taskReportSelect,
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.TASK_REPORT_SUBMITTED,
+      new TaskReportSubmittedEvent(
+        task.projectId,
+        taskId,
+        report.id,
+        currentUser.id,
+        currentUser.email,
+      ),
+    );
+
+    return report;
   }
 
   async reviewReport(
@@ -133,8 +109,10 @@ export class TaskReportService {
         ? dto.rejectionReason!.trim()
         : dto.feedback?.trim() || null;
 
-    return this.prisma.$transaction(async (tx) => {
-      const updatedReport = await tx.taskReport.update({
+    let allApproved = false;
+
+    const updatedReport = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.taskReport.update({
         where: { id: reportId },
         data: {
           status: dto.status,
@@ -142,8 +120,6 @@ export class TaskReportService {
         },
         select: taskReportSelect,
       });
-
-      let allApproved = false;
 
       if (dto.status === ReportStatus.APPROVED) {
         const contributorAssignments = await tx.taskAssignment.findMany({
@@ -163,7 +139,7 @@ export class TaskReportService {
         });
 
         const approvedUserIds = new Set(approvedReports.map(r => r.authorId));
-        approvedUserIds.add(updatedReport.authorId);
+        approvedUserIds.add(updated.authorId);
 
         allApproved = contributorAssignments.every(c => approvedUserIds.has(c.userId));
 
@@ -177,41 +153,21 @@ export class TaskReportService {
         }
       }
 
-      const activity = await this.messageService.createSystemMessage(
-        {
-          projectId: task.projectId,
-          taskId: task.id,
-          content:
-            dto.status === ReportStatus.APPROVED
-              ? (allApproved 
-                  ? `${currentUser.email} approved a task report and completed the task.`
-                  : `${currentUser.email} approved a task report.`)
-              : `${currentUser.email} rejected a task report.`,
-          metadata: {
-            type:
-              dto.status === ReportStatus.APPROVED
-                ? 'TASK_REPORT_APPROVED'
-                : 'TASK_REPORT_REJECTED',
-            taskId: task.id,
-            reportId,
-            reviewerId: currentUser.id,
-          },
-        },
-        tx,
-      );
-
-      await this.notificationService.createNotifications(
-        {
-          activityId: activity.id,
-          type: NotificationType.ANNOUNCEMENT,
-          recipientIds: [updatedReport.authorId].filter(
-            (recipientId) => recipientId !== currentUser.id,
-          ),
-        },
-        tx,
-      );
-
-      return updatedReport;
+      return updated;
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.TASK_REPORT_REVIEWED,
+      new TaskReportReviewedEvent(
+        task.projectId,
+        task.id,
+        reportId,
+        dto.status,
+        allApproved,
+        currentUser.email,
+      ),
+    );
+
+    return updatedReport;
   }
 }

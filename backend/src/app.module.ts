@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -10,6 +11,7 @@ import { ProjectModule } from './project/project.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { TaskModule } from './task/task.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { RedisModule } from './redis/redis.module';
 import { RateLimitGuard } from './shared/guards/rate-limit.guard';
 
 @Module({
@@ -18,7 +20,9 @@ import { RateLimitGuard } from './shared/guards/rate-limit.guard';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    EventEmitterModule.forRoot(),
     PrismaModule,
+    RedisModule,
     AuthModule,
     DashboardModule,
     MessageModule,

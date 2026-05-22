@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
+  UseFilters,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -33,6 +34,8 @@ import { ProjectTypingDto } from './dto/project-typing.dto';
 import { SocketMessageCreateDto } from './dto/socket-message-create.dto';
 import { SocketTaskUpdateDto } from './dto/socket-task-update.dto';
 import { SocketAck, SocketAckResponse, SocketState } from './realtime.types';
+import { PresenceService } from './presence.service';
+import { WsAllExceptionsFilter } from './ws-exception.filter';
 
 type AuthenticatedSocket = Socket & {
   data: SocketState;
@@ -75,11 +78,10 @@ const allowedOrigins = configuredOrigins.length
     transform: true,
   }),
 )
+@UseFilters(new WsAllExceptionsFilter())
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   @WebSocketServer()
   private server!: Server;
-  private readonly projectPresence = new Map<number, Map<number, Set<string>>>();
-  private readonly projectTyping = new Map<number, Set<number>>();
 
   constructor(
     private readonly jwtService: JwtService,
@@ -88,6 +90,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     private readonly taskService: TaskService,
     private readonly projectPermissionService: ProjectPermissionService,
     private readonly taskPermissionService: TaskPermissionService,
+    private readonly presenceService: PresenceService,
   ) {}
 
   afterInit(): void {}
@@ -117,12 +120,12 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     }
 
     for (const projectId of client.data.joinedProjectIds ?? []) {
-      this.unregisterProjectPresence(projectId, user.id, client.id);
-      this.broadcastProjectPresence(projectId);
+      await this.presenceService.unregisterProjectPresence(projectId, user.id, client.id);
+      await this.broadcastProjectPresence(projectId);
     }
 
     for (const projectId of client.data.typingProjectIds ?? []) {
-      this.unregisterProjectTyping(projectId, user.id);
+      await this.presenceService.unregisterProjectTyping(projectId, user.id);
       this.server.to(this.projectRoom(projectId)).emit('project:typing', {
         projectId,
         userId: user.id,
@@ -148,12 +151,13 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
       const room = this.projectRoom(payload.projectId);
       await client.join(room);
       client.data.joinedProjectIds?.add(payload.projectId);
-      this.registerProjectPresence(payload.projectId, user.id, client.id);
-      this.broadcastProjectPresence(payload.projectId);
+      await this.presenceService.registerProjectPresence(payload.projectId, user.id, client.id);
+      await this.broadcastProjectPresence(payload.projectId);
 
+      const onlineUserIds = await this.presenceService.getProjectOnlineUserIds(payload.projectId);
       return {
         room,
-        onlineUserIds: this.getProjectOnlineUserIds(payload.projectId),
+        onlineUserIds,
       };
       }),
     );
@@ -173,9 +177,10 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
           user.id,
         );
 
+        const onlineUserIds = await this.presenceService.getProjectOnlineUserIds(payload.projectId);
         return {
           projectId: payload.projectId,
-          onlineUserIds: this.getProjectOnlineUserIds(payload.projectId),
+          onlineUserIds,
         };
       }),
     );
@@ -234,7 +239,12 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
           dto,
         );
 
-        this.server.to(this.taskRoom(payload.taskId)).emit('message:created', message);
+        const broadcastPayload = this.formatBroadcastPayload(message);
+        const room = this.taskRoom(payload.taskId);
+        setImmediate(() => {
+          this.server.to(room).emit('message:created', broadcastPayload);
+        });
+
         return message;
       }
 
@@ -244,7 +254,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
         dto,
       );
 
-      this.unregisterProjectTyping(payload.projectId!, user.id);
+      await this.presenceService.unregisterProjectTyping(payload.projectId!, user.id);
       client.data.typingProjectIds?.delete(payload.projectId!);
       this.server.to(this.projectRoom(payload.projectId!)).emit('project:typing', {
         projectId: payload.projectId!,
@@ -252,9 +262,11 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
         isTyping: false,
       });
 
-      this.server
-        .to(this.projectRoom(payload.projectId!))
-        .emit('message:created', message);
+      const broadcastPayload = this.formatBroadcastPayload(message);
+      const room = this.projectRoom(payload.projectId!);
+      setImmediate(() => {
+        this.server.to(room).emit('message:created', broadcastPayload);
+      });
 
       return message;
       }),
@@ -277,10 +289,10 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
         );
 
         if (payload.isTyping) {
-          this.registerProjectTyping(payload.projectId, user.id);
+          await this.presenceService.registerProjectTyping(payload.projectId, user.id);
           client.data.typingProjectIds?.add(payload.projectId);
         } else {
-          this.unregisterProjectTyping(payload.projectId, user.id);
+          await this.presenceService.unregisterProjectTyping(payload.projectId, user.id);
           client.data.typingProjectIds?.delete(payload.projectId);
         }
 
@@ -367,71 +379,40 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     return `task:${taskId}`;
   }
 
-  private registerProjectPresence(
-    projectId: number,
-    userId: number,
-    socketId: string,
-  ): void {
-    const roomPresence = this.projectPresence.get(projectId) ?? new Map<number, Set<string>>();
-    const userSockets = roomPresence.get(userId) ?? new Set<string>();
-    userSockets.add(socketId);
-    roomPresence.set(userId, userSockets);
-    this.projectPresence.set(projectId, roomPresence);
-  }
-
-  private unregisterProjectPresence(
-    projectId: number,
-    userId: number,
-    socketId: string,
-  ): void {
-    const roomPresence = this.projectPresence.get(projectId);
-    if (!roomPresence) {
-      return;
-    }
-
-    const userSockets = roomPresence.get(userId);
-    if (!userSockets) {
-      return;
-    }
-
-    userSockets.delete(socketId);
-    if (userSockets.size === 0) {
-      roomPresence.delete(userId);
-    }
-
-    if (roomPresence.size === 0) {
-      this.projectPresence.delete(projectId);
-    }
-  }
-
-  private getProjectOnlineUserIds(projectId: number): number[] {
-    return [...(this.projectPresence.get(projectId)?.keys() ?? [])];
-  }
-
-  private broadcastProjectPresence(projectId: number): void {
+  private async broadcastProjectPresence(projectId: number): Promise<void> {
+    const onlineUserIds = await this.presenceService.getProjectOnlineUserIds(projectId);
     this.server.to(this.projectRoom(projectId)).emit('project:presence', {
       projectId,
-      onlineUserIds: this.getProjectOnlineUserIds(projectId),
+      onlineUserIds,
     });
   }
 
-  private registerProjectTyping(projectId: number, userId: number): void {
-    const typingUsers = this.projectTyping.get(projectId) ?? new Set<number>();
-    typingUsers.add(userId);
-    this.projectTyping.set(projectId, typingUsers);
+  private formatBroadcastPayload(message: MessageView) {
+    return {
+      id: message.id,
+      content: message.content,
+      senderId: message.senderId,
+      projectId: message.projectId,
+      taskId: message.taskId,
+      isSystem: message.isSystem,
+      isImportant: message.isImportant,
+      isAnnouncement: message.isAnnouncement,
+      metadata: message.metadata,
+      createdAt: message.createdAt instanceof Date 
+        ? message.createdAt.toISOString() 
+        : message.createdAt,
+      sender: message.sender
+        ? {
+            id: message.sender.id,
+            email: message.sender.email,
+            name: message.sender.name,
+            role: message.sender.role,
+          }
+        : null,
+    };
   }
 
-  private unregisterProjectTyping(projectId: number, userId: number): void {
-    const typingUsers = this.projectTyping.get(projectId);
-    if (!typingUsers) {
-      return;
-    }
-
-    typingUsers.delete(userId);
-    if (typingUsers.size === 0) {
-      this.projectTyping.delete(projectId);
-    }
-  }
+  // Typing state tracking has been migrated cleanly to Redis Sorted Sets in PresenceService.
 
   private getErrorMessage(error: unknown): string {
     if (error instanceof Error) {

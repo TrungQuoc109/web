@@ -5,9 +5,25 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import helmet from 'helmet';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.use(
+    helmet({
+      crossOriginEmbedderPolicy: false,
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:', '/uploads/'],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        },
+      },
+    }),
+  );
+  app.disable('x-powered-by');
 
   const defaultCorsOrigins = [
     'http://localhost:5173',

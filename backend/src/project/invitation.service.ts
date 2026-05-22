@@ -5,17 +5,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NotificationType, ProjectRole } from '@prisma/client';
+import { ProjectRole } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/auth.types';
-import { MessageService } from '../message/message.service';
-import { NotificationService } from '../notification/notification.service';
 import { ProjectPermissionService } from './project-permission.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { projectMemberSelect } from './project.constants';
 import { InvitationView, ProjectMemberView } from './project.types';
 import { randomUUID } from 'crypto';
 import { createHash } from 'crypto';
+import { MessageEventNames, InvitationAcceptedEvent } from '../message/events/message.events';
 
 @Injectable()
 export class InvitationService {
@@ -24,8 +24,7 @@ export class InvitationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permission: ProjectPermissionService,
-    private readonly messageService: MessageService,
-    private readonly notificationService: NotificationService,
+    private readonly eventEmitter: EventEmitter2,
     configService: ConfigService,
   ) {
     const parsed = Number(
@@ -243,13 +242,13 @@ export class InvitationService {
       currentUser.id,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    const memberRecord = await this.prisma.$transaction(async (tx) => {
       await tx.invitation.update({
         where: { id: invitation.id },
         data: { status: 'ACCEPTED' },
       });
 
-      const memberRecord = membership
+      const record = membership
         ? await tx.projectMember.update({
             where: { id: membership.id },
             data: {
@@ -267,43 +266,20 @@ export class InvitationService {
             select: projectMemberSelect,
           });
 
-      const activity = await this.messageService.createSystemMessage(
-        {
-          projectId: invitation.projectId,
-          content: `${currentUser.email} has joined the project.`,
-          metadata: {
-            type: 'INVITATION_ACCEPTED',
-            invitationId: invitation.id,
-            userId: currentUser.id,
-          },
-        },
-        tx,
-      );
-
-      const recipients = await tx.projectMember.findMany({
-        where: {
-          projectId: invitation.projectId,
-          leftAt: null,
-          userId: {
-            not: currentUser.id,
-          },
-        },
-        select: {
-          userId: true,
-        },
-      });
-
-      await this.notificationService.createNotifications(
-        {
-          activityId: activity.id,
-          type: NotificationType.ANNOUNCEMENT,
-          recipientIds: recipients.map((recipient) => recipient.userId),
-        },
-        tx,
-      );
-
-      return memberRecord;
+      return record;
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.INVITATION_ACCEPTED,
+      new InvitationAcceptedEvent(
+        invitation.projectId,
+        invitation.id,
+        currentUser.id,
+        currentUser.email,
+      ),
+    );
+
+    return memberRecord;
   }
 
   private async fetchPendingInvitation(token: string) {

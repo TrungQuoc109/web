@@ -1,10 +1,10 @@
 import { ConfigService } from '@nestjs/config';
-import { InvitationStatus, NotificationType, ProjectRole } from '@prisma/client';
-import { MessageService } from '../message/message.service';
-import { NotificationService } from '../notification/notification.service';
+import { InvitationStatus, ProjectRole } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { InvitationService } from './invitation.service';
 import { ProjectPermissionService } from './project-permission.service';
+import { MessageEventNames, InvitationAcceptedEvent } from '../message/events/message.events';
 
 describe('InvitationService', () => {
   const prisma = {
@@ -16,12 +16,9 @@ describe('InvitationService', () => {
   const permission = {
     ensureNotActiveMember: jest.fn(),
   } as unknown as ProjectPermissionService;
-  const messageService = {
-    createSystemMessage: jest.fn(),
-  } as unknown as MessageService;
-  const notificationService = {
-    createNotifications: jest.fn(),
-  } as unknown as NotificationService;
+  const eventEmitter = {
+    emit: jest.fn(),
+  } as unknown as EventEmitter2;
   const configService = {
     get: jest.fn().mockReturnValue('7'),
   } as unknown as ConfigService;
@@ -33,8 +30,7 @@ describe('InvitationService', () => {
     service = new InvitationService(
       prisma,
       permission,
-      messageService,
-      notificationService,
+      eventEmitter,
       configService,
     );
   });
@@ -79,12 +75,6 @@ describe('InvitationService', () => {
     (permission.ensureNotActiveMember as jest.Mock).mockResolvedValue({
       id: 51,
     });
-    (messageService.createSystemMessage as jest.Mock).mockResolvedValue({
-      id: 88,
-    });
-    (notificationService.createNotifications as jest.Mock).mockResolvedValue(
-      undefined,
-    );
     (prisma.$transaction as jest.Mock).mockImplementation(async (callback) =>
       callback(tx),
     );
@@ -100,24 +90,14 @@ describe('InvitationService', () => {
       },
       select: expect.anything(),
     });
-    expect(messageService.createSystemMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectId: 12,
-        metadata: expect.objectContaining({
-          type: 'INVITATION_ACCEPTED',
-          invitationId: 19,
-          userId: currentUser.id,
-        }),
-      }),
-      tx,
-    );
-    expect(notificationService.createNotifications).toHaveBeenCalledWith(
-      {
-        activityId: 88,
-        type: NotificationType.ANNOUNCEMENT,
-        recipientIds: [3, 4],
-      },
-      tx,
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      MessageEventNames.INVITATION_ACCEPTED,
+      new InvitationAcceptedEvent(
+        12,
+        19,
+        currentUser.id,
+        currentUser.email,
+      ),
     );
   });
 });

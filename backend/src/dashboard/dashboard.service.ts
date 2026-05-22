@@ -79,53 +79,75 @@ export class DashboardService {
       },
     };
 
-    const [projects, tasks, reports, projectMessagesLast7Days, recentMessages] = await Promise.all([
-      this.prisma.project.findMany({
+    const [
+      totalProjects,
+      totalTasks,
+      taskStatusStats,
+      taskPriorityStats,
+      reportStatusStats,
+      projectMessagesLast7Days,
+      recentMessages,
+      planningCount,
+      completedCount,
+      atRiskCount,
+      activeCount,
+      recentTasks,
+      recentReports,
+      reviewedReports,
+    ] = await Promise.all([
+      // 1. Total projects user is active in
+      this.prisma.project.count({
         where: {
-          members: {
-            ...memberScope,
-          },
-        },
-        select: {
-          id: true,
-          tasks: {
-            select: {
-              status: true,
-            },
-          },
+          members: memberScope,
         },
       }),
-      this.prisma.task.findMany({
+      // 2. Total tasks in user's projects
+      this.prisma.task.count({
         where: {
           project: {
-            members: {
-              ...memberScope,
-            },
+            members: memberScope,
           },
         },
-        select: {
-          status: true,
-          priority: true,
-          createdAt: true,
-          updatedAt: true,
+      }),
+      // 3. Task counts grouped by status
+      this.prisma.task.groupBy({
+        by: ['status'],
+        where: {
+          project: {
+            members: memberScope,
+          },
+        },
+        _count: {
+          _all: true,
         },
       }),
-      this.prisma.taskReport.findMany({
+      // 4. Task counts grouped by priority
+      this.prisma.task.groupBy({
+        by: ['priority'],
+        where: {
+          project: {
+            members: memberScope,
+          },
+        },
+        _count: {
+          _all: true,
+        },
+      }),
+      // 5. Report counts grouped by status
+      this.prisma.taskReport.groupBy({
+        by: ['status'],
         where: {
           task: {
             project: {
-              members: {
-                ...memberScope,
-              },
+              members: memberScope,
             },
           },
         },
-        select: {
-          status: true,
-          createdAt: true,
-          updatedAt: true,
+        _count: {
+          _all: true,
         },
       }),
+      // 6. Project messages in the last 7 days
       this.prisma.message.count({
         where: {
           taskId: null,
@@ -133,19 +155,16 @@ export class DashboardService {
             gte: sevenDaysAgo,
           },
           project: {
-            members: {
-              ...memberScope,
-            },
+            members: memberScope,
           },
         },
       }),
+      // 7. Recent messages
       this.prisma.message.findMany({
         where: {
           taskId: null,
           project: {
-            members: {
-              ...memberScope,
-            },
+            members: memberScope,
           },
         },
         orderBy: {
@@ -172,28 +191,130 @@ export class DashboardService {
           },
         },
       }),
+      // 8. Project health: PLANNING count (no tasks)
+      this.prisma.project.count({
+        where: {
+          members: memberScope,
+          tasks: { none: {} },
+        },
+      }),
+      // 9. Project health: COMPLETED count (all tasks are DONE, at least 1 task)
+      this.prisma.project.count({
+        where: {
+          members: memberScope,
+          tasks: {
+            some: {},
+            every: { status: 'DONE' },
+          },
+        },
+      }),
+      // 10. Project health: AT_RISK count (at least 1 BLOCKED task)
+      this.prisma.project.count({
+        where: {
+          members: memberScope,
+          tasks: {
+            some: { status: 'BLOCKED' },
+          },
+        },
+      }),
+      // 11. Project health: ACTIVE count (has non-DONE tasks, no BLOCKED tasks)
+      this.prisma.project.count({
+        where: {
+          members: memberScope,
+          tasks: {
+            some: { status: { not: 'DONE' } },
+            none: { status: 'BLOCKED' },
+          },
+        },
+      }),
+      // 12. Recent tasks (created or updated in the last 7 days)
+      this.prisma.task.findMany({
+        where: {
+          project: {
+            members: memberScope,
+          },
+          OR: [
+            { createdAt: { gte: sevenDaysAgo } },
+            { updatedAt: { gte: sevenDaysAgo } },
+          ],
+        },
+        select: {
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      // 13. Recent reports (created or updated in the last 7 days)
+      this.prisma.taskReport.findMany({
+        where: {
+          task: {
+            project: {
+              members: memberScope,
+            },
+          },
+          OR: [
+            { createdAt: { gte: sevenDaysAgo } },
+            { updatedAt: { gte: sevenDaysAgo } },
+          ],
+        },
+        select: {
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      // 14. Non-pending reports for averageReviewHours calculation
+      this.prisma.taskReport.findMany({
+        where: {
+          task: {
+            project: {
+              members: memberScope,
+            },
+          },
+          status: { not: 'PENDING' },
+        },
+        select: {
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
     ]);
 
-    const tasksByStatus = tasks.reduce<Record<TaskStatus, number>>(
-      (summary, task) => {
-        summary[task.status] += 1;
-        return summary;
-      },
-      createTaskStatusSummary(),
-    );
+    // Map task status stats from database groupBy back to Record<TaskStatus, number>
+    const tasksByStatus = createTaskStatusSummary();
+    for (const stat of taskStatusStats) {
+      tasksByStatus[stat.status] = stat._count._all;
+    }
+
+    // Map task priority stats from database groupBy back to Record<TaskPriority, number>
+    const tasksByPriority = createTaskPrioritySummary();
+    for (const stat of taskPriorityStats) {
+      tasksByPriority[stat.priority] = stat._count._all;
+    }
+
+    // Map project health counts directly
+    const projectHealth = {
+      PLANNING: planningCount,
+      COMPLETED: completedCount,
+      AT_RISK: atRiskCount,
+      ACTIVE: activeCount,
+    };
 
     const analytics = this.buildAnalytics({
       now,
       sevenDaysAgo,
-      projects,
-      tasks,
-      reports,
+      projectHealth,
+      tasksByPriority,
+      reportStatusStats,
       projectMessagesLast7Days,
+      recentTasks,
+      recentReports,
+      reviewedReports,
     });
 
     return {
-      totalProjects: projects.length,
-      totalTasks: tasks.length,
+      totalProjects,
+      totalTasks,
       tasksByStatus,
       analytics,
       recentActivity: recentMessages
@@ -209,24 +330,13 @@ export class DashboardService {
   private buildAnalytics(input: {
     now: Date;
     sevenDaysAgo: Date;
-    projects: Array<{
-      id: number;
-      tasks: Array<{
-        status: TaskStatus;
-      }>;
-    }>;
-    tasks: Array<{
-      status: TaskStatus;
-      priority: TaskPriority;
-      createdAt: Date;
-      updatedAt: Date;
-    }>;
-    reports: Array<{
-      status: ReportStatus;
-      createdAt: Date;
-      updatedAt: Date;
-    }>;
+    projectHealth: Record<ProjectStatusView, number>;
+    tasksByPriority: Record<TaskPriority, number>;
+    reportStatusStats: Array<{ status: ReportStatus; _count: { _all: number } }>;
     projectMessagesLast7Days: number;
+    recentTasks: Array<{ status: TaskStatus; createdAt: Date; updatedAt: Date }>;
+    recentReports: Array<{ status: ReportStatus; createdAt: Date; updatedAt: Date }>;
+    reviewedReports: Array<{ createdAt: Date; updatedAt: Date }>;
   }): DashboardAnalyticsView {
     const dayKeys = createTrendPoints(input.now);
     const deliveryTrendMap = new Map(
@@ -236,38 +346,8 @@ export class DashboardService {
       }),
     );
 
-    const tasksByPriority = input.tasks.reduce<Record<TaskPriority, number>>(
-      (summary, task) => {
-        summary[task.priority] += 1;
-        return summary;
-      },
-      createTaskPrioritySummary(),
-    );
-
-    const projectHealth = input.projects.reduce<Record<ProjectStatusView, number>>(
-      (summary, project) => {
-        const totalTasks = project.tasks.length;
-        const completedTaskCount = project.tasks.filter(
-          (task) => task.status === TaskStatus.DONE,
-        ).length;
-        const blockedTaskCount = project.tasks.filter(
-          (task) => task.status === TaskStatus.BLOCKED,
-        ).length;
-
-        summary[
-          this.deriveProjectStatus({
-            totalTasks,
-            completedTaskCount,
-            blockedTaskCount,
-          })
-        ] += 1;
-
-        return summary;
-      },
-      createProjectHealthSummary(),
-    );
-
-    for (const task of input.tasks) {
+    // Populate trend from recent tasks (last 7 days window)
+    for (const task of input.recentTasks) {
       const createdBucket = deliveryTrendMap.get(getDayKey(task.createdAt));
       if (createdBucket) {
         createdBucket.created += 1;
@@ -281,7 +361,8 @@ export class DashboardService {
       }
     }
 
-    for (const report of input.reports) {
+    // Populate trend from recent reports (last 7 days window)
+    for (const report of input.recentReports) {
       if (report.status !== ReportStatus.PENDING) {
         const reviewedBucket = deliveryTrendMap.get(getDayKey(report.updatedAt));
         if (reviewedBucket) {
@@ -290,77 +371,51 @@ export class DashboardService {
       }
     }
 
-    const reviewedReports = input.reports.filter(
-      (report) => report.status !== ReportStatus.PENDING,
-    );
-    const approvedReports = input.reports.filter(
-      (report) => report.status === ReportStatus.APPROVED,
-    );
-    const rejectedReports = input.reports.filter(
-      (report) => report.status === ReportStatus.REJECTED,
-    );
-    const pendingReports = input.reports.filter(
-      (report) => report.status === ReportStatus.PENDING,
-    );
+    // All-time report status counts mapping
+    const pendingCount = input.reportStatusStats.find((s) => s.status === ReportStatus.PENDING)?._count._all ?? 0;
+    const approvedCount = input.reportStatusStats.find((s) => s.status === ReportStatus.APPROVED)?._count._all ?? 0;
+    const rejectedCount = input.reportStatusStats.find((s) => s.status === ReportStatus.REJECTED)?._count._all ?? 0;
+    const totalReviewed = approvedCount + rejectedCount;
+
     const averageReviewHours =
-      reviewedReports.length === 0
+      input.reviewedReports.length === 0
         ? null
         : Math.round(
-            reviewedReports.reduce((total, report) => {
+            input.reviewedReports.reduce((total, report) => {
               return total + (report.updatedAt.getTime() - report.createdAt.getTime());
             }, 0) /
-              reviewedReports.length /
+              input.reviewedReports.length /
               (60 * 60 * 1000),
           );
 
     return {
-      projectHealth,
-      tasksByPriority,
+      projectHealth: input.projectHealth,
+      tasksByPriority: input.tasksByPriority,
       deliveryTrend: dayKeys,
       momentum: {
-        tasksCreatedLast7Days: input.tasks.filter(
+        tasksCreatedLast7Days: input.recentTasks.filter(
           (task) => task.createdAt >= input.sevenDaysAgo,
         ).length,
-        tasksCompletedLast7Days: input.tasks.filter(
+        tasksCompletedLast7Days: input.recentTasks.filter(
           (task) =>
             task.status === TaskStatus.DONE && task.updatedAt >= input.sevenDaysAgo,
         ).length,
-        reportsSubmittedLast7Days: input.reports.filter(
+        reportsSubmittedLast7Days: input.recentReports.filter(
           (report) => report.createdAt >= input.sevenDaysAgo,
         ).length,
         projectMessagesLast7Days: input.projectMessagesLast7Days,
       },
       reviewSummary: {
-        pending: pendingReports.length,
-        approved: approvedReports.length,
-        rejected: rejectedReports.length,
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
         approvalRate:
-          reviewedReports.length === 0
+          totalReviewed === 0
             ? 0
-            : Math.round((approvedReports.length / reviewedReports.length) * 100),
+            : Math.round((approvedCount / totalReviewed) * 100),
         averageReviewHours,
       },
     };
-  }
-
-  private deriveProjectStatus(input: {
-    totalTasks: number;
-    completedTaskCount: number;
-    blockedTaskCount: number;
-  }): ProjectStatusView {
-    if (input.totalTasks === 0) {
-      return 'PLANNING';
-    }
-
-    if (input.completedTaskCount === input.totalTasks) {
-      return 'COMPLETED';
-    }
-
-    if (input.blockedTaskCount > 0) {
-      return 'AT_RISK';
-    }
-
-    return 'ACTIVE';
   }
 
   private mapActivity(message: {

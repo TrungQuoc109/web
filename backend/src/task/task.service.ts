@@ -1,7 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { NotificationType } from '@prisma/client';
-import { MessageService } from '../message/message.service';
-import { NotificationService } from '../notification/notification.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { AssignTaskUsersDto } from './dto/assign-task-users.dto';
@@ -13,14 +11,20 @@ import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { taskAssignmentSelect, taskSelect } from './task.constants';
 import { TaskAssignmentView, TaskCatalogView, TaskView } from './task.types';
 import { TaskPermissionService } from './task-permission.service';
+import {
+  MessageEventNames,
+  TaskCreatedEvent,
+  TaskAssignedEvent,
+  TaskStatusChangedEvent,
+  TaskPriorityChangedEvent,
+} from '../message/events/message.events';
 
 @Injectable()
 export class TaskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly taskPermissionService: TaskPermissionService,
-    private readonly messageService: MessageService,
-    private readonly notificationService: NotificationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async listTasks(
@@ -118,8 +122,8 @@ export class TaskService {
   ): Promise<TaskView> {
     await this.taskPermissionService.ensureCanCreateTask(projectId, currentUser.id);
 
-    return this.prisma.$transaction(async (tx) => {
-      const task = await tx.task.create({
+    const task = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.task.create({
         data: {
           projectId,
           title: dto.title.trim(),
@@ -129,23 +133,22 @@ export class TaskService {
         select: taskSelect,
       });
 
-      await this.messageService.createSystemMessage(
-        {
-          projectId,
-          taskId: task.id,
-          content: `${currentUser.email} created task ${task.title}.`,
-          metadata: {
-            type: 'TASK_CREATED',
-            taskId: task.id,
-            createdById: currentUser.id,
-            priority: task.priority,
-          },
-        },
-        tx,
-      );
-
-      return task;
+      return created;
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.TASK_CREATED,
+      new TaskCreatedEvent(
+        projectId,
+        task.id,
+        task.title,
+        currentUser.id,
+        task.priority,
+        currentUser.email,
+      ),
+    );
+
+    return task;
   }
 
   async assignUsers(
@@ -192,31 +195,18 @@ export class TaskService {
           }),
         ),
       );
-
-      const activity = await this.messageService.createSystemMessage(
-        {
-          projectId: task.projectId,
-          taskId,
-          content: `${currentUser.email} assigned users to the task.`,
-          metadata: {
-            type: 'TASK_ASSIGNED',
-            taskId,
-            assignedUserIds: dto.assignees.map((assignee) => assignee.userId),
-            assignedById: currentUser.id,
-          },
-        },
-        tx,
-      );
-
-      await this.notificationService.createNotifications(
-        {
-          activityId: activity.id,
-          type: NotificationType.ASSIGNED,
-          recipientIds: dto.assignees.map((assignee) => assignee.userId),
-        },
-        tx,
-      );
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.TASK_ASSIGNED,
+      new TaskAssignedEvent(
+        task.projectId,
+        taskId,
+        dto.assignees.map((assignee) => assignee.userId),
+        currentUser.id,
+        currentUser.email,
+      ),
+    );
 
     return this.prisma.taskAssignment.findMany({
       where: {
@@ -243,45 +233,26 @@ export class TaskService {
       dto.status,
     );
 
-    return this.prisma.$transaction(async (tx) => {
-      const task = await tx.task.update({
-        where: { id: taskId },
-        data: {
-          status: dto.status,
-        },
-        select: taskSelect,
-      });
-
-      const activity = await this.messageService.createSystemMessage(
-        {
-          projectId: task.projectId,
-          taskId,
-          content: `${currentUser.email} changed task status to ${dto.status}.`,
-          metadata: {
-            type: 'TASK_STATUS_CHANGED',
-            taskId,
-            status: dto.status,
-            changedById: currentUser.id,
-          },
-        },
-        tx,
-      );
-
-      const recipients = task.assignments
-        .map((assignment) => assignment.user.id)
-        .filter((userId) => userId !== currentUser.id);
-
-      await this.notificationService.createNotifications(
-        {
-          activityId: activity.id,
-          type: NotificationType.STATUS_CHANGED,
-          recipientIds: recipients,
-        },
-        tx,
-      );
-
-      return task;
+    const task = await this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: dto.status,
+      },
+      select: taskSelect,
     });
+
+    this.eventEmitter.emit(
+      MessageEventNames.TASK_STATUS_CHANGED,
+      new TaskStatusChangedEvent(
+        task.projectId,
+        taskId,
+        dto.status,
+        currentUser.id,
+        currentUser.email,
+      ),
+    );
+
+    return task;
   }
 
   async updateTask(
@@ -300,50 +271,31 @@ export class TaskService {
       dto.description !== undefined ? dto.description.trim() || null : undefined;
     const nextPriority = dto.priority !== undefined ? dto.priority : undefined;
 
-    return this.prisma.$transaction(async (tx) => {
-      const task = await tx.task.update({
-        where: { id: taskId },
-        data: {
-          ...(nextTitle !== undefined ? { title: nextTitle } : {}),
-          ...(nextDescription !== undefined ? { description: nextDescription } : {}),
-          ...(nextPriority !== undefined ? { priority: nextPriority } : {}),
-        },
-        select: taskSelect,
-      });
-
-      if (nextPriority !== undefined && existingTask.priority !== nextPriority) {
-        const activity = await this.messageService.createSystemMessage(
-          {
-            projectId: task.projectId,
-            taskId,
-            content: `${currentUser.email} changed task priority to ${nextPriority}.`,
-            metadata: {
-              type: 'TASK_PRIORITY_CHANGED',
-              taskId,
-              previousPriority: existingTask.priority,
-              priority: nextPriority,
-              changedById: currentUser.id,
-            },
-          },
-          tx,
-        );
-
-        const recipients = task.assignments
-          .map((assignment) => assignment.user.id)
-          .filter((userId) => userId !== currentUser.id);
-
-        await this.notificationService.createNotifications(
-          {
-            activityId: activity.id,
-            type: NotificationType.PRIORITY_CHANGED,
-            recipientIds: recipients,
-          },
-          tx,
-        );
-      }
-
-      return task;
+    const task = await this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        ...(nextTitle !== undefined ? { title: nextTitle } : {}),
+        ...(nextDescription !== undefined ? { description: nextDescription } : {}),
+        ...(nextPriority !== undefined ? { priority: nextPriority } : {}),
+      },
+      select: taskSelect,
     });
+
+    if (nextPriority !== undefined && existingTask.priority !== nextPriority) {
+      this.eventEmitter.emit(
+        MessageEventNames.TASK_PRIORITY_CHANGED,
+        new TaskPriorityChangedEvent(
+          task.projectId,
+          taskId,
+          existingTask.priority,
+          nextPriority,
+          currentUser.id,
+          currentUser.email,
+        ),
+      );
+    }
+
+    return task;
   }
 
   async updateAssignment(

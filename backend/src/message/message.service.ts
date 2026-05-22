@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { NotificationType, Prisma, ProjectRole } from '@prisma/client';
+import { NotificationType, Prisma, ProjectRole, ReportStatus } from '@prisma/client';
+import { OnEvent } from '@nestjs/event-emitter';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { NotificationService } from '../notification/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +14,21 @@ import {
   MessageCatalogView,
   MessageView,
 } from './message.types';
+import {
+  MessageEventNames,
+  ProjectOwnershipTransferredEvent,
+  ProjectMemberReactivatedEvent,
+  ProjectMemberAddedEvent,
+  ProjectMemberRoleChangedEvent,
+  ProjectMemberRemovedEvent,
+  InvitationAcceptedEvent,
+  TaskCreatedEvent,
+  TaskAssignedEvent,
+  TaskStatusChangedEvent,
+  TaskPriorityChangedEvent,
+  TaskReportSubmittedEvent,
+  TaskReportReviewedEvent,
+} from './events/message.events';
 
 @Injectable()
 export class MessageService {
@@ -423,5 +439,303 @@ export class MessageService {
 
   private normalizeMentionToken(value: string): string {
     return value.trim().toLowerCase();
+  }
+
+  @OnEvent(MessageEventNames.PROJECT_OWNERSHIP_TRANSFERRED)
+  async handleProjectOwnershipTransferred(event: ProjectOwnershipTransferredEvent) {
+    await this.createSystemMessage({
+      projectId: event.projectId,
+      content: `${event.previousOwnerEmail} transferred project ownership to ${event.newOwnerEmail}.`,
+      metadata: {
+        type: 'OWNERSHIP_TRANSFERRED',
+        previousOwnerId: event.previousOwnerId,
+        newOwnerId: event.newOwnerId,
+      },
+    });
+  }
+
+  @OnEvent(MessageEventNames.PROJECT_MEMBER_REACTIVATED)
+  async handleProjectMemberReactivated(event: ProjectMemberReactivatedEvent) {
+    await this.createSystemMessage({
+      projectId: event.projectId,
+      content: `${event.currentUserEmail} reactivated ${event.targetUserEmail} as a project member.`,
+      metadata: {
+        type: 'MEMBER_ADDED',
+        memberUserId: event.memberUserId,
+        role: event.role,
+        addedById: event.addedById,
+      },
+    });
+  }
+
+  @OnEvent(MessageEventNames.PROJECT_MEMBER_ADDED)
+  async handleProjectMemberAdded(event: ProjectMemberAddedEvent) {
+    await this.createSystemMessage({
+      projectId: event.projectId,
+      content: `${event.currentUserEmail} added ${event.targetUserEmail} to the project.`,
+      metadata: {
+        type: 'MEMBER_ADDED',
+        memberUserId: event.memberUserId,
+        role: event.role,
+        addedById: event.addedById,
+      },
+    });
+  }
+
+  @OnEvent(MessageEventNames.PROJECT_MEMBER_ROLE_CHANGED)
+  async handleProjectMemberRoleChanged(event: ProjectMemberRoleChangedEvent) {
+    await this.createSystemMessage({
+      projectId: event.projectId,
+      content: `${event.currentUserEmail} changed the role of ${event.targetUserEmail} from ${event.previousRole} to ${event.nextRole}.`,
+      metadata: {
+        type: 'MEMBER_ROLE_CHANGED',
+        memberUserId: event.memberUserId,
+        previousRole: event.previousRole,
+        nextRole: event.nextRole,
+        changedById: event.changedById,
+      },
+    });
+  }
+
+  @OnEvent(MessageEventNames.PROJECT_MEMBER_REMOVED)
+  async handleProjectMemberRemoved(event: ProjectMemberRemovedEvent) {
+    await this.createSystemMessage({
+      projectId: event.projectId,
+      content: `${event.currentUserEmail} removed ${event.targetUserEmail} from the project.`,
+      metadata: {
+        type: 'MEMBER_REMOVED',
+        memberUserId: event.memberUserId,
+        previousRole: event.previousRole,
+        removedById: event.removedById,
+      },
+    });
+  }
+
+  @OnEvent(MessageEventNames.INVITATION_ACCEPTED)
+  async handleInvitationAccepted(event: InvitationAcceptedEvent) {
+    const activity = await this.createSystemMessage({
+      projectId: event.projectId,
+      content: `${event.currentUserEmail} joined the project via invitation.`,
+      metadata: {
+        type: 'INVITATION_ACCEPTED',
+        invitationId: event.invitationId,
+        userId: event.userId,
+      },
+    });
+
+    const recipientIds = await this.getActiveProjectRecipientIds(event.projectId, [
+      event.userId,
+    ]);
+
+    if (recipientIds.length > 0) {
+      await this.notificationService.createNotifications({
+        activityId: activity.id,
+        type: NotificationType.ANNOUNCEMENT,
+        recipientIds,
+      });
+    }
+  }
+
+  @OnEvent(MessageEventNames.TASK_CREATED)
+  async handleTaskCreated(event: TaskCreatedEvent) {
+    await this.createSystemMessage({
+      projectId: event.projectId,
+      taskId: event.taskId,
+      content: `${event.currentUserEmail} created task ${event.title}.`,
+      metadata: {
+        type: 'TASK_CREATED',
+        taskId: event.taskId,
+        createdById: event.createdById,
+        priority: event.priority,
+      },
+    });
+  }
+
+  @OnEvent(MessageEventNames.TASK_ASSIGNED)
+  async handleTaskAssigned(event: TaskAssignedEvent) {
+    const activity = await this.createSystemMessage({
+      projectId: event.projectId,
+      taskId: event.taskId,
+      content: `${event.currentUserEmail} assigned users to the task.`,
+      metadata: {
+        type: 'TASK_ASSIGNED',
+        taskId: event.taskId,
+        assignedUserIds: event.assignedUserIds,
+        assignedById: event.assignedById,
+      },
+    });
+
+    await this.notificationService.createNotifications({
+      activityId: activity.id,
+      type: NotificationType.ASSIGNED,
+      recipientIds: event.assignedUserIds,
+    });
+  }
+
+  @OnEvent(MessageEventNames.TASK_STATUS_CHANGED)
+  async handleTaskStatusChanged(event: TaskStatusChangedEvent) {
+    const activity = await this.createSystemMessage({
+      projectId: event.projectId,
+      taskId: event.taskId,
+      content: `${event.currentUserEmail} changed task status to ${event.status}.`,
+      metadata: {
+        type: 'TASK_STATUS_CHANGED',
+        taskId: event.taskId,
+        status: event.status,
+        changedById: event.changedById,
+      },
+    });
+
+    const assignments = await this.prisma.taskAssignment.findMany({
+      where: {
+        taskId: event.taskId,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    const recipients = assignments
+      .map((assignment) => assignment.userId)
+      .filter((userId) => userId !== event.changedById);
+
+    if (recipients.length > 0) {
+      await this.notificationService.createNotifications({
+        activityId: activity.id,
+        type: NotificationType.STATUS_CHANGED,
+        recipientIds: recipients,
+      });
+    }
+  }
+
+  @OnEvent(MessageEventNames.TASK_PRIORITY_CHANGED)
+  async handleTaskPriorityChanged(event: TaskPriorityChangedEvent) {
+    const activity = await this.createSystemMessage({
+      projectId: event.projectId,
+      taskId: event.taskId,
+      content: `${event.currentUserEmail} changed task priority to ${event.priority}.`,
+      metadata: {
+        type: 'TASK_PRIORITY_CHANGED',
+        taskId: event.taskId,
+        previousPriority: event.previousPriority,
+        priority: event.priority,
+        changedById: event.changedById,
+      },
+    });
+
+    const assignments = await this.prisma.taskAssignment.findMany({
+      where: {
+        taskId: event.taskId,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    const recipients = assignments
+      .map((assignment) => assignment.userId)
+      .filter((userId) => userId !== event.changedById);
+
+    if (recipients.length > 0) {
+      await this.notificationService.createNotifications({
+        activityId: activity.id,
+        type: NotificationType.PRIORITY_CHANGED,
+        recipientIds: recipients,
+      });
+    }
+  }
+
+  @OnEvent(MessageEventNames.TASK_REPORT_SUBMITTED)
+  async handleTaskReportSubmitted(event: TaskReportSubmittedEvent) {
+    const activity = await this.createSystemMessage({
+      projectId: event.projectId,
+      taskId: event.taskId,
+      content: `${event.currentUserEmail} submitted a task report.`,
+      metadata: {
+        type: 'TASK_REPORT_SUBMITTED',
+        taskId: event.taskId,
+        reportId: event.reportId,
+        authorId: event.authorId,
+      },
+    });
+
+    const assignments = await this.prisma.taskAssignment.findMany({
+      where: {
+        taskId: event.taskId,
+        userId: {
+          not: event.authorId,
+        },
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    const recipientIds = assignments.map((a) => a.userId);
+
+    if (recipientIds.length > 0) {
+      await this.notificationService.createNotifications({
+        activityId: activity.id,
+        type: NotificationType.ANNOUNCEMENT,
+        recipientIds,
+      });
+    }
+  }
+
+  @OnEvent(MessageEventNames.TASK_REPORT_REVIEWED)
+  async handleTaskReportReviewed(event: TaskReportReviewedEvent) {
+    const report = await this.prisma.taskReport.findUnique({
+      where: { id: event.reportId },
+      select: { authorId: true },
+    });
+
+    if (!report) {
+      return;
+    }
+
+    const isApproved = event.status === ReportStatus.APPROVED;
+    const content = isApproved
+      ? (event.allApproved
+          ? `${event.currentUserEmail} approved a task report and completed the task.`
+          : `${event.currentUserEmail} approved a task report.`)
+      : `${event.currentUserEmail} rejected a task report.`;
+
+    const activity = await this.createSystemMessage({
+      projectId: event.projectId,
+      taskId: event.taskId,
+      content,
+      metadata: {
+        type: isApproved ? 'TASK_REPORT_APPROVED' : 'TASK_REPORT_REJECTED',
+        taskId: event.taskId,
+        reportId: event.reportId,
+      },
+    });
+
+    const reviewer = await this.prisma.user.findUnique({
+      where: { email: event.currentUserEmail },
+      select: { id: true },
+    });
+
+    if (reviewer) {
+      await this.prisma.message.update({
+        where: { id: activity.id },
+        data: {
+          metadata: this.toJsonValue({
+            type: isApproved ? 'TASK_REPORT_APPROVED' : 'TASK_REPORT_REJECTED',
+            taskId: event.taskId,
+            reportId: event.reportId,
+            reviewerId: reviewer.id,
+          }),
+        },
+      });
+    }
+
+    if (reviewer && report.authorId !== reviewer.id) {
+      await this.notificationService.createNotifications({
+        activityId: activity.id,
+        type: NotificationType.ANNOUNCEMENT,
+        recipientIds: [report.authorId],
+      });
+    }
   }
 }

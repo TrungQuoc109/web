@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { NotificationModule } from '../notification/notification.module';
 import { ProjectModule } from '../project/project.module';
 import { TaskModule } from '../task/task.module';
@@ -8,8 +8,8 @@ import { MessageService } from './message.service';
 @Module({
   imports: [
     NotificationModule,
-    forwardRef(() => ProjectModule),
-    forwardRef(() => TaskModule),
+    ProjectModule,
+    TaskModule,
   ],
   controllers: [MessageController],
   providers: [MessageService],

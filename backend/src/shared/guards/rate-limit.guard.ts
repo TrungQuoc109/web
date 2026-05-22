@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SetMetadata } from '@nestjs/common';
+import { RedisService } from '../../redis/redis.service';
 
 export type RateLimitOptions = {
   windowMs: number;
@@ -19,18 +20,14 @@ const RATE_LIMIT_METADATA_KEY = 'rate_limit';
 export const RateLimit = (options: RateLimitOptions) =>
   SetMetadata(RATE_LIMIT_METADATA_KEY, options);
 
-type Bucket = {
-  count: number;
-  resetAt: number;
-};
-
 @Injectable()
 export class RateLimitGuard implements CanActivate {
-  private readonly buckets = new Map<string, Bucket>();
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly redisService: RedisService,
+  ) {}
 
-  constructor(private readonly reflector: Reflector) {}
-
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const options = this.reflector.getAllAndOverride<RateLimitOptions | null>(
       RATE_LIMIT_METADATA_KEY,
       [context.getHandler(), context.getClass()],
@@ -53,42 +50,65 @@ export class RateLimitGuard implements CanActivate {
 
     const url = (req.originalUrl ?? '').split('?')[0] ?? '';
     const method = (req.method ?? '').toUpperCase();
-    const bucketKey = `${options.keyPrefix ?? ''}:${method}:${url}:${ip}`;
+    
+    // Construct a unique Redis key for this rate limit bucket
+    const bucketKey = `ratelimit:${options.keyPrefix ?? ''}:${method}:${url}:${ip}`;
 
-    const now = Date.now();
     const windowMs = Math.max(1, options.windowMs);
     const max = Math.max(1, options.max);
 
-    const existing = this.buckets.get(bucketKey);
-    const bucket =
-      !existing || existing.resetAt <= now
-        ? { count: 0, resetAt: now + windowMs }
-        : existing;
+    // Execute atomic pipelined commands in Redis:
+    // 1. INCR key - increments the request counter
+    // 2. PTTL key - gets the remaining Time-To-Live in milliseconds
+    const pipeline = this.redisService.multi();
+    pipeline.incr(bucketKey);
+    pipeline.pttl(bucketKey);
+    const results = await pipeline.exec();
 
-    bucket.count += 1;
-    this.buckets.set(bucketKey, bucket);
+    if (!results || results.length < 2) {
+      throw new HttpException(
+        'Rate limit service temporarily unavailable.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
-    const remaining = Math.max(0, max - bucket.count);
+    // ioredis exec returns results in the format: [[err, val], [err, val]]
+    const incrError = results[0][0];
+    const current = results[0][1] as number;
+    const pttlError = results[1][0];
+    let pttl = results[1][1] as number;
+
+    if (incrError || pttlError) {
+      throw new HttpException(
+        'Rate limit transaction failed.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    // If PTTL is -1, it means the key exists but does not have an expiration.
+    // This happens on the very first INCR when the key is created, or if a previous EXPIRE call failed.
+    if (pttl === -1) {
+      await this.redisService.pexpire(bucketKey, windowMs);
+      pttl = windowMs;
+    }
+
+    const remainingTimeMs = pttl > 0 ? pttl : windowMs;
+    const resetAt = Date.now() + remainingTimeMs;
+    const remaining = Math.max(0, max - current);
+
+    // Set rate limit standard response headers
     res.setHeader?.('X-RateLimit-Limit', max);
     res.setHeader?.('X-RateLimit-Remaining', remaining);
-    res.setHeader?.('X-RateLimit-Reset', Math.floor(bucket.resetAt / 1000));
+    res.setHeader?.('X-RateLimit-Reset', Math.floor(resetAt / 1000));
 
-    if (bucket.count > max) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+    // If the client exceeded the rate limit
+    if (current > max) {
+      const retryAfterSeconds = Math.max(1, Math.ceil(remainingTimeMs / 1000));
       res.setHeader?.('Retry-After', retryAfterSeconds);
       throw new HttpException(
         'Too many requests. Please try again later.',
         HttpStatus.TOO_MANY_REQUESTS,
       );
-    }
-
-    // Opportunistic cleanup to avoid unbounded growth.
-    if (this.buckets.size > 10_000) {
-      for (const [key, value] of this.buckets.entries()) {
-        if (value.resetAt <= now) {
-          this.buckets.delete(key);
-        }
-      }
     }
 
     return true;

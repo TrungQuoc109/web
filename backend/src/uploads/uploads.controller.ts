@@ -31,6 +31,18 @@ const taskReportUploadDirectory = join(
   'uploads',
   'task-reports',
 );
+// Whitelist các đuôi mở rộng hợp lệ nhằm bảo vệ chống giả mạo mimetype
+const allowedExtensions = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.gif',
+  '.pdf',
+  '.txt',
+  '.zip',
+]);
+
 const allowedMimeTypes = new Set([
   'image/png',
   'image/jpeg',
@@ -81,13 +93,27 @@ export class UploadsController {
       },
       fileFilter: (
         _req: unknown,
-        file: { mimetype: string },
+        file: { originalname: string; mimetype: string },
         callback: (error: Error | null, acceptFile: boolean) => void,
       ) => {
+        const ext = extname(file.originalname).toLowerCase();
+
+        // 1. Xác thực Đuôi mở rộng (Extension) của tệp gốc
+        if (!ext || !allowedExtensions.has(ext)) {
+          callback(
+            new BadRequestException(
+              'Unsupported file extension. Only images, PDFs, text files, or zip archives are allowed.',
+            ),
+            false,
+          );
+          return;
+        }
+
+        // 2. Xác thực chéo Mimetype do client khai báo để gia cố bảo mật
         if (!allowedMimeTypes.has(file.mimetype)) {
           callback(
             new BadRequestException(
-              'Unsupported attachment type. Upload images, PDFs, text files, or zip archives only.',
+              'Unsupported file mimetype. The declared mimetype does not match allowed types.',
             ),
             false,
           );
