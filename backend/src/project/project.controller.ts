@@ -38,13 +38,19 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { UpdateProjectMemberRoleDto } from './dto/update-project-member-role.dto';
 import { ProjectMemberView } from './project.types';
 import { ProjectService } from './project.service';
+import { ProjectMemberService } from './project-member.service';
+import { ProjectActivityService } from './project-activity.service';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('bearer')
 @ApiTags('Dự án')
 @Controller('projects')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(
+    private readonly projectService: ProjectService,
+    private readonly projectMemberService: ProjectMemberService,
+    private readonly projectActivityService: ProjectActivityService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Tạo dự án mới' })
@@ -150,7 +156,7 @@ export class ProjectController {
     @Param('projectId', ParseIntPipe) projectId: number,
     @CurrentUser() currentUser: AuthenticatedUser,
   ) {
-    return this.projectService.getProjectActivity(projectId, currentUser);
+    return this.projectActivityService.getProjectActivity(projectId, currentUser);
   }
 
   @Patch(':projectId')
@@ -217,7 +223,7 @@ export class ProjectController {
     @Param('projectId', ParseIntPipe) projectId: number,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ProjectMemberView> {
-    return this.projectService.leaveProject(projectId, currentUser);
+    return this.projectMemberService.leaveProject(projectId, currentUser);
   }
 
   @Post(':projectId/ownership-transfer')
@@ -240,7 +246,7 @@ export class ProjectController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: TransferProjectOwnershipDto,
   ): Promise<ProjectMemberView> {
-    return this.projectService.transferOwnership(projectId, currentUser, dto);
+    return this.projectMemberService.transferOwnership(projectId, currentUser, dto);
   }
 
   @Post(':projectId/members')
@@ -263,7 +269,7 @@ export class ProjectController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: AddMemberDto,
   ): Promise<ProjectMemberView> {
-    return this.projectService.addMember(projectId, currentUser, dto);
+    return this.projectMemberService.addMember(projectId, currentUser, dto);
   }
 
   @Get(':projectId/members')
@@ -298,7 +304,7 @@ export class ProjectController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query() query: ListProjectMembersQueryDto,
   ): Promise<ProjectMemberView[]> {
-    return this.projectService.listMembers(projectId, currentUser, query);
+    return this.projectMemberService.listMembers(projectId, currentUser, query);
   }
 
   @Patch(':projectId/members/:memberId')
@@ -327,7 +333,7 @@ export class ProjectController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: UpdateProjectMemberRoleDto,
   ): Promise<ProjectMemberView> {
-    return this.projectService.updateMemberRole(
+    return this.projectMemberService.updateMemberRole(
       projectId,
       memberId,
       currentUser,
@@ -360,6 +366,6 @@ export class ProjectController {
     @Param('memberId', ParseIntPipe) memberId: number,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ProjectMemberView> {
-    return this.projectService.removeMember(projectId, memberId, currentUser);
+    return this.projectMemberService.removeMember(projectId, memberId, currentUser);
   }
 }
