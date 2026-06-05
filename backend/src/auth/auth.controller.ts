@@ -237,4 +237,41 @@ export class AuthController {
   ): Promise<{ message: string }> {
     return this.authService.changePassword(user.id, dto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('sessions')
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Get all active sessions for the authenticated user' })
+  @ApiOkResponse({
+    description: 'Active sessions retrieved successfully',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+  getActiveSessions(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.getActiveSessions(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('sessions/other/revoke')
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Revoke all other active sessions for the authenticated user' })
+  @ApiOkResponse({
+    description: 'Other sessions revoked successfully',
+    schema: { example: { success: true } },
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+  async revokeOtherSessions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+  ) {
+    const tokenFromCookie = getCookieValue(req, REFRESH_COOKIE_NAME);
+    const refreshToken = dto.refreshToken ?? tokenFromCookie;
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing current refresh token.');
+    }
+
+    await this.authService.revokeOtherSessions(user.id, refreshToken);
+    return { success: true };
+  }
 }

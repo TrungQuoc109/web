@@ -2,13 +2,22 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 
+import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
+import { RedisIoAdapter } from './realtime/redis-io.adapter';
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  const configService = app.get(ConfigService);
+  const redisIoAdapter = new RedisIoAdapter(app, configService);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
 
   app.use(
     helmet({
@@ -63,6 +72,8 @@ async function bootstrap(): Promise<void> {
       },
     }),
   );
+
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   const uploadsDirectory = join(process.cwd(), 'uploads');
   if (!existsSync(uploadsDirectory)) {

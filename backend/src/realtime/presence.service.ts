@@ -32,12 +32,30 @@ export class PresenceService {
       // Mark the user as online by adding their ID to the project's online users set
       await this.redisService.sadd(presenceKey, String(userId));
 
-      // Apply a safety expiration (24h) to avoid orphan keys in case of hard crashes
-      await this.redisService.expire(userSocketsKey, 86400);
+      // Apply a safety expiration (60s) to avoid orphan keys in case of hard crashes
+      await this.redisService.expire(userSocketsKey, 60);
       await this.redisService.expire(presenceKey, 86400);
     } catch (err) {
       this.logger.error(
         `Failed to register presence for user ${userId} in project ${projectId}:`,
+        err,
+      );
+    }
+  }
+
+  /**
+   * Refreshes user presence TTL in Redis to prevent expiration.
+   */
+  async refreshProjectPresence(
+    projectId: number,
+    userId: number,
+  ): Promise<void> {
+    const userSocketsKey = this.getUserSocketsKey(projectId, userId);
+    try {
+      await this.redisService.expire(userSocketsKey, 60);
+    } catch (err) {
+      this.logger.error(
+        `Failed to refresh presence for user ${userId} in project ${projectId}:`,
         err,
       );
     }
@@ -81,7 +99,25 @@ export class PresenceService {
     const presenceKey = this.getPresenceKey(projectId);
     try {
       const userIds = await this.redisService.smembers(presenceKey);
-      return userIds.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+      const activeUserIds: number[] = [];
+
+      for (const idStr of userIds) {
+        const userId = parseInt(idStr, 10);
+        if (isNaN(userId)) {
+          continue;
+        }
+
+        const userSocketsKey = this.getUserSocketsKey(projectId, userId);
+        const exists = await this.redisService.exists(userSocketsKey);
+        if (exists === 1) {
+          activeUserIds.push(userId);
+        } else {
+          // Clean up ghost user from project presence set
+          await this.redisService.srem(presenceKey, idStr);
+        }
+      }
+
+      return activeUserIds;
     } catch (err) {
       this.logger.error(
         `Failed to retrieve online user IDs for project ${projectId}:`,

@@ -20,6 +20,7 @@ export interface TaskView {
   status: TaskStatus;
   priority: TaskPriority;
   projectId: number;
+  version: number;
   createdAt: Date;
   updatedAt: Date;
   assignments: TaskAssignmentView[];

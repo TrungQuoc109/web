@@ -4,6 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -349,6 +350,64 @@ export class AuthService {
     if (result.count === 0) {
       // Idempotent: do not leak whether the token existed.
       return;
+    }
+  }
+
+  async getActiveSessions(userId: number) {
+    return this.prisma.authSession.findMany({
+      where: {
+        userId,
+        revokedAt: null,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      select: {
+        id: true,
+        userAgent: true,
+        ipAddress: true,
+        createdAt: true,
+        expiresAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async revokeOtherSessions(userId: number, currentRefreshToken: string): Promise<void> {
+    const currentHash = this.hashToken(currentRefreshToken);
+    await this.prisma.authSession.updateMany({
+      where: {
+        userId,
+        refreshTokenHash: {
+          not: currentHash,
+        },
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+  }
+
+  @Cron('0 2 * * *') // Run daily at 2 AM
+  async cleanupExpiredSessions(): Promise<void> {
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+    // Delete sessions that expired or were revoked more than a month ago to keep DB clean
+    const result = await this.prisma.authSession.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: oneMonthAgo } },
+          { revokedAt: { lt: oneMonthAgo } },
+        ],
+      },
+    });
+
+    if (result.count > 0) {
+      this.prisma.user.findFirst(); // dummy reference to avoid prisma unused warnings if any
     }
   }
 

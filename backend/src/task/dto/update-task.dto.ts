@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TaskPriority } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -30,4 +30,12 @@ export class UpdateTaskDto {
     example: TaskPriority.HIGH,
   })
   priority?: TaskPriority;
+
+  @IsOptional()
+  @IsInt()
+  @ApiPropertyOptional({
+    description: 'Phiên bản hiện tại của công việc (để khóa lạc quan)',
+    example: 0,
+  })
+  version?: number;
 }

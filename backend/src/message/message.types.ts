@@ -5,7 +5,6 @@ export interface MessageView {
   content: string;
   senderId: number | null;
   projectId: number;
-  taskId: number | null;
   isSystem: boolean;
   isImportant: boolean;
   isAnnouncement: boolean;
@@ -30,7 +29,6 @@ export interface MessageCatalogView {
 export interface CreateSystemMessageInput {
   projectId: number;
   content: string;
-  taskId?: number;
   metadata?: Prisma.InputJsonValue;
   isImportant?: boolean;
   isAnnouncement?: boolean;

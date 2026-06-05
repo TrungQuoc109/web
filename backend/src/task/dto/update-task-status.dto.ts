@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { TaskStatus } from '@prisma/client';
-import { IsEnum } from 'class-validator';
+import { IsEnum, IsInt, IsOptional } from 'class-validator';
 
 export class UpdateTaskStatusDto {
   @IsEnum(TaskStatus)
@@ -9,4 +9,13 @@ export class UpdateTaskStatusDto {
     example: TaskStatus.IN_PROGRESS,
   })
   status!: TaskStatus;
+
+  @IsOptional()
+  @IsInt()
+  @ApiProperty({
+    description: 'Phiên bản hiện tại của công việc (để khóa lạc quan)',
+    example: 0,
+    required: false,
+  })
+  version?: number;
 }

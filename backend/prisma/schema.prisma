@@ -79,6 +79,7 @@ model User {
   taskReports      TaskReport[]
   sentInvites      Invitation[]     @relation("Sender")
   messages         Message[]
+  comments         Comment[]
   notifications    Notification[]   @relation("UserNotifications")
   sessions         AuthSession[]
 
@@ -133,13 +134,14 @@ model Task {
   description      String?
   status           TaskStatus       @default(TODO)
   priority         TaskPriority     @default(MEDIUM)
+  version          Int              @default(0)
 
   projectId        Int
   project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   assignments      TaskAssignment[]
   reports          TaskReport[]
-  messages         Message[]
+  comments         Comment[]
 
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
@@ -250,9 +252,6 @@ model Message {
   projectId        Int
   project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  taskId           Int?
-  task             Task?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
   isSystem         Boolean          @default(false)
   isImportant      Boolean          @default(false)
   isAnnouncement   Boolean          @default(false)
@@ -263,9 +262,7 @@ model Message {
   notifications    Notification[]   @relation("MessageNotifications")
 
   @@index([projectId])
-  @@index([taskId])
   @@index([projectId, createdAt])
-  @@index([taskId, createdAt])
   @@index([senderId])
   @@index([isSystem, createdAt])
 }
@@ -289,4 +286,23 @@ model Notification {
   @@index([activityId])
   @@index([type])
   @@unique([recipientId, activityId, type])
+}
+
+model Comment {
+  id          Int      @id @default(autoincrement())
+  content     String   @db.Text
+  attachments String[]
+
+  taskId      Int
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  authorId    Int
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([taskId])
+  @@index([authorId])
+  @@index([createdAt])
 }

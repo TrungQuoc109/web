@@ -34,15 +34,9 @@ export class ProjectActivityService {
           id: true,
           content: true,
           createdAt: true,
-          taskId: true,
           isSystem: true,
           isAnnouncement: true,
           metadata: true,
-          task: {
-            select: {
-              title: true,
-            },
-          },
           sender: {
             select: {
               email: true,
@@ -131,9 +125,6 @@ export class ProjectActivityService {
       isSystem: boolean;
       isAnnouncement: boolean;
       metadata: Prisma.JsonValue | null;
-      task: {
-        title: string;
-      } | null;
       sender: {
         id: number;
         email: string;
@@ -150,13 +141,9 @@ export class ProjectActivityService {
     id: number;
     content: string;
     createdAt: Date;
-    taskId?: number | null;
     isSystem: boolean;
     isAnnouncement: boolean;
     metadata: Prisma.JsonValue | null;
-    task: {
-      title: string;
-    } | null;
     sender: {
       email: string;
       name: string | null;
@@ -166,32 +153,23 @@ export class ProjectActivityService {
     const metadata = this.toMetadataRecord(message.metadata);
     const metadataType =
       typeof metadata?.type === 'string' ? metadata.type : null;
-    const taskTitle = message.task?.title ?? 'this task';
 
     switch (metadataType) {
       case 'TASK_CREATED':
         return {
           id: `activity-message-${message.id}`,
           title: 'Task created',
-          description: `${actorName ?? 'A teammate'} created ${taskTitle}.`,
+          description: message.content,
           category: 'TASK',
           actorName,
           metadata,
           timestamp: message.createdAt,
         };
       case 'TASK_ASSIGNED': {
-        const assignedCount = Array.isArray(metadata?.assignedUserIds)
-          ? metadata.assignedUserIds.length
-          : null;
-        const assigneeLabel =
-          assignedCount && assignedCount > 1
-            ? `${assignedCount} teammates`
-            : 'a teammate';
-
         return {
           id: `activity-message-${message.id}`,
           title: 'Task assignment updated',
-          description: `${actorName ?? 'A teammate'} assigned ${assigneeLabel} to ${taskTitle}.`,
+          description: message.content,
           category: 'TASK',
           actorName,
           metadata,
@@ -207,7 +185,7 @@ export class ProjectActivityService {
         return {
           id: `activity-message-${message.id}`,
           title: `Task moved to ${nextStatus}`,
-          description: `${actorName ?? 'A teammate'} moved ${taskTitle} to ${nextStatus}.`,
+          description: message.content,
           category: 'TASK',
           actorName,
           metadata,
@@ -218,7 +196,7 @@ export class ProjectActivityService {
         return {
           id: `activity-message-${message.id}`,
           title: 'Task report submitted',
-          description: `${actorName ?? 'A teammate'} submitted a delivery report for ${taskTitle}.`,
+          description: message.content,
           category: 'REPORT',
           actorName,
           metadata,
@@ -228,7 +206,7 @@ export class ProjectActivityService {
         return {
           id: `activity-message-${message.id}`,
           title: 'Task report approved',
-          description: `${actorName ?? 'A reviewer'} approved the latest report for ${taskTitle}.`,
+          description: message.content,
           category: 'REPORT',
           actorName,
           metadata,
@@ -238,7 +216,7 @@ export class ProjectActivityService {
         return {
           id: `activity-message-${message.id}`,
           title: 'Task report rejected',
-          description: `${actorName ?? 'A reviewer'} requested changes on the latest report for ${taskTitle}.`,
+          description: message.content,
           category: 'REPORT',
           actorName,
           metadata,
@@ -295,19 +273,17 @@ export class ProjectActivityService {
           timestamp: message.createdAt,
         };
       default: {
-        const title = message.taskId
-          ? `Task discussion in ${taskTitle}`
-          : message.isAnnouncement
+        const title = message.isAnnouncement
             ? 'Project announcement'
             : message.isSystem
               ? 'Project system update'
               : 'Project message';
-
+ 
         return {
           id: `activity-message-${message.id}`,
           title,
           description: message.content,
-          category: message.taskId ? 'TASK' : 'MESSAGE',
+          category: 'MESSAGE',
           actorName,
           metadata,
           timestamp: message.createdAt,

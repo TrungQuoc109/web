@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, NotificationType } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateNotificationsInput,
@@ -18,7 +19,10 @@ import {
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async listForUser(userId: number, limit = 12): Promise<NotificationView[]> {
     return this.prisma.notification.findMany({
@@ -109,6 +113,20 @@ export class NotificationService {
       })),
       skipDuplicates: true,
     });
+
+    const createdNotifications = await client.notification.findMany({
+      where: {
+        activityId: input.activityId,
+        recipientId: {
+          in: recipientIds,
+        },
+      },
+      select: notificationSelect,
+    });
+
+    for (const notification of createdNotifications) {
+      this.eventEmitter.emit('notification.created', notification);
+    }
   }
 
   async markAsRead(

@@ -277,9 +277,6 @@ export class ProjectService {
           },
         },
         messages: {
-          where: {
-            taskId: null,
-          },
           orderBy: {
             createdAt: 'desc',
           },
@@ -290,11 +287,6 @@ export class ProjectService {
             isSystem: true,
             isAnnouncement: true,
             metadata: true,
-            task: {
-              select: {
-                title: true,
-              },
-            },
             sender: {
               select: {
                 id: true,

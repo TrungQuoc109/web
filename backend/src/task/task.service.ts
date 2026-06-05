@@ -227,19 +227,37 @@ export class TaskService {
     currentUser: AuthenticatedUser,
     dto: UpdateTaskStatusDto,
   ): Promise<TaskView> {
-    await this.taskPermissionService.ensureCanUpdateStatus(
+    const { task: existingTask } = await this.taskPermissionService.ensureCanUpdateStatus(
       taskId,
       currentUser.id,
       dto.status,
     );
 
-    const task = await this.prisma.task.update({
-      where: { id: taskId },
-      data: {
-        status: dto.status,
-      },
-      select: taskSelect,
-    });
+    if (dto.version !== undefined && existingTask.version !== dto.version) {
+      throw new ConflictException(
+        'Task version mismatch. The task has been modified by another transaction.',
+      );
+    }
+
+    const versionCond = dto.version !== undefined ? dto.version : existingTask.version;
+    let task;
+    try {
+      task = await this.prisma.task.update({
+        where: { id: taskId, version: versionCond },
+        data: {
+          status: dto.status,
+          version: { increment: 1 },
+        },
+        select: taskSelect,
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new ConflictException(
+          'Task version mismatch. The task has been modified by another transaction.',
+        );
+      }
+      throw error;
+    }
 
     this.eventEmitter.emit(
       MessageEventNames.TASK_STATUS_CHANGED,
@@ -266,20 +284,38 @@ export class TaskService {
         currentUser.id,
       );
 
+    if (dto.version !== undefined && existingTask.version !== dto.version) {
+      throw new ConflictException(
+        'Task version mismatch. The task has been modified by another transaction.',
+      );
+    }
+
     const nextTitle = dto.title !== undefined ? dto.title.trim() : undefined;
     const nextDescription =
       dto.description !== undefined ? dto.description.trim() || null : undefined;
     const nextPriority = dto.priority !== undefined ? dto.priority : undefined;
 
-    const task = await this.prisma.task.update({
-      where: { id: taskId },
-      data: {
-        ...(nextTitle !== undefined ? { title: nextTitle } : {}),
-        ...(nextDescription !== undefined ? { description: nextDescription } : {}),
-        ...(nextPriority !== undefined ? { priority: nextPriority } : {}),
-      },
-      select: taskSelect,
-    });
+    const versionCond = dto.version !== undefined ? dto.version : existingTask.version;
+    let task;
+    try {
+      task = await this.prisma.task.update({
+        where: { id: taskId, version: versionCond },
+        data: {
+          ...(nextTitle !== undefined ? { title: nextTitle } : {}),
+          ...(nextDescription !== undefined ? { description: nextDescription } : {}),
+          ...(nextPriority !== undefined ? { priority: nextPriority } : {}),
+          version: { increment: 1 },
+        },
+        select: taskSelect,
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new ConflictException(
+          'Task version mismatch. The task has been modified by another transaction.',
+        );
+      }
+      throw error;
+    }
 
     if (nextPriority !== undefined && existingTask.priority !== nextPriority) {
       this.eventEmitter.emit(

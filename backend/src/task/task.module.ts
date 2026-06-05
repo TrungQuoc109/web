@@ -7,10 +7,12 @@ import { TaskReportService } from './task-report.service';
 import { TaskPermissionService } from './task-permission.service';
 import { TaskService } from './task.service';
 
+import { TaskRoleGuard } from './guards/task-role.guard';
+
 @Module({
   imports: [ProjectModule, NotificationModule],
   controllers: [TaskController, TaskReportController],
-  providers: [TaskService, TaskPermissionService, TaskReportService],
-  exports: [TaskService, TaskPermissionService, TaskReportService],
+  providers: [TaskService, TaskPermissionService, TaskReportService, TaskRoleGuard],
+  exports: [TaskService, TaskPermissionService, TaskReportService, TaskRoleGuard],
 })
 export class TaskModule {}

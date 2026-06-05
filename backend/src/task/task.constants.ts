@@ -20,6 +20,7 @@ export const taskSelect = {
   status: true,
   priority: true,
   projectId: true,
+  version: true,
   createdAt: true,
   updatedAt: true,
   assignments: {

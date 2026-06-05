@@ -36,6 +36,9 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { TaskAssignmentView, TaskCatalogView, TaskView } from './task.types';
 import { TaskService } from './task.service';
+import { TaskRoleGuard } from './guards/task-role.guard';
+import { ProjectRoles } from '../project/decorators/project-roles.decorator';
+import { ProjectRole } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('bearer')
@@ -83,6 +86,8 @@ export class TaskController {
   }
 
   @Post('tasks/:taskId/assignments')
+  @UseGuards(TaskRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
   @ApiOperation({ summary: 'Phân công thành viên cho công việc' })
   @ApiParam({
     name: 'taskId',
@@ -107,6 +112,8 @@ export class TaskController {
   }
 
   @Patch('tasks/:taskId/assignments/:assignmentId')
+  @UseGuards(TaskRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
   @ApiOperation({ summary: 'Cập nhật vai trò phân công trong công việc' })
   @ApiParam({
     name: 'taskId',
@@ -141,6 +148,8 @@ export class TaskController {
   }
 
   @Delete('tasks/:taskId/assignments/:assignmentId')
+  @UseGuards(TaskRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
   @ApiOperation({ summary: 'Gỡ phân công người dùng khỏi công việc' })
   @ApiParam({
     name: 'taskId',
@@ -169,6 +178,8 @@ export class TaskController {
   }
 
   @Patch('tasks/:taskId/status')
+  @UseGuards(TaskRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
   @ApiOperation({ summary: 'Cập nhật trạng thái công việc' })
   @ApiParam({
     name: 'taskId',
@@ -192,6 +203,8 @@ export class TaskController {
   }
 
   @Patch('tasks/:taskId')
+  @UseGuards(TaskRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
   @ApiOperation({ summary: 'Cập nhật thông tin công việc' })
   @ApiParam({
     name: 'taskId',
@@ -215,6 +228,8 @@ export class TaskController {
   }
 
   @Delete('tasks/:taskId')
+  @UseGuards(TaskRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER)
   @ApiOperation({ summary: 'Xóa công việc' })
   @ApiParam({
     name: 'taskId',

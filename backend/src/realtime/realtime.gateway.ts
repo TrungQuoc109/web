@@ -1,12 +1,15 @@
 import {
   BadRequestException,
   Injectable,
+  OnModuleDestroy,
   UnauthorizedException,
   UseFilters,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { OnEvent } from '@nestjs/event-emitter';
+import { NotificationView } from '../notification/notification.types';
 import {
   Ack,
   ConnectedSocket,
@@ -36,6 +39,8 @@ import { SocketTaskUpdateDto } from './dto/socket-task-update.dto';
 import { SocketAck, SocketAckResponse, SocketState } from './realtime.types';
 import { PresenceService } from './presence.service';
 import { WsAllExceptionsFilter } from './ws-exception.filter';
+import { CommentService } from '../comment/comment.service';
+import { CreateCommentDto } from '../comment/dto/create-comment.dto';
 
 type AuthenticatedSocket = Socket & {
   data: SocketState;
@@ -79,9 +84,10 @@ const allowedOrigins = configuredOrigins.length
   }),
 )
 @UseFilters(new WsAllExceptionsFilter())
-export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
+export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnModuleDestroy {
   @WebSocketServer()
   private server!: Server;
+  private refreshInterval!: NodeJS.Timeout;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -91,9 +97,34 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     private readonly projectPermissionService: ProjectPermissionService,
     private readonly taskPermissionService: TaskPermissionService,
     private readonly presenceService: PresenceService,
+    private readonly commentService: CommentService,
   ) {}
 
-  afterInit(): void {}
+  afterInit(): void {
+    this.refreshInterval = setInterval(async () => {
+      try {
+        const sockets = await this.server.fetchSockets();
+        for (const socket of sockets) {
+          const authSocket = socket as unknown as AuthenticatedSocket;
+          const user = authSocket.data?.user;
+          const joinedProjectIds = authSocket.data?.joinedProjectIds;
+          if (user && joinedProjectIds) {
+            for (const projectId of joinedProjectIds) {
+              await this.presenceService.refreshProjectPresence(projectId, user.id);
+            }
+          }
+        }
+      } catch (err) {
+        // Safe to ignore logging in periodic scheduler
+      }
+    }, 20000);
+  }
+
+  onModuleDestroy(): void {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
+  }
 
   async handleConnection(client: AuthenticatedSocket): Promise<void> {
     try {
@@ -107,10 +138,16 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
       );
       client.data.joinedProjectIds = new Set<number>();
       client.data.typingProjectIds = new Set<number>();
+      await client.join(`user:${client.data.user.id}`);
     } catch {
       client.emit('socket:error', this.errorResponse('Unauthorized socket connection.'));
       client.disconnect();
     }
+  }
+
+  @OnEvent('notification.created')
+  handleNotificationCreated(notification: NotificationView): void {
+    this.server.to(`user:${notification.recipientId}`).emit('notification:received', notification);
   }
 
   async handleDisconnect(client: AuthenticatedSocket): Promise<void> {
@@ -213,62 +250,61 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   ): Promise<void> {
     ack(
       await this.withAck(async () => {
-      const user = this.getUser(client);
-      const dto: SendMessageDto = {
-        content: payload.content,
-        metadata: payload.metadata,
-        isAnnouncement: payload.isAnnouncement,
-      };
+        const user = this.getUser(client);
+        const dto: SendMessageDto = {
+          content: payload.content,
+          metadata: payload.metadata,
+          isAnnouncement: payload.isAnnouncement,
+        };
 
-      if (payload.projectId && payload.taskId) {
-        throw new BadRequestException(
-          'Send either a project message or a task message, not both.',
-        );
-      }
+        if (!payload.projectId) {
+          throw new BadRequestException(
+            'A projectId is required to create a project message.',
+          );
+        }
 
-      if (!payload.projectId && !payload.taskId) {
-        throw new BadRequestException(
-          'A projectId or taskId is required to create a message.',
-        );
-      }
-
-      if (payload.taskId) {
-        const message = await this.messageService.sendTaskMessage(
-          payload.taskId,
+        const message = await this.messageService.sendProjectMessage(
+          payload.projectId,
           user,
           dto,
         );
 
+        await this.presenceService.unregisterProjectTyping(payload.projectId, user.id);
+        client.data.typingProjectIds?.delete(payload.projectId);
+        this.server.to(this.projectRoom(payload.projectId)).emit('project:typing', {
+          projectId: payload.projectId,
+          userId: user.id,
+          isTyping: false,
+        });
+
         const broadcastPayload = this.formatBroadcastPayload(message);
-        const room = this.taskRoom(payload.taskId);
+        const room = this.projectRoom(payload.projectId);
         setImmediate(() => {
           this.server.to(room).emit('message:created', broadcastPayload);
         });
 
         return message;
-      }
+      }),
+    );
+  }
 
-      const message = await this.messageService.sendProjectMessage(
-        payload.projectId!,
-        user,
-        dto,
-      );
+  @SubscribeMessage('comment:create')
+  async handleCommentCreate(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() payload: CreateCommentDto,
+    @Ack() ack: SocketAck<any>,
+  ): Promise<void> {
+    ack(
+      await this.withAck(async () => {
+        const user = this.getUser(client);
+        const comment = await this.commentService.create(user.id, payload);
 
-      await this.presenceService.unregisterProjectTyping(payload.projectId!, user.id);
-      client.data.typingProjectIds?.delete(payload.projectId!);
-      this.server.to(this.projectRoom(payload.projectId!)).emit('project:typing', {
-        projectId: payload.projectId!,
-        userId: user.id,
-        isTyping: false,
-      });
+        const room = this.taskRoom(payload.taskId);
+        setImmediate(() => {
+          this.server.to(room).emit('comment:created', comment);
+        });
 
-      const broadcastPayload = this.formatBroadcastPayload(message);
-      const room = this.projectRoom(payload.projectId!);
-      setImmediate(() => {
-        this.server.to(room).emit('message:created', broadcastPayload);
-      });
-
-      return message;
+        return comment;
       }),
     );
   }
@@ -393,7 +429,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
       content: message.content,
       senderId: message.senderId,
       projectId: message.projectId,
-      taskId: message.taskId,
       isSystem: message.isSystem,
       isImportant: message.isImportant,
       isAnnouncement: message.isAnnouncement,

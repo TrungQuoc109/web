@@ -3,7 +3,7 @@ import { WsException } from '@nestjs/websockets';
 
 @Catch()
 export class WsAllExceptionsFilter implements WsExceptionFilter {
-  catch(exception: any, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost) {
     const client = host.switchToWs().getClient();
     const args = host.getArgs();
 
@@ -13,8 +13,13 @@ export class WsAllExceptionsFilter implements WsExceptionFilter {
     let message: string | string[] = 'Unexpected socket exception.';
 
     if (exception instanceof HttpException) {
-      const response = exception.getResponse() as any;
-      message = response?.message || exception.message;
+      const response = exception.getResponse();
+      if (typeof response === 'object' && response !== null) {
+        const resObj = response as { message?: string | string[] };
+        message = resObj.message || exception.message;
+      } else {
+        message = String(response);
+      }
     } else if (exception instanceof WsException) {
       message = exception.message;
     } else if (exception instanceof Error) {

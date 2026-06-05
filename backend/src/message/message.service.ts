@@ -73,7 +73,6 @@ export class MessageService {
         content: dto.content.trim(),
         senderId: currentUser.id,
         projectId,
-        taskId: null,
         metadata: this.toJsonValue(metadata),
         isSystem: false,
         isAnnouncement: dto.isAnnouncement ?? false,
@@ -107,55 +106,7 @@ export class MessageService {
     return message;
   }
 
-  async sendTaskMessage(
-    taskId: number,
-    currentUser: AuthenticatedUser,
-    dto: SendMessageDto,
-  ): Promise<MessageView> {
-    const task = await this.taskPermissionService.ensureCanViewTask(
-      taskId,
-      currentUser.id,
-    );
-    const membership = await this.projectPermissionService.ensureActiveMember(
-      task.projectId,
-      currentUser.id,
-    );
 
-    if (membership.role === ProjectRole.VIEWER) {
-      throw new ForbiddenException('Viewers cannot send task messages.');
-    }
-
-    const activeMembers = await this.getActiveProjectMembers(task.projectId);
-    const mentionedMemberIds = this.extractMentionedMemberIds(
-      dto.content,
-      activeMembers,
-      currentUser.id,
-    );
-    const metadata = this.buildMessageMetadata(dto.metadata, mentionedMemberIds);
-
-    const message = await this.prisma.message.create({
-      data: {
-        content: dto.content.trim(),
-        senderId: currentUser.id,
-        projectId: task.projectId,
-        taskId,
-        metadata: this.toJsonValue(metadata),
-        isSystem: false,
-        isAnnouncement: false,
-      },
-      select: messageSelect,
-    });
-
-    if (mentionedMemberIds.length > 0) {
-      await this.notificationService.createNotifications({
-        activityId: message.id,
-        type: NotificationType.MENTION,
-        recipientIds: mentionedMemberIds,
-      });
-    }
-
-    return message;
-  }
 
   async listProjectMessages(
     projectId: number,
@@ -166,7 +117,6 @@ export class MessageService {
     return this.prisma.message.findMany({
       where: {
         projectId,
-        taskId: null,
       },
       orderBy: {
         createdAt: 'asc',
@@ -185,7 +135,6 @@ export class MessageService {
     const normalizedSearch = query.search?.trim();
     const where = {
       projectId,
-      taskId: null,
       ...(normalizedSearch
         ? {
             content: {
@@ -217,71 +166,7 @@ export class MessageService {
     };
   }
 
-  async listTaskMessages(
-    taskId: number,
-    currentUser: AuthenticatedUser,
-  ): Promise<MessageView[]> {
-    const task = await this.taskPermissionService.ensureCanViewTask(
-      taskId,
-      currentUser.id,
-    );
 
-    return this.prisma.message.findMany({
-      where: {
-        projectId: task.projectId,
-        taskId,
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-      select: messageSelect,
-    });
-  }
-
-  async listTaskMessagesCatalog(
-    taskId: number,
-    currentUser: AuthenticatedUser,
-    query: ListMessagesQueryDto,
-  ): Promise<MessageCatalogView> {
-    const task = await this.taskPermissionService.ensureCanViewTask(
-      taskId,
-      currentUser.id,
-    );
-
-    const normalizedSearch = query.search?.trim();
-    const where = {
-      projectId: task.projectId,
-      taskId,
-      ...(normalizedSearch
-        ? {
-            content: {
-              contains: normalizedSearch,
-              mode: 'insensitive' as const,
-            },
-          }
-        : {}),
-    };
-    const total = await this.prisma.message.count({ where });
-    const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
-    const page = Math.min(query.page, totalPages);
-    const items = await this.prisma.message.findMany({
-      where,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip: (page - 1) * query.pageSize,
-      take: query.pageSize,
-      select: messageSelect,
-    });
-
-    return {
-      items: items.reverse(),
-      total,
-      page,
-      pageSize: query.pageSize,
-      totalPages,
-    };
-  }
 
   async createSystemMessage(
     input: CreateSystemMessageInput,
@@ -293,7 +178,6 @@ export class MessageService {
       data: {
         content: input.content,
         projectId: input.projectId,
-        taskId: input.taskId ?? null,
         senderId: null,
         isSystem: true,
         isImportant: input.isImportant ?? false,
@@ -540,7 +424,6 @@ export class MessageService {
   async handleTaskCreated(event: TaskCreatedEvent) {
     await this.createSystemMessage({
       projectId: event.projectId,
-      taskId: event.taskId,
       content: `${event.currentUserEmail} created task ${event.title}.`,
       metadata: {
         type: 'TASK_CREATED',
@@ -555,7 +438,6 @@ export class MessageService {
   async handleTaskAssigned(event: TaskAssignedEvent) {
     const activity = await this.createSystemMessage({
       projectId: event.projectId,
-      taskId: event.taskId,
       content: `${event.currentUserEmail} assigned users to the task.`,
       metadata: {
         type: 'TASK_ASSIGNED',
@@ -576,7 +458,6 @@ export class MessageService {
   async handleTaskStatusChanged(event: TaskStatusChangedEvent) {
     const activity = await this.createSystemMessage({
       projectId: event.projectId,
-      taskId: event.taskId,
       content: `${event.currentUserEmail} changed task status to ${event.status}.`,
       metadata: {
         type: 'TASK_STATUS_CHANGED',
@@ -612,7 +493,6 @@ export class MessageService {
   async handleTaskPriorityChanged(event: TaskPriorityChangedEvent) {
     const activity = await this.createSystemMessage({
       projectId: event.projectId,
-      taskId: event.taskId,
       content: `${event.currentUserEmail} changed task priority to ${event.priority}.`,
       metadata: {
         type: 'TASK_PRIORITY_CHANGED',
@@ -649,7 +529,6 @@ export class MessageService {
   async handleTaskReportSubmitted(event: TaskReportSubmittedEvent) {
     const activity = await this.createSystemMessage({
       projectId: event.projectId,
-      taskId: event.taskId,
       content: `${event.currentUserEmail} submitted a task report.`,
       metadata: {
         type: 'TASK_REPORT_SUBMITTED',
@@ -702,7 +581,6 @@ export class MessageService {
 
     const activity = await this.createSystemMessage({
       projectId: event.projectId,
-      taskId: event.taskId,
       content,
       metadata: {
         type: isApproved ? 'TASK_REPORT_APPROVED' : 'TASK_REPORT_REJECTED',

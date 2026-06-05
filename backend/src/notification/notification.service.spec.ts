@@ -1,3 +1,4 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from './notification.service';
 
@@ -9,11 +10,15 @@ describe('NotificationService', () => {
     },
   } as unknown as PrismaService;
 
+  const eventEmitter = {
+    emit: jest.fn(),
+  } as unknown as EventEmitter2;
+
   let service: NotificationService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new NotificationService(prisma);
+    service = new NotificationService(prisma, eventEmitter);
   });
 
   it('marks all accessible unread notifications as read', async () => {

@@ -9,6 +9,8 @@ import { ProjectMemberService } from './project-member.service';
 import { ProjectActivityService } from './project-activity.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
+import { ProjectRoleGuard } from './guards/project-role.guard';
+
 @Module({
   imports: [PrismaModule, NotificationModule],
   controllers: [InvitationController, ProjectController],
@@ -18,12 +20,14 @@ import { PrismaModule } from '../prisma/prisma.module';
     ProjectMemberService,
     ProjectActivityService,
     InvitationService,
+    ProjectRoleGuard,
   ],
   exports: [
     ProjectService,
     ProjectPermissionService,
     ProjectMemberService,
     ProjectActivityService,
+    ProjectRoleGuard,
   ],
 })
 export class ProjectModule {}

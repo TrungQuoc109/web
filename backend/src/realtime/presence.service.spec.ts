@@ -7,19 +7,20 @@ describe('PresenceService', () => {
     srem: jest.fn(),
     scard: jest.fn(),
     del: jest.fn(),
+    exists: jest.fn(),
     smembers: jest.fn(),
     expire: jest.fn(),
     zremrangebyscore: jest.fn(),
     zadd: jest.fn(),
     zrem: jest.fn(),
     zrange: jest.fn(),
-  } as any;
+  } ;
 
   let service: PresenceService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new PresenceService(redisServiceMock);
+    service = new PresenceService(redisServiceMock as unknown as RedisService);
   });
 
   describe('Project Online Presence (RT-01)', () => {
@@ -31,7 +32,7 @@ describe('PresenceService', () => {
 
       expect(redisServiceMock.sadd).toHaveBeenNthCalledWith(1, 'project:10:presence:5', 'socket-abc');
       expect(redisServiceMock.sadd).toHaveBeenNthCalledWith(2, 'project:10:presence', '5');
-      expect(redisServiceMock.expire).toHaveBeenNthCalledWith(1, 'project:10:presence:5', 86400);
+      expect(redisServiceMock.expire).toHaveBeenNthCalledWith(1, 'project:10:presence:5', 60);
       expect(redisServiceMock.expire).toHaveBeenNthCalledWith(2, 'project:10:presence', 86400);
     });
 
@@ -64,6 +65,7 @@ describe('PresenceService', () => {
 
     it('retrieves project online user IDs', async () => {
       redisServiceMock.smembers.mockResolvedValue(['5', '9', 'invalid', '12']);
+      redisServiceMock.exists.mockResolvedValue(1);
 
       const onlineIds = await service.getProjectOnlineUserIds(10);
 

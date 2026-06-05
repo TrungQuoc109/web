@@ -150,7 +150,6 @@ export class DashboardService {
       // 6. Project messages in the last 7 days
       this.prisma.message.count({
         where: {
-          taskId: null,
           createdAt: {
             gte: sevenDaysAgo,
           },
@@ -162,7 +161,6 @@ export class DashboardService {
       // 7. Recent messages
       this.prisma.message.findMany({
         where: {
-          taskId: null,
           project: {
             members: memberScope,
           },
@@ -317,7 +315,7 @@ export class DashboardService {
       totalTasks,
       tasksByStatus,
       analytics,
-      recentActivity: recentMessages
+      recentActivity: (recentMessages as any[])
         .map((message) => this.mapActivity(message))
         .sort(
           (left, right) =>

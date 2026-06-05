@@ -3,7 +3,6 @@ export const messageSelect = {
   content: true,
   senderId: true,
   projectId: true,
-  taskId: true,
   isSystem: true,
   isImportant: true,
   isAnnouncement: true,

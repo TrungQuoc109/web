@@ -40,6 +40,9 @@ import { ProjectMemberView } from './project.types';
 import { ProjectService } from './project.service';
 import { ProjectMemberService } from './project-member.service';
 import { ProjectActivityService } from './project-activity.service';
+import { ProjectRoleGuard } from './guards/project-role.guard';
+import { ProjectRoles } from './decorators/project-roles.decorator';
+import { ProjectRole } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('bearer')
@@ -118,6 +121,8 @@ export class ProjectController {
   }
 
   @Get(':projectId')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER, ProjectRole.VIEWER)
   @ApiOperation({ summary: 'Lấy chi tiết một dự án' })
   @ApiParam({
     name: 'projectId',
@@ -138,6 +143,8 @@ export class ProjectController {
   }
 
   @Get(':projectId/activity')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER, ProjectRole.VIEWER)
   @ApiOperation({ summary: 'Lấy timeline hoạt động của dự án' })
   @ApiParam({
     name: 'projectId',
@@ -160,6 +167,8 @@ export class ProjectController {
   }
 
   @Patch(':projectId')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
   @ApiOperation({ summary: 'Cập nhật thông tin dự án' })
   @ApiParam({
     name: 'projectId',
@@ -183,6 +192,8 @@ export class ProjectController {
   }
 
   @Delete(':projectId')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER)
   @ApiOperation({ summary: 'Xóa dự án' })
   @ApiParam({
     name: 'projectId',
@@ -205,6 +216,8 @@ export class ProjectController {
   }
 
   @Post(':projectId/leave')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER, ProjectRole.VIEWER)
   @ApiOperation({ summary: 'Rời khỏi dự án hiện tại' })
   @ApiParam({
     name: 'projectId',
@@ -227,6 +240,8 @@ export class ProjectController {
   }
 
   @Post(':projectId/ownership-transfer')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER)
   @ApiOperation({ summary: 'Chuyển quyền owner cho thành viên khác' })
   @ApiParam({
     name: 'projectId',
@@ -250,6 +265,8 @@ export class ProjectController {
   }
 
   @Post(':projectId/members')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
   @ApiOperation({ summary: 'Thêm thành viên vào dự án' })
   @ApiParam({
     name: 'projectId',
@@ -273,6 +290,8 @@ export class ProjectController {
   }
 
   @Get(':projectId/members')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN, ProjectRole.MEMBER, ProjectRole.VIEWER)
   @ApiOperation({ summary: 'Lấy danh sách thành viên của dự án' })
   @ApiParam({
     name: 'projectId',
@@ -308,6 +327,8 @@ export class ProjectController {
   }
 
   @Patch(':projectId/members/:memberId')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
   @ApiOperation({ summary: 'Cập nhật vai trò thành viên trong dự án' })
   @ApiParam({
     name: 'projectId',
@@ -342,6 +363,8 @@ export class ProjectController {
   }
 
   @Delete(':projectId/members/:memberId')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.OWNER, ProjectRole.ADMIN)
   @ApiOperation({ summary: 'Gỡ thành viên khỏi dự án' })
   @ApiParam({
     name: 'projectId',
